@@ -22,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let caffeine = CaffeineFeature()
         FeatureRegistry.shared.register(caffeine)
 
+        let jiraDashboard = JiraDashboardFeature()
+        FeatureRegistry.shared.register(jiraDashboard)
+
         let colorPicker = ColorPickerFeature()
         FeatureRegistry.shared.register(colorPicker)
 
@@ -52,6 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.start()
 
         appStatusBar = AppStatusBar()
+
+        // 앱 시작 시 백그라운드에서 Claude 사용량 미리 로딩
+        Task { await ClaudeUsageService.shared.fetchHeavy() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

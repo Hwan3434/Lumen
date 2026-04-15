@@ -82,7 +82,7 @@ final class ClipboardManager {
     var history: [ClipboardItem] = []
     private var lastChangeCount: Int = 0
     private var timer: Timer?
-    private let maxItems = 30
+    private let maxItems = 500
 
     private let baseDir: URL
     private let savePath: URL

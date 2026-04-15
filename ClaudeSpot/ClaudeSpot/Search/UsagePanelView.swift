@@ -1,83 +1,77 @@
 import SwiftUI
 
 struct UsagePanelView: View {
-    @State private var service = ClaudeUsageService()
+    private var service: ClaudeUsageService { ClaudeUsageService.shared }
 
     var body: some View {
         ZStack {
-            if service.isLoading && service.data == nil {
+            if service.isLoadingHeavy && service.heavyData == nil {
                 loadingView
-            } else if let data = service.data {
-                contentView(data)
+            } else if let heavy = service.heavyData {
+                contentView(heavy: heavy, live: service.liveData)
             } else {
                 emptyView
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task {
-            await service.fetch()
+        .onAppear {
+            Task { await service.fetchLive() }
         }
     }
 
-    // MARK: - Loading
+    // MARK: - States
 
     private var loadingView: some View {
         VStack(spacing: 8) {
-            ProgressView()
-                .scaleEffect(0.7)
-                .tint(.gray)
-            Text("불러오는 중...")
-                .font(.system(size: 11))
-                .foregroundColor(.gray)
+            ProgressView().scaleEffect(0.7).tint(.gray)
+            Text("불러오는 중...").font(.system(size: 11)).foregroundColor(.gray)
         }
     }
 
     private var emptyView: some View {
-        Text("데이터 없음")
-            .font(.system(size: 11))
-            .foregroundColor(.gray.opacity(0.5))
+        Text("데이터 없음").font(.system(size: 11)).foregroundColor(.gray.opacity(0.5))
     }
 
     // MARK: - Content
 
-    private func contentView(_ data: ClaudeUsageData) -> some View {
+    private func contentView(heavy: HeavyUsageData, live: LiveUsageData) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
-                summarySection(data)
-                Divider().background(Color.gray.opacity(0.2))
-                sparklineSection(data)
-                Divider().background(Color.gray.opacity(0.2))
-                projectsSection(data)
-                Divider().background(Color.gray.opacity(0.2))
-                gaugeSection(data)
+                summarySection(heavy: heavy, live: live)
+                divider
+                sparklineSection(heavy)
+                divider
+                projectsSection(heavy)
+                divider
+                modelsSection(heavy)
+                divider
+                gaugeSection(live)
             }
             .padding(12)
         }
     }
 
+    private var divider: some View {
+        Divider().background(Color.gray.opacity(0.2))
+    }
+
     // MARK: - Summary
 
-    private func summarySection(_ data: ClaudeUsageData) -> some View {
+    private func summarySection(heavy: HeavyUsageData, live: LiveUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("AI 사용량")
-            HStack(spacing: 0) {
-                statBox(title: "오늘", value: "\(data.todayCalls)", sub: "\(data.todaySessions) sessions")
-                statBox(title: "이번달", value: "\(data.monthCalls.formatted)", sub: "30일")
+            HStack(spacing: 6) {
+                statBox(title: "오늘", value: live.todayCalls.formatted, sub: "\(heavy.todaySessions) sessions")
+                statBox(title: "이번달", value: heavy.monthCalls.formatted, sub: "30일")
             }
         }
     }
 
     private func statBox(title: String, value: String, sub: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 10))
-                .foregroundColor(.gray)
-            Text(value)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-            Text(sub)
-                .font(.system(size: 10))
-                .foregroundColor(.gray)
+            Text(title).font(.system(size: 10)).foregroundColor(.gray)
+            Text(value).font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+            Text(sub).font(.system(size: 10)).foregroundColor(.gray)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
@@ -87,96 +81,104 @@ struct UsagePanelView: View {
 
     // MARK: - Sparkline
 
-    private func sparklineSection(_ data: ClaudeUsageData) -> some View {
+    private func sparklineSection(_ heavy: HeavyUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 sectionLabel("30일 호출 추이")
                 Spacer()
-                if let max = data.dailyHistory.max(by: { $0.calls < $1.calls }) {
+                if let max = heavy.dailyHistory.max(by: { $0.calls < $1.calls }) {
                     Text("최대 \(max.calls.formatted)")
-                        .font(.system(size: 10))
-                        .foregroundColor(.gray)
+                        .font(.system(size: 10)).foregroundColor(.gray)
                 }
             }
-            SparklineView(values: data.dailyHistory.map { Double($0.calls) })
+            SparklineView(values: heavy.dailyHistory.map { Double($0.calls) })
                 .frame(height: 50)
             HStack {
-                Text(data.dailyHistory.first?.date.suffix(5).description ?? "")
-                    .font(.system(size: 9))
-                    .foregroundColor(.gray)
+                Text(heavy.dailyHistory.first?.date.suffix(5).description ?? "")
+                    .font(.system(size: 9)).foregroundColor(.gray)
                 Spacer()
-                Text(data.dailyHistory.last?.date.suffix(5).description ?? "오늘")
-                    .font(.system(size: 9))
-                    .foregroundColor(.gray)
+                Text("오늘").font(.system(size: 9)).foregroundColor(.gray)
             }
         }
     }
 
     // MARK: - Projects
 
-    private func projectsSection(_ data: ClaudeUsageData) -> some View {
+    private func projectsSection(_ heavy: HeavyUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("프로젝트별 (30일)")
-            let maxCalls = data.projects.first?.calls ?? 1
-            ForEach(data.projects) { proj in
-                projectRow(proj, maxCalls: maxCalls)
+            let maxCalls = heavy.projects.first?.calls ?? 1
+            ForEach(heavy.projects) { proj in
+                barRow(label: proj.name, value: proj.calls, max: maxCalls, color: .blue.opacity(0.6))
             }
         }
     }
 
-    private func projectRow(_ proj: ProjectUsage, maxCalls: Int) -> some View {
+    // MARK: - Models
+
+    private func modelsSection(_ heavy: HeavyUsageData) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("모델별 (30일)")
+            let maxCalls = heavy.models.first?.calls ?? 1
+            ForEach(heavy.models) { model in
+                barRow(
+                    label: model.name,
+                    value: model.calls,
+                    max: maxCalls,
+                    color: model.name.contains("Opus") ? .purple.opacity(0.7) : .cyan.opacity(0.6)
+                )
+            }
+        }
+    }
+
+    private func barRow(label: String, value: Int, max: Int, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(proj.name)
+                Text(label)
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.85))
                     .lineLimit(1)
                 Spacer()
-                Text(proj.calls.formatted)
+                Text(value.formatted)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2).fill(Color.white.opacity(0.06))
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.white.opacity(0.06))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.blue.opacity(0.6))
-                        .frame(width: geo.size.width * CGFloat(proj.calls) / CGFloat(maxCalls))
+                        .fill(color)
+                        .frame(width: geo.size.width * CGFloat(value) / CGFloat(max))
                 }
             }
             .frame(height: 4)
         }
     }
 
-    // MARK: - Gauge (session / weekly)
+    // MARK: - Gauge (Claude Max 잔여) — 최하단
 
-    private func gaugeSection(_ data: ClaudeUsageData) -> some View {
+    private func gaugeSection(_ live: LiveUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Claude Max 잔여")
-            gaugeRow(label: "세션", pct: data.sessionPct)
-            gaugeRow(label: "주간", pct: data.weeklyPct)
+            gaugeRow(label: "세션", pct: live.sessionPct)
+            gaugeRow(label: "주간", pct: live.weeklyPct)
         }
     }
 
     private func gaugeRow(label: String, pct: Int) -> some View {
         HStack(spacing: 8) {
             Text(label)
-                .font(.system(size: 11))
-                .foregroundColor(.gray)
+                .font(.system(size: 11)).foregroundColor(.gray)
                 .frame(width: 28, alignment: .leading)
-
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.08))
                     RoundedRectangle(cornerRadius: 3)
                         .fill(gaugeColor(pct))
                         .frame(width: geo.size.width * CGFloat(pct) / 100)
                 }
             }
             .frame(height: 6)
-
             Text("\(pct)%")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.white.opacity(0.7))
@@ -193,10 +195,7 @@ struct UsagePanelView: View {
     // MARK: - Helpers
 
     private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundColor(.gray)
-            .textCase(.uppercase)
+        Text(text).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
     }
 }
 
@@ -209,12 +208,10 @@ struct SparklineView: View {
         GeometryReader { geo in
             let size = geo.size
             let maxV = values.max() ?? 1
-            let minV = 0.0
-            let range = maxV - minV == 0 ? 1 : maxV - minV
+            let range = maxV == 0 ? 1.0 : maxV
             let count = values.count
 
             ZStack {
-                // 배경 그리드 (선 2개)
                 Path { path in
                     for frac in [0.25, 0.75] {
                         let y = size.height * (1 - frac)
@@ -224,49 +221,42 @@ struct SparklineView: View {
                 }
                 .stroke(Color.white.opacity(0.05), lineWidth: 0.5)
 
-                // 채우기 영역
                 Path { path in
                     guard count > 1 else { return }
-                    let points = chartPoints(values: values, size: size, minV: minV, range: range)
-                    path.move(to: CGPoint(x: points[0].x, y: size.height))
-                    for pt in points { path.addLine(to: pt) }
-                    path.addLine(to: CGPoint(x: points.last!.x, y: size.height))
+                    let pts = points(size: size, range: range)
+                    path.move(to: CGPoint(x: pts[0].x, y: size.height))
+                    pts.forEach { path.addLine(to: $0) }
+                    path.addLine(to: CGPoint(x: pts.last!.x, y: size.height))
                     path.closeSubpath()
                 }
-                .fill(
-                    LinearGradient(
-                        colors: [Color.blue.opacity(0.3), Color.blue.opacity(0.02)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .fill(LinearGradient(
+                    colors: [.blue.opacity(0.3), .blue.opacity(0.02)],
+                    startPoint: .top, endPoint: .bottom
+                ))
 
-                // 선
                 Path { path in
                     guard count > 1 else { return }
-                    let points = chartPoints(values: values, size: size, minV: minV, range: range)
-                    path.move(to: points[0])
-                    for pt in points.dropFirst() { path.addLine(to: pt) }
+                    let pts = points(size: size, range: range)
+                    path.move(to: pts[0])
+                    pts.dropFirst().forEach { path.addLine(to: $0) }
                 }
                 .stroke(Color.blue.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
 
-                // 마지막 점 강조
                 if count > 0 {
-                    let points = chartPoints(values: values, size: size, minV: minV, range: range)
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 5, height: 5)
-                        .position(points.last!)
+                        .position(points(size: size, range: range).last!)
                 }
             }
         }
     }
 
-    private func chartPoints(values: [Double], size: CGSize, minV: Double, range: Double) -> [CGPoint] {
+    private func points(size: CGSize, range: Double) -> [CGPoint] {
         let count = values.count
         return values.enumerated().map { i, v in
             let x = count == 1 ? size.width / 2 : size.width * CGFloat(i) / CGFloat(count - 1)
-            let y = size.height * (1 - CGFloat((v - minV) / range))
+            let y = size.height * (1 - CGFloat(v / range))
             return CGPoint(x: x, y: y)
         }
     }
@@ -276,7 +266,6 @@ struct SparklineView: View {
 
 private extension Int {
     var formatted: String {
-        if self >= 1000 { return String(format: "%.1fK", Double(self) / 1000) }
-        return "\(self)"
+        self >= 1000 ? String(format: "%.1fK", Double(self) / 1000) : "\(self)"
     }
 }

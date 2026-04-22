@@ -6,6 +6,8 @@ final class AppIndexer {
     func loadApps() -> [AppItem] {
         if !cachedApps.isEmpty { return cachedApps }
 
+        AppResourceMonitor.trace("AppIndexer:loadApps:enter")
+
         var apps: [AppItem] = []
         var seen = Set<String>()
 
@@ -22,19 +24,7 @@ final class AppIndexer {
         ]
 
         for url in individualApps where url.pathExtension == "app" {
-            let bundle = Bundle(url: url)
-            let bundleID = bundle?.bundleIdentifier ?? url.path
-            guard !seen.contains(bundleID) else { continue }
-            seen.insert(bundleID)
-
-            let displayName = bundle?.infoDictionary?["CFBundleDisplayName"] as? String
-                ?? bundle?.infoDictionary?["CFBundleName"] as? String
-                ?? url.deletingPathExtension().lastPathComponent
-
-            let icon = NSWorkspace.shared.icon(forFile: url.path)
-            icon.size = NSSize(width: 32, height: 32)
-
-            apps.append(AppItem(id: bundleID, name: displayName, path: url, icon: icon))
+            appendApp(at: url, into: &apps, seen: &seen)
         }
 
         for dir in directories {
@@ -45,24 +35,31 @@ final class AppIndexer {
             ) else { continue }
 
             for url in contents where url.pathExtension == "app" {
-                let bundle = Bundle(url: url)
-                let bundleID = bundle?.bundleIdentifier ?? url.path
-                guard !seen.contains(bundleID) else { continue }
-                seen.insert(bundleID)
-
-                let displayName = bundle?.infoDictionary?["CFBundleDisplayName"] as? String
-                    ?? bundle?.infoDictionary?["CFBundleName"] as? String
-                    ?? url.deletingPathExtension().lastPathComponent
-
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
-                icon.size = NSSize(width: 32, height: 32)
-
-                apps.append(AppItem(id: bundleID, name: displayName, path: url, icon: icon))
+                appendApp(at: url, into: &apps, seen: &seen)
             }
         }
 
         cachedApps = apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        AppResourceMonitor.trace("AppIndexer:loadApps:exit(\(cachedApps.count))")
         return cachedApps
+    }
+
+    private func appendApp(at url: URL, into apps: inout [AppItem], seen: inout Set<String>) {
+        let bundle = Bundle(url: url)
+        let bundleID = bundle?.bundleIdentifier ?? url.path
+        guard !seen.contains(bundleID) else { return }
+        seen.insert(bundleID)
+
+        let displayName = bundle?.infoDictionary?["CFBundleDisplayName"] as? String
+            ?? bundle?.infoDictionary?["CFBundleName"] as? String
+            ?? url.deletingPathExtension().lastPathComponent
+
+        apps.append(AppItem(
+            id: bundleID,
+            name: displayName,
+            path: url,
+            aliases: Constants.appAliases[bundleID] ?? []
+        ))
     }
 
     func reload() {

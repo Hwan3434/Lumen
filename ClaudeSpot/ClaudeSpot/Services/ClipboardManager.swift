@@ -88,6 +88,10 @@ final class ClipboardManager {
     private let savePath: URL
     private let imagesDir: URL
 
+    // 디스크 I/O 전용 직렬 큐 — 메인 스레드 블로킹 방지
+    private let diskQueue = DispatchQueue(label: "com.claudespot.clipboard.disk", qos: .utility)
+    private var saveWorkItem: DispatchWorkItem?
+
     private init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let base = appSupport.appendingPathComponent("ClaudeSpot")
@@ -100,7 +104,9 @@ final class ClipboardManager {
     }
 
     func startMonitoring() {
+        AppResourceMonitor.trace("ClipboardManager.loadFromDisk:start")
         loadFromDisk()
+        AppResourceMonitor.trace("ClipboardManager.loadFromDisk:done (\(history.count)개)")
         lastChangeCount = NSPasteboard.general.changeCount
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.checkClipboard()
@@ -110,6 +116,32 @@ final class ClipboardManager {
     func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+        flushPendingSave()
+    }
+
+    /// 디바운스 대기 중인 save 즉시 실행 (앱 종료 시 호출)
+    func flushPendingSave() {
+        guard let work = saveWorkItem, !work.isCancelled else { return }
+        work.cancel()
+        saveWorkItem = nil
+        let items = snapshotSavedItems()
+        if let data = try? JSONEncoder().encode(items) {
+            try? data.write(to: savePath)
+        }
+    }
+
+    private func snapshotSavedItems() -> [SavedItem] {
+        history.map { item in
+            SavedItem(
+                id: item.id.uuidString,
+                date: item.date,
+                text: item.text,
+                filePaths: item.fileURLs?.map { $0.path },
+                imagePath: item.imagePath,
+                sourceApp: item.sourceApp,
+                sourceAppBundleID: item.sourceAppBundleID
+            )
+        }
     }
 
     private func checkClipboard() {
@@ -161,7 +193,7 @@ final class ClipboardManager {
             }
         }
 
-        saveToDisk()
+        scheduleSave()
     }
 
     // MARK: - 이미지 저장
@@ -189,21 +221,17 @@ final class ClipboardManager {
         let sourceAppBundleID: String?
     }
 
-    private func saveToDisk() {
-        let items: [SavedItem] = history.map { item in
-            SavedItem(
-                id: item.id.uuidString,
-                date: item.date,
-                text: item.text,
-                filePaths: item.fileURLs?.map { $0.path },
-                imagePath: item.imagePath,
-                sourceApp: item.sourceApp,
-                sourceAppBundleID: item.sourceAppBundleID
-            )
+    /// 메인 스레드 블로킹 방지 — 2초 디바운스 후 백그라운드에서 인코딩/쓰기
+    private func scheduleSave() {
+        saveWorkItem?.cancel()
+        let items = snapshotSavedItems()
+        let path = savePath
+        let work = DispatchWorkItem {
+            guard let data = try? JSONEncoder().encode(items) else { return }
+            try? data.write(to: path)
         }
-        if let data = try? JSONEncoder().encode(items) {
-            try? data.write(to: savePath)
-        }
+        saveWorkItem = work
+        diskQueue.asyncAfter(deadline: .now() + 2.0, execute: work)
     }
 
     private func loadFromDisk() {

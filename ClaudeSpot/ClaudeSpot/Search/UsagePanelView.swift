@@ -14,9 +14,6 @@ struct UsagePanelView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            Task { await service.fetchLive() }
-        }
     }
 
     // MARK: - States
@@ -61,8 +58,8 @@ struct UsagePanelView: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("AI 사용량")
             HStack(spacing: 6) {
-                statBox(title: "오늘", value: live.todayCalls.formatted, sub: "\(heavy.todaySessions) sessions")
-                statBox(title: "이번달", value: heavy.monthCalls.formatted, sub: "30일")
+                statBox(title: "오늘", value: heavy.todayCalls.formatted, sub: "\(heavy.todaySessions) sessions")
+                statBox(title: "이번달 토큰", value: heavy.monthTokens.formatted, sub: "\(heavy.monthCalls.formatted) calls")
             }
         }
     }
@@ -106,7 +103,7 @@ struct UsagePanelView: View {
 
     private func projectsSection(_ heavy: HeavyUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("프로젝트별 (30일)")
+            sectionLabel("프로젝트별 토큰 (30일)")
             let maxCalls = heavy.projects.first?.calls ?? 1
             ForEach(heavy.projects) { proj in
                 barRow(label: proj.name, value: proj.calls, max: maxCalls, color: .blue.opacity(0.6))
@@ -118,12 +115,17 @@ struct UsagePanelView: View {
 
     private func modelsSection(_ heavy: HeavyUsageData) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("모델별 (30일)")
+            HStack {
+                sectionLabel("모델별 (30일)")
+                Spacer()
+                sectionLabel("합계 \(formatCost(heavy.models.reduce(0) { $0 + $1.cost }))")
+            }
             let maxCalls = heavy.models.first?.calls ?? 1
             ForEach(heavy.models) { model in
                 barRow(
                     label: model.name,
                     value: model.calls,
+                    sub: formatCost(model.cost),
                     max: maxCalls,
                     color: model.name.contains("Opus") ? .purple.opacity(0.7) : .cyan.opacity(0.6)
                 )
@@ -131,9 +133,16 @@ struct UsagePanelView: View {
         }
     }
 
-    private func barRow(label: String, value: Int, max: Int, color: Color) -> some View {
+    private func formatCost(_ cost: Double) -> String {
+        if cost >= 1000 { return String(format: "$%.1fK", cost / 1000) }
+        if cost >= 10   { return String(format: "$%.1f", cost) }
+        if cost >= 1    { return String(format: "$%.2f", cost) }
+        return String(format: "$%.3f", cost)
+    }
+
+    private func barRow(label: String, value: Int, sub: String? = nil, max: Int, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack {
+            HStack(spacing: 4) {
                 Text(label)
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.85))
@@ -142,6 +151,11 @@ struct UsagePanelView: View {
                 Text(value.formatted)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
+                if let sub {
+                    Text("(\(sub))")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray.opacity(0.7))
+                }
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -161,8 +175,42 @@ struct UsagePanelView: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Claude Max 잔여")
             gaugeRow(label: "세션", pct: live.sessionPct)
+            resetRow(label: "세션 리셋", date: live.sessionResetDate)
             gaugeRow(label: "주간", pct: live.weeklyPct)
+            resetRow(label: "주간 리셋", date: live.weeklyResetDate)
         }
+    }
+
+    private func resetRow(label: String, date: Date?) -> some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.system(size: 9)).foregroundColor(.gray.opacity(0.5))
+                .frame(width: 46, alignment: .leading)
+            if let date {
+                Text(resetTimeText(date))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(date < Date() ? .green.opacity(0.7) : .gray.opacity(0.7))
+            } else {
+                Text("—").font(.system(size: 9)).foregroundColor(.gray.opacity(0.3))
+            }
+        }
+        .padding(.bottom, 2)
+    }
+
+    private static let resetTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "M/d(E) HH:mm"
+        return f
+    }()
+
+    private func resetTimeText(_ date: Date) -> String {
+        let mins = Int(date.timeIntervalSinceNow / 60)
+        if mins <= 0 { return "✓ 새 세션 사용 가능" }
+        if mins < 60 { return "\(mins)분 후 초기화" }
+        let hours = mins / 60
+        if hours < 24 { return "\(hours)시간 \(mins % 60)분 후 초기화" }
+        return Self.resetTimeFormatter.string(from: date) + " 초기화"
     }
 
     private func gaugeRow(label: String, pct: Int) -> some View {
@@ -266,6 +314,10 @@ struct SparklineView: View {
 
 private extension Int {
     var formatted: String {
-        self >= 1000 ? String(format: "%.1fK", Double(self) / 1000) : "\(self)"
+        let d = Double(self)
+        if abs(d) >= 1e9 { return String(format: "%.1fB", d / 1e9) }
+        if abs(d) >= 1e6 { return String(format: "%.1fM", d / 1e6) }
+        if abs(d) >= 1e3 { return String(format: "%.1fK", d / 1e3) }
+        return "\(self)"
     }
 }

@@ -1,16 +1,27 @@
 import AppKit
 
 struct AppItem: Identifiable, Hashable {
-    let id: String  // bundleIdentifier 또는 path
+    let id: String
     let name: String
     let path: URL
-    let icon: NSImage
+    let aliases: [String]
 
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
+    @MainActor var icon: NSImage { AppIconCache.icon(for: path) }
 
-    static func == (lhs: AppItem, rhs: AppItem) -> Bool {
-        lhs.id == rhs.id
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    static func == (lhs: AppItem, rhs: AppItem) -> Bool { lhs.id == rhs.id }
+}
+
+@MainActor
+enum AppIconCache {
+    private static var cache: [String: NSImage] = [:]
+
+    static func icon(for path: URL) -> NSImage {
+        let key = path.path
+        if let cached = cache[key] { return cached }
+        let image = NSWorkspace.shared.icon(forFile: key)
+        image.size = NSSize(width: 32, height: 32)
+        cache[key] = image
+        return image
     }
 }

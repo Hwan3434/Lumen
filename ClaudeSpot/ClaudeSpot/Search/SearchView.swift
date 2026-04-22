@@ -7,9 +7,11 @@ struct SearchView: View {
     var body: some View {
         HStack(spacing: 0) {
             mainPanel
-            Divider().background(Color.gray.opacity(0.2))
-            UsagePanelView()
-                .frame(width: Constants.usagePanelWidth)
+            if ClaudeUsageService.isAvailable {
+                Divider().background(Color.gray.opacity(0.2))
+                UsagePanelView()
+                    .frame(width: Constants.usagePanelWidth)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(white: 0.15).opacity(0.95))

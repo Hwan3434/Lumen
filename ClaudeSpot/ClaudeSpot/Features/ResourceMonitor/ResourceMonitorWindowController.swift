@@ -1,13 +1,13 @@
 import AppKit
 import SwiftUI
 
-final class JiraDashboardWindowController: PanelWindowController {
-    private static let panelSize = NSSize(width: 1160, height: 700)
+final class ResourceMonitorWindowController: PanelWindowController {
+    private static let panelSize = NSSize(width: 560, height: 680)
 
     override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: Self.panelSize),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel, .resizable],
+            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -15,12 +15,10 @@ final class JiraDashboardWindowController: PanelWindowController {
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.collectionBehavior = .canJoinAllSpaces
-        panel.isMovableByWindowBackground = true
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.isOpaque = false
         panel.isReleasedWhenClosed = false
-        panel.minSize = NSSize(width: 400, height: 400)
         panel.autoFocusTextField = false
 
         panel.onKeyEvent = { [weak self] keyCode in
@@ -28,11 +26,11 @@ final class JiraDashboardWindowController: PanelWindowController {
             return false
         }
 
-        panel.contentView = NSHostingView(rootView: JiraDashboardView())
+        panel.contentView = NSHostingView(rootView: ResourceMonitorView())
         return panel
     }
 
-    override func didCreatePanel(_ panel: KeyablePanel) {
+    override func configureBeforeShow(_ panel: KeyablePanel) {
         let frame = NSScreen.underMouse.visibleFrame
         let size = Self.panelSize
         let x = frame.midX - size.width / 2

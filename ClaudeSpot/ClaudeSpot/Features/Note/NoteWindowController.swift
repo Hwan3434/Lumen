@@ -2,50 +2,14 @@ import AppKit
 import SwiftUI
 import Carbon.HIToolbox
 
-final class NoteWindowController {
-    private var panel: KeyablePanel?
+final class NoteWindowController: PanelWindowController {
+    private static let panelSize = NSSize(width: 500, height: 450)
     private var viewModel: NoteViewModel?
+    private var previewMonitor: Any?
 
-    var isVisible: Bool {
-        panel?.isVisible ?? false
-    }
-
-    func toggle() {
-        if isVisible {
-            hide()
-        } else {
-            show()
-        }
-    }
-
-    func show() {
-        let isFirstShow = panel == nil
-        if isFirstShow {
-            createPanel()
-        }
-        guard let panel = panel, let screen = NSScreen.main else { return }
-
-        if isFirstShow {
-            let width: CGFloat = 500
-            let height: CGFloat = 450
-            let screenFrame = screen.visibleFrame
-            let x = screenFrame.midX - width / 2
-            let y = screenFrame.midY - height / 2
-            panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
-        }
-
-        panel.previousApp = NSWorkspace.shared.frontmostApplication
-        panel.makeKeyAndOrderFront(nil)
-        NSApp.activate()
-    }
-
-    func hide() {
-        panel?.orderOut(nil)
-    }
-
-    private func createPanel() {
+    override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 450),
+            contentRect: NSRect(origin: .zero, size: Self.panelSize),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: false
@@ -70,9 +34,9 @@ final class NoteWindowController {
             return false
         }
 
-        // Cmd+Shift+E로 미리보기 토글 (sendEvent 오버라이드 대신 로컬 모니터 사용)
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
-            guard let panel = panel, panel.isKeyWindow else { return event }
+        // Cmd+Shift+E로 미리보기 토글 — sendEvent 오버라이드 대신 로컬 모니터 사용
+        previewMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
+            guard let panel, panel.isKeyWindow else { return event }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if flags == [.command, .shift] && event.keyCode == UInt16(kVK_ANSI_E) {
                 self?.viewModel?.togglePreview()
@@ -81,9 +45,21 @@ final class NoteWindowController {
             return event
         }
 
-        let noteView = NoteView(viewModel: vm)
-        panel.contentView = NSHostingView(rootView: noteView)
+        panel.contentView = NSHostingView(rootView: NoteView(viewModel: vm))
+        return panel
+    }
 
-        self.panel = panel
+    override func didCreatePanel(_ panel: KeyablePanel) {
+        let frame = NSScreen.underMouse.visibleFrame
+        let size = Self.panelSize
+        let x = frame.midX - size.width / 2
+        let y = frame.midY - size.height / 2
+        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+    }
+
+    deinit {
+        if let monitor = previewMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }

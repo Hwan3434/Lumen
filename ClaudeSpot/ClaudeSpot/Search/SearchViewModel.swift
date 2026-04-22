@@ -30,8 +30,10 @@ final class SearchViewModel {
     private var allApps: [AppItem] = []
 
     func loadApps() {
+        AppResourceMonitor.trace("SearchVM:loadApps:enter")
         allApps = appIndexer.loadApps()
         updateResults()
+        AppResourceMonitor.trace("SearchVM:loadApps:exit(\(allApps.count))")
     }
 
     private func updateResults() {
@@ -42,7 +44,10 @@ final class SearchViewModel {
         if q.isEmpty {
             matchedApps = allApps
         } else {
-            matchedApps = allApps.filter { $0.name.lowercased().contains(q) }
+            matchedApps = allApps.filter { app in
+                if app.name.lowercased().contains(q) { return true }
+                return app.aliases.contains { $0.lowercased().contains(q) }
+            }
         }
 
         let sorted = matchedApps.sorted { a, b in
@@ -52,7 +57,9 @@ final class SearchViewModel {
 
             if !q.isEmpty {
                 let aPrefix = a.name.lowercased().hasPrefix(q)
+                    || a.aliases.contains { $0.lowercased().hasPrefix(q) }
                 let bPrefix = b.name.lowercased().hasPrefix(q)
+                    || b.aliases.contains { $0.lowercased().hasPrefix(q) }
                 if aPrefix != bPrefix { return aPrefix }
             }
 
@@ -73,9 +80,6 @@ final class SearchViewModel {
         }
         items.append(contentsOf: filteredApps.map { .app($0) })
 
-        // results에서 feature 제거 (카드로 별도 표시)
-        items.removeAll { if case .feature = $0 { return true }; return false }
-
         results = items
         selectedIndex = 0
     }
@@ -93,8 +97,14 @@ final class SearchViewModel {
         let item = results[selectedIndex]
         switch item {
         case .app(let appItem):
+            AppResourceMonitor.trace("SearchVM:launchApp:enter(\(appItem.name))")
             usageTracker.recordUsage(for: appItem.id)
-            NSWorkspace.shared.open(appItem.path)
+            AppResourceMonitor.trace("SearchVM:launchApp:beforeOpen")
+            let config = NSWorkspace.OpenConfiguration()
+            NSWorkspace.shared.openApplication(at: appItem.path, configuration: config) { _, _ in
+                AppResourceMonitor.trace("SearchVM:launchApp:openCompletion(\(appItem.name))")
+            }
+            AppResourceMonitor.trace("SearchVM:launchApp:afterOpen")
             onDismiss(false)
         case .feature:
             break

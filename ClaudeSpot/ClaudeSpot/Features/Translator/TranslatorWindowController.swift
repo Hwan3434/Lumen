@@ -1,63 +1,11 @@
 import AppKit
 import SwiftUI
 
-final class TranslatorWindowController {
-    private var panel: KeyablePanel?
+final class TranslatorWindowController: PanelWindowController {
     private var translatorViewModel: TranslatorViewModel?
     private var enterMonitor: Any?
 
-    var isVisible: Bool {
-        panel?.isVisible ?? false
-    }
-
-    func toggle() {
-        if isVisible {
-            hide()
-        } else {
-            show()
-        }
-    }
-
-    func show() {
-        if panel == nil {
-            createPanel()
-        }
-        guard let panel = panel, let screen = NSScreen.main else { return }
-
-        let screenFrame = screen.visibleFrame
-        let x = screenFrame.midX - Constants.translatorWindowWidth / 2
-        let y = screenFrame.midY - Constants.translatorWindowHeight / 2
-
-        panel.setFrame(
-            NSRect(x: x, y: y, width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight),
-            display: true
-        )
-        panel.previousApp = NSWorkspace.shared.frontmostApplication
-        panel.makeKeyAndOrderFront(nil)
-        NSApp.activate()
-
-        if enterMonitor == nil {
-            enterMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
-                guard let panel = panel, panel.isKeyWindow,
-                      event.keyCode == UInt16(KeyCode.enter) else { return event }
-                if event.modifierFlags.contains(.shift) {
-                    return event
-                }
-                self?.translatorViewModel?.translate()
-                return nil
-            }
-        }
-    }
-
-    func hide() {
-        if let monitor = enterMonitor {
-            NSEvent.removeMonitor(monitor)
-            enterMonitor = nil
-        }
-        panel?.orderOut(nil)
-    }
-
-    private func createPanel() {
+    override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
@@ -76,19 +24,46 @@ final class TranslatorWindowController {
         let vm = TranslatorViewModel()
         self.translatorViewModel = vm
 
-        let translatorView = TranslatorView(viewModel: vm)
-        panel.contentView = NSHostingView(rootView: translatorView)
+        panel.contentView = NSHostingView(rootView: TranslatorView(viewModel: vm))
 
         panel.onKeyEvent = { [weak self] keyCode in
             guard let vm = self?.translatorViewModel else { return false }
             switch keyCode {
             case KeyCode.downArrow: vm.moveDown(); return true
-            case KeyCode.upArrow: vm.moveUp(); return true
-            case KeyCode.escape: self?.hide(); return true
+            case KeyCode.upArrow:   vm.moveUp();   return true
+            case KeyCode.escape:    self?.hide();  return true
             default: return false
             }
         }
 
-        self.panel = panel
+        return panel
+    }
+
+    override func configureBeforeShow(_ panel: KeyablePanel) {
+        let frame = NSScreen.underMouse.visibleFrame
+        let x = frame.midX - Constants.translatorWindowWidth / 2
+        let y = frame.midY - Constants.translatorWindowHeight / 2
+        panel.setFrame(
+            NSRect(x: x, y: y, width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight),
+            display: true
+        )
+    }
+
+    override func didShow(_ panel: KeyablePanel) {
+        guard enterMonitor == nil else { return }
+        enterMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
+            guard let panel, panel.isKeyWindow,
+                  event.keyCode == UInt16(KeyCode.enter) else { return event }
+            if event.modifierFlags.contains(.shift) { return event }
+            self?.translatorViewModel?.translate()
+            return nil
+        }
+    }
+
+    override func willHide() {
+        if let monitor = enterMonitor {
+            NSEvent.removeMonitor(monitor)
+            enterMonitor = nil
+        }
     }
 }

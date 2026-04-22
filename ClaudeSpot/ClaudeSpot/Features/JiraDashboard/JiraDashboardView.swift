@@ -2,7 +2,9 @@ import SwiftUI
 import AppKit
 
 struct JiraDashboardView: View {
+    private static let allKey = "ALL"
     private var service: JiraService { JiraService.shared }
+    @State private var selectedProject: String = Self.allKey
 
     var body: some View {
         ZStack {
@@ -18,7 +20,7 @@ struct JiraDashboardView: View {
                 emptyView
             }
         }
-        .frame(width: 820, height: 680)
+        .frame(width: 1160, height: 840)
         .onAppear { Task { await service.fetch() } }
     }
 
@@ -56,10 +58,14 @@ struct JiraDashboardView: View {
         VStack(spacing: 0) {
             headerBar(data)
             HStack(alignment: .top, spacing: 0) {
-                leftPanel(data)
+                pastPanel(data)
                 Divider().background(Color.white.opacity(0.08))
-                rightPanel(data.projectStats)
+                centerPanel(data)
+                Divider().background(Color.white.opacity(0.08))
+                futurePanel(data)
             }
+            Divider().background(Color.white.opacity(0.08))
+            trendPanel(data)
         }
     }
 
@@ -70,7 +76,7 @@ struct JiraDashboardView: View {
             HStack(spacing: 6) {
                 Image(systemName: "square.grid.2x2").font(.system(size: 11)).foregroundColor(.blue.opacity(0.8))
                 Text("Jira 대시보드").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
-                Text(Constants.jiraProjects.joined(separator: " · ")).font(.system(size: 10)).foregroundColor(.gray)
+                Text(Constants.jiraProjects.map(\.key).joined(separator: " · ")).font(.system(size: 10)).foregroundColor(.gray)
             }
             Spacer()
             HStack(spacing: 8) {
@@ -85,49 +91,309 @@ struct JiraDashboardView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
+        .padding(.horizontal, 16).padding(.vertical, 10)
         .background(Color.white.opacity(0.04))
     }
 
-    // MARK: - Left Panel
+    // MARK: - Past Panel (지난 30일)
 
-    private func leftPanel(_ data: JiraDashboardData) -> some View {
+    private func pastPanel(_ data: JiraDashboardData) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                summaryCards(data.cards)
+                panelLabel("지난 30일", icon: "clock.arrow.circlepath", color: .purple)
 
-                if !data.todayIssues.isEmpty {
-                    issueSection(title: "오늘 마감", icon: "calendar.badge.exclamationmark", color: .orange, issues: data.todayIssues)
+                HStack(spacing: 8) {
+                    past30StatBox(
+                        label: "생성",
+                        count: data.createdLast30.count,
+                        sub: "reporter 기준",
+                        color: .blue.opacity(0.8)
+                    )
+                    past30StatBox(
+                        label: "완료",
+                        count: data.completedLast30.count,
+                        sub: "assignee 기준",
+                        color: .green.opacity(0.8)
+                    )
                 }
 
-                issueSection(title: "이번 주", icon: "calendar", color: .blue, issues: data.thisWeekIssues, emptyText: "이번 주 일감 없음")
+                let (taskCount, bugCount) = taskBugCounts(data.completedLast30)
+                HStack(spacing: 8) {
+                    pastTypeBox("Task", count: taskCount, color: .cyan.opacity(0.8),  icon: "checkmark.square")
+                    pastTypeBox("Bug",  count: bugCount,  color: .red.opacity(0.75),  icon: "ladybug")
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("프로젝트별").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                    let byProject = projectCompletions(data.completedLast30)
+                    let maxCount = max(byProject.map(\.1).max() ?? 1, 1)
+                    ForEach(Array(byProject.enumerated()), id: \.offset) { _, item in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text(item.0).font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(projectColor(item.0))
+                                Spacer()
+                                Text("\(item.1)건").font(.system(size: 10)).foregroundColor(.white)
+                            }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 2).fill(Color.white.opacity(0.06))
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(projectColor(item.0).opacity(0.6))
+                                        .frame(width: geo.size.width * CGFloat(item.1) / CGFloat(maxCount))
+                                }
+                            }
+                            .frame(height: 5)
+                        }
+                    }
+                }
+
+                if let avg = avgProcessingDays(data.completedLast30) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "timer").font(.system(size: 10)).foregroundColor(.gray)
+                        Text("평균 처리 시간").font(.system(size: 10)).foregroundColor(.gray)
+                        Spacer()
+                        Text(String(format: "%.1f일", avg))
+                            .font(.system(size: 11, weight: .semibold)).foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
 
                 if !data.highestIncomplete.isEmpty {
                     issueSection(title: "Highest 미완료", icon: "exclamationmark.2", color: .purple, issues: data.highestIncomplete)
                 }
 
-                if !data.overdueIncomplete.isEmpty {
-                    issueSection(title: "기한 초과", icon: "clock.badge.xmark", color: .red, issues: data.overdueIncomplete)
+                if !data.blockedIssues.isEmpty {
+                    issueSection(title: "차단됨 (보류·대기)", icon: "hand.raised", color: .orange, issues: data.blockedIssues)
                 }
             }
             .padding(14)
         }
-        .frame(width: 510)
+        .frame(width: 320)
     }
 
-    // MARK: - Summary Cards (2 rows × 3)
+    // MARK: - Center Panel (현재)
 
-    private func summaryCards(_ cards: JiraSummaryCards) -> some View {
+    private func centerPanel(_ data: JiraDashboardData) -> some View {
+        VStack(spacing: 0) {
+            projectTabBar
+
+            ScrollView(.vertical, showsIndicators: false) {
+                let isAll           = selectedProject == Self.allKey
+                let filteredToday   = filterByProject(data.todayIssues)
+                let filteredWeek    = filterByProject(data.thisWeekIssues)
+                let filteredOverdue = filterByProject(data.overdueIncomplete)
+                let counts          = isAll ? data.thisWeekCounts : data.projectStats.first { $0.key == selectedProject }?.counts ?? JiraStatusCounts()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    panelLabel("이번 주", icon: "calendar", color: .blue)
+                    summaryCards(counts: counts)
+
+                    if !filteredToday.isEmpty {
+                        issueSection(title: "오늘 마감", icon: "calendar.badge.exclamationmark", color: .orange, issues: filteredToday)
+                    }
+
+                    issueSection(title: "이번 주 전체", icon: "calendar", color: .blue, issues: filteredWeek, emptyText: "이번 주 일감 없음")
+
+                    if !filteredOverdue.isEmpty {
+                        issueSection(title: "기한 초과", icon: "clock.badge.xmark", color: .red, issues: filteredOverdue)
+                    }
+                }
+                .padding(14)
+            }
+        }
+        .frame(width: 520)
+    }
+
+    private var projectTabBar: some View {
+        HStack(spacing: 0) {
+            Button { selectedProject = Self.allKey } label: {
+                Text(Self.allKey)
+                    .font(.system(size: 11, weight: selectedProject == Self.allKey ? .semibold : .regular))
+                    .foregroundColor(selectedProject == Self.allKey ? .white : .gray.opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(selectedProject == Self.allKey ? Color.white.opacity(0.15) : Color.clear)
+                    .contentShape(Capsule())
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(KeyEquivalent("1"), modifiers: .command)
+
+            ForEach(Array(Constants.jiraProjects.enumerated()), id: \.offset) { idx, proj in
+                let button = Button { selectedProject = proj.key } label: {
+                    Text(proj.key)
+                        .font(.system(size: 11, weight: selectedProject == proj.key ? .semibold : .regular))
+                        .foregroundColor(selectedProject == proj.key ? proj.color : .gray.opacity(0.5))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(selectedProject == proj.key ? proj.color.opacity(0.18) : Color.clear)
+                        .contentShape(Capsule())
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                if idx + 2 < 10 {
+                    button.keyboardShortcut(KeyEquivalent(Character("\(idx + 2)")), modifiers: .command)
+                } else {
+                    button
+                }
+            }
+        }
+        .padding(4)
+        .background(Color.white.opacity(0.06))
+        .clipShape(Capsule())
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+        }
+    }
+
+    // MARK: - Future Panel (앞으로)
+
+    private func futurePanel(_ data: JiraDashboardData) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                panelLabel("앞으로", icon: "arrow.right.circle", color: Color(red: 0.4, green: 0.8, blue: 0.6))
+
+                futureSection(
+                    title: "차주 이슈",
+                    icon: "calendar.badge.plus",
+                    color: Color(red: 0.4, green: 0.8, blue: 0.6),
+                    issues: data.nextWeekIssues,
+                    emptyText: "차주 일감 없음"
+                )
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("일정없는 내 백로그").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                    HStack(spacing: 8) {
+                        ForEach(Constants.jiraProjects, id: \.key) { proj in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(proj.key)
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(proj.color)
+                                Text("\(data.backlogCountByProject[proj.key] ?? 0)")
+                                    .font(.system(size: 22, weight: .bold)).foregroundColor(.white)
+                                Text("건").font(.system(size: 9)).foregroundColor(.gray)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(proj.color.opacity(0.07))
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(proj.color.opacity(0.2), lineWidth: 0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                }
+
+                if !data.sprintInfos.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("진행중 스프린트").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                        ForEach(data.sprintInfos) { sprint in
+                            sprintCard(sprint)
+                        }
+                    }
+                }
+
+                let activeEpics = data.epicInfos.filter { $0.dueDate != nil }
+                if !activeEpics.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("활성 에픽").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                        ForEach(activeEpics) { epic in
+                            epicRow(epic)
+                        }
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .frame(width: 320)
+    }
+
+    private func sprintCard(_ sprint: SprintInfo) -> some View {
+        let completionColor: Color = sprint.completionPct >= 80 ? .green : sprint.completionPct >= 50 ? .blue : .orange
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(sprint.projectKey)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(projectColor(sprint.projectKey))
+                    .padding(.horizontal, 5).padding(.vertical, 2)
+                    .background(projectColor(sprint.projectKey).opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                Text(sprint.name).font(.system(size: 11, weight: .medium)).foregroundColor(.white).lineLimit(1)
+                Spacer()
+                Text("\(sprint.completionPct)%")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(completionColor)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.06))
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(completionColor.opacity(0.6))
+                        .frame(width: geo.size.width * CGFloat(sprint.completionPct) / 100)
+                }
+            }
+            .frame(height: 5)
+
+            HStack {
+                Text("\(sprint.completedIssues)/\(sprint.totalIssues)건 완료")
+                    .font(.system(size: 9)).foregroundColor(.gray)
+                Spacer()
+                if let start = sprint.startDate, let end = sprint.endDate {
+                    Text("\(shortDate(start)) → \(shortDate(end))")
+                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.04))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(projectColor(sprint.projectKey).opacity(0.2), lineWidth: 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func epicRow(_ epic: EpicInfo) -> some View {
+        HStack(spacing: 7) {
+            Text(epic.projectKey)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(projectColor(epic.projectKey).opacity(0.9))
+                .padding(.horizontal, 4).padding(.vertical, 2)
+                .background(projectColor(epic.projectKey).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+            Text(epic.summary)
+                .font(.system(size: 11)).foregroundColor(.white.opacity(0.85))
+                .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+
+            if let due = epic.dueDate {
+                Text(shortDate(due))
+                    .font(.system(size: 9))
+                    .foregroundColor(dueDateColor(due, isDone: false))
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.03))
+        .contentShape(Rectangle())
+        .onTapGesture { openJira(epic.key) }
+        .cursor(.pointingHand)
+    }
+
+    // MARK: - Summary Cards
+
+    private func summaryCards(counts: JiraStatusCounts) -> some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
-                summaryCard(value: cards.completedThisWeek,  label: "금주 완료",  color: .green,  icon: "checkmark.circle")
-                summaryCard(value: cards.inProgressThisWeek, label: "금주 진행중", color: .blue,   icon: "arrow.triangle.2.circlepath")
-                summaryCard(value: cards.pendingThisWeek,    label: "금주 대기",  color: .gray,   icon: "clock")
+                summaryCard(value: counts.todo,       label: "해야 할 일", color: .gray,   icon: "circle")
+                summaryCard(value: counts.inProgress, label: "진행중",    color: .blue,   icon: "arrow.triangle.2.circlepath")
+                summaryCard(value: counts.onHold,     label: "보류",      color: .orange, icon: "pause.circle")
             }
             HStack(spacing: 6) {
-                summaryCard(value: cards.onHoldThisWeek,     label: "금주 보류",  color: .orange, icon: "pause.circle")
-                summaryCard(value: cards.thisWeekTotal,      label: "금주 전체",  color: .cyan,   icon: "calendar")
-                summaryCard(value: cards.nextWeekTotal,      label: "차주 전체",  color: .purple, icon: "calendar.badge.plus")
+                summaryCard(value: counts.waiting,    label: "대기",      color: Color(red: 0.9, green: 0.7, blue: 0.1), icon: "clock")
+                summaryCard(value: counts.completed,  label: "완료",      color: .green,  icon: "checkmark.circle")
+                summaryCard(value: counts.cancelled,  label: "취소",      color: .red.opacity(0.8), icon: "xmark.circle")
             }
         }
     }
@@ -147,9 +413,13 @@ struct JiraDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    // MARK: - Issue Section
+    // MARK: - Issue Sections
 
-    private func issueSection(title: String, icon: String, color: Color, issues: [JiraIssue], emptyText: String? = nil) -> some View {
+    private func sectionView<Row: View>(
+        title: String, icon: String, color: Color,
+        issues: [JiraIssue], emptyText: String? = nil,
+        rowView: @escaping (JiraIssue) -> Row
+    ) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 5) {
                 Image(systemName: icon).font(.system(size: 10)).foregroundColor(color)
@@ -167,14 +437,26 @@ struct JiraDashboardView: View {
                 }
             } else {
                 VStack(spacing: 1) {
-                    ForEach(issues) { issue in issueRow(issue, accentColor: color) }
+                    ForEach(issues) { issue in rowView(issue) }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
         }
     }
 
-    private func issueRow(_ issue: JiraIssue, accentColor: Color) -> some View {
+    private func issueSection(title: String, icon: String, color: Color, issues: [JiraIssue], emptyText: String? = nil) -> some View {
+        sectionView(title: title, icon: icon, color: color, issues: issues, emptyText: emptyText) { issue in
+            issueRow(issue)
+        }
+    }
+
+    private func futureSection(title: String, icon: String, color: Color, issues: [JiraIssue], emptyText: String) -> some View {
+        sectionView(title: title, icon: icon, color: color, issues: issues, emptyText: emptyText) { issue in
+            futureIssueRow(issue)
+        }
+    }
+
+    private func issueRow(_ issue: JiraIssue) -> some View {
         HStack(spacing: 7) {
             Text(issue.projectKey)
                 .font(.system(size: 8, weight: .medium))
@@ -190,7 +472,9 @@ struct JiraDashboardView: View {
                 .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
 
             if let due = issue.dueDate {
-                Text(shortDate(due)).font(.system(size: 10)).foregroundColor(dueDateColor(due, isDone: issue.isDone))
+                Text(dateRangeText(start: issue.startDate, due: due))
+                    .font(.system(size: 10)).foregroundColor(dueDateColor(due, isDone: issue.isDone))
+                    .lineLimit(1)
             }
 
             statusBadge(issue)
@@ -202,120 +486,203 @@ struct JiraDashboardView: View {
         .cursor(.pointingHand)
     }
 
+    private func futureIssueRow(_ issue: JiraIssue) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(priorityColor(issue.priority)).frame(width: 5, height: 5)
+
+            Text(issue.summary)
+                .font(.system(size: 11)).foregroundColor(.white.opacity(0.85))
+                .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+
+            if let due = issue.dueDate {
+                Text(dateRangeText(start: issue.startDate, due: due))
+                    .font(.system(size: 10)).foregroundColor(dueDateColor(due, isDone: false))
+                    .lineLimit(1)
+            } else {
+                Text("—").font(.system(size: 10)).foregroundColor(.gray.opacity(0.4))
+            }
+
+            statusBadge(issue)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.03))
+        .contentShape(Rectangle())
+        .onTapGesture { openJira(issue.key) }
+        .cursor(.pointingHand)
+    }
+
     private func statusBadge(_ issue: JiraIssue) -> some View {
         let (text, color): (String, Color) = {
-            if issue.isOnHold    { return ("보류", .orange) }
-            if issue.isInProgress { return ("진행", .blue) }
-            if issue.isDone       { return ("완료", .green) }
-            return ("대기", .gray)
+            switch issue.status {
+            case "완료":   return ("완료", .green)
+            case "진행중": return ("진행중", .blue)
+            case "보류":   return ("보류", .orange)
+            case "대기":   return ("대기", Color(red: 0.9, green: 0.7, blue: 0.1))
+            case "취소":   return ("취소", .red.opacity(0.8))
+            default:       return ("할 일", .gray)
+            }
         }()
         return Text(text).font(.system(size: 9)).foregroundColor(color)
             .padding(.horizontal, 5).padding(.vertical, 2)
             .background(color.opacity(0.15)).clipShape(Capsule())
     }
 
-    // MARK: - Right Panel (프로젝트별)
+    // MARK: - Trend Panel (하단 전체)
 
-    private func rightPanel(_ stats: [ProjectWeekStats]) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("프로젝트별 (금주)").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
-                ForEach(stats) { stat in
-                    projectCard(stat)
-                }
-            }
-            .padding(14)
-        }
-        .frame(width: 309)
-    }
+    private func trendPanel(_ data: JiraDashboardData) -> some View {
+        let created   = dailyCounts(data.createdLast30,   dateOf: \.created)
+        let completed = dailyCounts(data.completedLast30, dateOf: \.resolutionDate)
+        let maxVal    = max((created + completed).max() ?? 1, 1)
+        let cal       = Calendar.current
+        let today     = cal.startOfDay(for: Date())
+        let dates     = (0..<30).map { cal.date(byAdding: .day, value: $0 - 29, to: today) ?? today }
 
-    private func projectCard(_ stats: ProjectWeekStats) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // 헤더
-            HStack {
-                Text(stats.key).font(.system(size: 13, weight: .semibold)).foregroundColor(projectColor(stats.key))
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                panelLabel("30일 일별 추이", icon: "chart.bar", color: .gray.opacity(0.8))
+                Circle().fill(Color.blue.opacity(0.55)).frame(width: 6, height: 6)
+                Text("생성").font(.system(size: 9)).foregroundColor(.blue.opacity(0.7))
+                Circle().fill(Color.green.opacity(0.65)).frame(width: 6, height: 6)
+                Text("완료").font(.system(size: 9)).foregroundColor(.green.opacity(0.7))
                 Spacer()
-                Text("\(stats.total)건").font(.system(size: 10)).foregroundColor(.gray)
             }
 
-            if stats.total == 0 {
-                Text("이번주 일감 없음").font(.system(size: 11)).foregroundColor(.gray.opacity(0.5))
-                    .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 8)
-            } else {
-                // 도넛 차트 + 범례
-                HStack(spacing: 16) {
-                    DonutChartView(
-                        segments: [
-                            .init(value: Double(stats.completed),  color: .green,  label: "완료"),
-                            .init(value: Double(stats.inProgress), color: .blue,   label: "진행"),
-                            .init(value: Double(stats.pending),    color: Color.gray.opacity(0.5), label: "대기"),
-                            .init(value: Double(stats.onHold),     color: .orange, label: "보류"),
-                        ],
-                        centerText: "\(Int(stats.completionRate * 100))%",
-                        size: 80
-                    )
+            GeometryReader { geo in
+                let w      = geo.size.width
+                let chartH = geo.size.height - 18
+                let slotW  = w / 30
+                let barW   = max((slotW - 5) / 2, 2)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        legendRow("완료",  count: stats.completed,  color: .green)
-                        legendRow("진행중", count: stats.inProgress, color: .blue)
-                        legendRow("대기",  count: stats.pending,    color: .gray)
-                        if stats.onHold > 0 {
-                            legendRow("보류", count: stats.onHold, color: .orange)
+                ZStack(alignment: .topLeading) {
+                    Canvas { ctx, _ in
+                        for frac in [0.33, 0.67, 1.0] as [CGFloat] {
+                            var p = Path()
+                            p.move(to: CGPoint(x: 0, y: chartH * (1 - frac)))
+                            p.addLine(to: CGPoint(x: w, y: chartH * (1 - frac)))
+                            ctx.stroke(p, with: .color(.white.opacity(0.05)), lineWidth: 0.5)
+                        }
+                        for i in 0..<30 {
+                            let cx = CGFloat(i) * slotW + slotW / 2
+                            if created[i] > 0 {
+                                let bh = max(chartH * CGFloat(created[i]) / CGFloat(maxVal), 2)
+                                ctx.fill(Path(CGRect(x: cx - barW - 1, y: chartH - bh, width: barW, height: bh)),
+                                         with: .color(.blue.opacity(0.5)))
+                            }
+                            if completed[i] > 0 {
+                                let bh = max(chartH * CGFloat(completed[i]) / CGFloat(maxVal), 2)
+                                ctx.fill(Path(CGRect(x: cx + 1, y: chartH - bh, width: barW, height: bh)),
+                                         with: .color(.green.opacity(0.6)))
+                            }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                    .frame(height: chartH)
 
-                // 가로 스택 바
-                stackBar(stats)
+                    ForEach(0..<30, id: \.self) { i in
+                        let cx = CGFloat(i) * slotW + slotW / 2
+                        Text(shortDate(dates[i]))
+                            .font(.system(size: 8))
+                            .foregroundColor(.gray.opacity(0.45))
+                            .fixedSize()
+                            .offset(x: cx - 14, y: chartH + 3)
+                    }
+                }
             }
+            .frame(height: 100)
         }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background(Color.white.opacity(0.02))
+    }
+
+    // MARK: - Past Panel Helpers
+
+    private func past30StatBox(label: String, count: Int, sub: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).font(.system(size: 10)).foregroundColor(.gray)
+            Text("\(count)").font(.system(size: 30, weight: .bold)).foregroundColor(.white)
+            Text(sub).font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color.white.opacity(0.04))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(projectColor(stats.key).opacity(0.2), lineWidth: 0.5))
+        .background(color.opacity(0.08))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(color.opacity(0.25), lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func legendRow(_ label: String, count: Int, color: Color) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 8, height: 8)
-            Text(label).font(.system(size: 10)).foregroundColor(.gray)
-            Spacer()
-            Text("\(count)").font(.system(size: 10, weight: .medium)).foregroundColor(.white)
-        }
-    }
-
-    private func stackBar(_ stats: ProjectWeekStats) -> some View {
-        GeometryReader { geo in
-            let total = max(stats.total, 1)
-            let w = geo.size.width
-            HStack(spacing: 1) {
-                if stats.completed > 0 {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.green)
-                        .frame(width: w * CGFloat(stats.completed) / CGFloat(total))
-                }
-                if stats.inProgress > 0 {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.blue)
-                        .frame(width: w * CGFloat(stats.inProgress) / CGFloat(total))
-                }
-                if stats.pending > 0 {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.gray.opacity(0.4))
-                        .frame(width: w * CGFloat(stats.pending) / CGFloat(total))
-                }
-                if stats.onHold > 0 {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.orange)
-                        .frame(width: w * CGFloat(stats.onHold) / CGFloat(total))
-                }
+    private func pastTypeBox(_ label: String, count: Int, color: Color, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 11)).foregroundColor(color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(count)").font(.system(size: 18, weight: .bold)).foregroundColor(.white)
+                Text(label).font(.system(size: 9)).foregroundColor(.gray)
             }
         }
-        .frame(height: 5)
-        .clipShape(RoundedRectangle(cornerRadius: 2))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(color.opacity(0.08))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(color.opacity(0.2), lineWidth: 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    // MARK: - Helpers
+    private func avgProcessingDays(_ issues: [JiraIssue]) -> Double? {
+        let days = issues.compactMap { issue -> Double? in
+            guard let c = issue.created, let r = issue.resolutionDate else { return nil }
+            let d = Calendar.current.dateComponents([.day], from: c, to: r).day ?? 0
+            return Double(max(d, 0))
+        }
+        guard !days.isEmpty else { return nil }
+        return days.reduce(0, +) / Double(days.count)
+    }
+
+    private func dailyCounts(_ issues: [JiraIssue], dateOf: (JiraIssue) -> Date?) -> [Int] {
+        var counts = Array(repeating: 0, count: 30)
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        for issue in issues {
+            guard let date = dateOf(issue) else { continue }
+            let diff = cal.dateComponents([.day], from: cal.startOfDay(for: date), to: today).day ?? -1
+            guard diff >= 0 && diff < 30 else { continue }
+            counts[29 - diff] += 1
+        }
+        return counts
+    }
+
+    private func taskBugCounts(_ issues: [JiraIssue]) -> (Int, Int) {
+        var task = 0, bug = 0
+        for issue in issues {
+            switch issue.issueType {
+            case "작업", "Task": task += 1
+            case "버그", "Bug":  bug  += 1
+            default: break
+            }
+        }
+        return (task, bug)
+    }
+
+    private func projectCompletions(_ issues: [JiraIssue]) -> [(String, Int)] {
+        var byProject: [String: Int] = [:]
+        for issue in issues { byProject[issue.projectKey, default: 0] += 1 }
+        return Constants.jiraProjects.map { ($0.key, byProject[$0.key] ?? 0) }
+    }
+
+    // MARK: - Shared Helpers
+
+    private func filterByProject(_ issues: [JiraIssue]) -> [JiraIssue] {
+        selectedProject == Self.allKey ? issues : issues.filter { $0.projectKey == selectedProject }
+    }
+
+    private func panelLabel(_ text: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.system(size: 10)).foregroundColor(color.opacity(0.8))
+            Text(text).font(.system(size: 11, weight: .semibold)).foregroundColor(color.opacity(0.9))
+        }
+    }
+
+    private static let projectColorMap: [String: Color] =
+        Dictionary(uniqueKeysWithValues: Constants.jiraProjects.map { ($0.key, $0.color) })
 
     private func projectColor(_ key: String) -> Color {
-        key.contains("AI") ? .purple : .cyan
+        Self.projectColorMap[key] ?? .cyan
     }
 
     private func priorityColor(_ priority: String) -> Color {
@@ -323,13 +690,33 @@ struct JiraDashboardView: View {
         case "Highest": return .red
         case "High":    return .orange
         case "Low":     return .blue.opacity(0.7)
+        case "Lowest":  return .blue.opacity(0.4)
         default:        return .gray.opacity(0.6)
         }
     }
 
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MM/dd"; f.locale = Locale(identifier: "ko_KR"); return f
+    }()
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "dd"; f.locale = Locale(identifier: "ko_KR"); return f
+    }()
+
     private func shortDate(_ date: Date) -> String {
-        let fmt = DateFormatter(); fmt.dateFormat = "MM/dd"
-        return fmt.string(from: date)
+        Self.shortDateFormatter.string(from: date)
+    }
+
+    private func dateRangeText(start: Date?, due: Date) -> String {
+        guard let start, !Calendar.current.isDate(start, inSameDayAs: due) else {
+            return shortDate(due)
+        }
+        let startStr = Self.shortDateFormatter.string(from: start)
+        let cal = Calendar.current
+        if cal.component(.month, from: start) == cal.component(.month, from: due) {
+            return "\(startStr)~\(Self.dayFormatter.string(from: due))"
+        } else {
+            return "\(startStr)~\(Self.shortDateFormatter.string(from: due))"
+        }
     }
 
     private func dueDateColor(_ date: Date, isDone: Bool) -> Color {
@@ -347,60 +734,13 @@ struct JiraDashboardView: View {
     }
 
     private func openJira(_ key: String) {
-        if let url = URL(string: "https://bankx-playplanet.atlassian.net/browse/\(key)") {
+        if let url = URL(string: Constants.jiraBrowseURL + key) {
             NSWorkspace.shared.open(url)
-        }
-    }
-}
-
-// MARK: - Donut Chart
-
-struct DonutChartView: View {
-    struct Segment {
-        let value: Double
-        let color: Color
-        let label: String
-    }
-
-    let segments: [Segment]
-    let centerText: String
-    let size: CGFloat
-
-    private var total: Double { max(segments.reduce(0) { $0 + $1.value }, 1) }
-    private var nonZero: [Segment] { segments.filter { $0.value > 0 } }
-
-    private struct Slice { let start: Double; let end: Double; let color: Color }
-
-    private var slices: [Slice] {
-        var result: [Slice] = []
-        var cumulative = 0.0
-        for seg in nonZero {
-            let start = cumulative / total
-            cumulative += seg.value
-            result.append(Slice(start: start, end: cumulative / total, color: seg.color))
-        }
-        return result
-    }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: size * 0.18)
-                .frame(width: size * 0.76, height: size * 0.76)
-
-            ForEach(Array(slices.enumerated()), id: \.offset) { _, slice in
-                Circle()
-                    .trim(from: slice.start, to: slice.end)
-                    .stroke(slice.color, style: StrokeStyle(lineWidth: size * 0.18, lineCap: .butt))
-                    .frame(width: size * 0.76, height: size * 0.76)
-                    .rotationEffect(.degrees(-90))
+            if let panel = NSApp.keyWindow as? KeyablePanel {
+                panel.activatePreviousAppOnClose = false
+                panel.orderOut(nil)
             }
-
-            Text(centerText)
-                .font(.system(size: size * 0.18, weight: .bold))
-                .foregroundColor(.white)
         }
-        .frame(width: size, height: size)
     }
 }
 

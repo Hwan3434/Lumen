@@ -7,6 +7,8 @@ final class JiraDashboardFeature: BuiltInFeature {
     let iconName = "square.grid.2x2"
     let searchKeywords = ["jira", "지라", "태스크", "task", "이슈", "issue", "대시보드"]
 
+    var isEnabled: Bool { JiraService.isAvailable }
+
     let windowController = JiraDashboardWindowController()
 
     var hotkeys: [HotkeySpec] {

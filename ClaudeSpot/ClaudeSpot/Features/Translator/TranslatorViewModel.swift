@@ -6,13 +6,15 @@ struct TranslationHistoryItem: Identifiable {
     let original: String
     let translated: String
     let pronunciation: String?
+    let inputPronunciation: String?
     let date: Date
 
-    init(id: UUID = UUID(), original: String, translated: String, pronunciation: String? = nil, date: Date) {
+    init(id: UUID = UUID(), original: String, translated: String, pronunciation: String? = nil, inputPronunciation: String? = nil, date: Date) {
         self.id = id
         self.original = original
         self.translated = translated
         self.pronunciation = pronunciation
+        self.inputPronunciation = inputPronunciation
         self.date = date
     }
 }
@@ -22,6 +24,7 @@ final class TranslatorViewModel {
     var inputText = ""
     var translatedText = ""
     var pronunciationText: String?
+    var inputPronunciationText: String?
     var isLoading = false
     var errorMessage: String?
     var history: [TranslationHistoryItem] = []
@@ -31,6 +34,11 @@ final class TranslatorViewModel {
 
     var showPronunciation: Bool {
         guard let pron = pronunciationText, !pron.isEmpty else { return false }
+        return !inputExceedsLimit
+    }
+
+    var showInputPronunciation: Bool {
+        guard let pron = inputPronunciationText, !pron.isEmpty else { return false }
         return !inputExceedsLimit
     }
 
@@ -67,11 +75,13 @@ final class TranslatorViewModel {
                 guard !Task.isCancelled else { return }
                 self.translatedText = result.translation
                 self.pronunciationText = result.pronunciation
+                self.inputPronunciationText = result.inputPronunciation
                 self.history.insert(
                     TranslationHistoryItem(
                         original: text,
                         translated: result.translation,
                         pronunciation: result.pronunciation,
+                        inputPronunciation: result.inputPronunciation,
                         date: Date()
                     ),
                     at: 0
@@ -103,6 +113,7 @@ final class TranslatorViewModel {
         inputText = item.original
         translatedText = item.translated
         pronunciationText = item.pronunciation
+        inputPronunciationText = item.inputPronunciation
     }
 
     func copyToClipboard() {
@@ -117,12 +128,13 @@ final class TranslatorViewModel {
         let original: String
         let translated: String
         let pronunciation: String?
+        let inputPronunciation: String?
         let date: Date
     }
 
     private func saveToDisk() {
         let items = history.map {
-            SavedItem(id: $0.id.uuidString, original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, date: $0.date)
+            SavedItem(id: $0.id.uuidString, original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, inputPronunciation: $0.inputPronunciation, date: $0.date)
         }
         if let data = try? JSONEncoder().encode(items) {
             try? data.write(to: savePath)
@@ -133,7 +145,7 @@ final class TranslatorViewModel {
         guard let data = try? Data(contentsOf: savePath),
               let items = try? JSONDecoder().decode([SavedItem].self, from: data) else { return }
         history = items.map {
-            TranslationHistoryItem(id: UUID(uuidString: $0.id) ?? UUID(), original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, date: $0.date)
+            TranslationHistoryItem(id: UUID(uuidString: $0.id) ?? UUID(), original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, inputPronunciation: $0.inputPronunciation, date: $0.date)
         }
     }
 

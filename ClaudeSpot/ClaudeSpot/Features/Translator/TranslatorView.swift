@@ -8,37 +8,46 @@ struct TranslatorView: View {
             VStack(spacing: 0) {
                 // 상단 (65%): 입력 | 번역결과+발음
                 HStack(spacing: 0) {
-                    // 왼쪽: 입력
-                    TextEditor(text: $viewModel.inputText)
-                        .font(.system(size: 15))
-                        .foregroundColor(.white)
-                        .scrollContentBackground(.hidden)
-                        .padding(12)
-                        .frame(width: 320)
+                    // 왼쪽: 입력 + 발음
+                    VStack(spacing: 0) {
+                        TextEditor(text: $viewModel.inputText)
+                            .font(.system(size: 15))
+                            .foregroundColor(.white)
+                            .scrollContentBackground(.hidden)
+                            .frame(maxHeight: .infinity)
+
+                        if viewModel.showInputPronunciation {
+                            Divider().background(Color.gray.opacity(0.3))
+                                .padding(.horizontal, -12)
+                            inputPronunciationView()
+                                .frame(height: 70)
+                        }
+                    }
+                    .padding(12)
+                    .frame(width: 320)
 
                     Divider().background(Color.gray.opacity(0.3))
 
                     // 오른쪽: 번역 결과 + 발음
-                    GeometryReader { geo in
-                        VStack(spacing: 0) {
-                            translationResultView()
-                                .frame(height: (viewModel.showPronunciation || viewModel.showNotice)
-                                       ? geo.size.height * 0.78
-                                       : geo.size.height)
+                    VStack(spacing: 0) {
+                        translationResultView()
+                            .frame(maxHeight: .infinity)
 
-                            if viewModel.showPronunciation {
-                                Divider().background(Color.gray.opacity(0.3))
+                        if viewModel.showPronunciation {
+                            Divider().background(Color.gray.opacity(0.3))
+                                .padding(.horizontal, -12)
 
-                                pronunciationView()
-                                    .frame(maxHeight: .infinity)
-                            } else if viewModel.showNotice {
-                                Divider().background(Color.gray.opacity(0.3))
+                            pronunciationView()
+                                .frame(height: 70)
+                        } else if viewModel.showNotice {
+                            Divider().background(Color.gray.opacity(0.3))
+                                .padding(.horizontal, -12)
 
-                                Text("200자가 넘는 문자는 발음을 제공해주지 않습니다.")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 11))
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            }
+                            Text("200자가 넘는 문자는 발음을 제공해주지 않습니다.")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 11))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 70)
                         }
                     }
                     .padding(12)
@@ -128,6 +137,25 @@ struct TranslatorView: View {
                 Spacer()
             }
         }
+    }
+
+    @ViewBuilder
+    private func inputPronunciationView() -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("발음")
+                .foregroundColor(.gray)
+                .font(.system(size: 11, weight: .medium))
+
+            ScrollView {
+                Text(viewModel.inputPronunciationText ?? "")
+                    .foregroundColor(.white.opacity(0.8))
+                    .font(.system(size: 13))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .padding(.top, 8)
     }
 
     @ViewBuilder

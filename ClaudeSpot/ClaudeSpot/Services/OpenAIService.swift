@@ -3,6 +3,7 @@ import Foundation
 struct TranslationResult {
     let translation: String
     let pronunciation: String?
+    let inputPronunciation: String?
 }
 
 final class OpenAIService {
@@ -30,6 +31,13 @@ final class OpenAIService {
     private struct TranslationJSON: Decodable {
         let translation: String
         let pronunciation: String?
+        let inputPronunciation: String?
+
+        enum CodingKeys: String, CodingKey {
+            case translation
+            case pronunciation
+            case inputPronunciation = "input_pronunciation"
+        }
     }
 
     func translate(_ text: String, includePronunciation: Bool) async throws -> TranslationResult {
@@ -42,16 +50,21 @@ final class OpenAIService {
         let systemPrompt: String
         if includePronunciation {
             systemPrompt = """
-                You are a translator. If the input is Korean, translate to English. If the input is English, translate to Korean. \
-                Respond in JSON: {"translation": "...", "pronunciation": "..."} \
-                pronunciation is the Korean phonetic reading of the English text involved. \
-                If the input is English, pronunciation is for the input (e.g., "Exception" → "익셉션"). \
-                If the input is Korean, pronunciation is for the English translation (e.g., input "나비" → translation "butterfly" → pronunciation "버터플라이").
+                You are a translator. Translate Korean↔English automatically based on input language. \
+                Respond ONLY in JSON with exactly these three keys: {"translation": "...", "pronunciation": "...", "input_pronunciation": "..."} \
+                \
+                "input_pronunciation" = how the INPUT word SOUNDS, written in the OTHER language's phonetic script: \
+                  - English input like "analyze" → write Korean phonetic characters how it sounds: "애널라이즈" \
+                  - Korean input like "나비" → write English letters how it sounds: "nabi" \
+                \
+                "pronunciation" = how the TRANSLATED word SOUNDS, written in the OTHER language's phonetic script: \
+                  - Korean translation like "분석하다" → write English letters how it sounds: "bunseokhada" \
+                  - English translation like "butterfly" → write Korean phonetic characters how it sounds: "버터플라이"
                 """
         } else {
             systemPrompt = """
                 You are a translator. If the input is Korean, translate to English. If the input is English, translate to Korean. \
-                Respond in JSON: {"translation": "..."}
+                Respond ONLY in JSON: {"translation": "..."}
                 """
         }
 
@@ -73,8 +86,8 @@ final class OpenAIService {
         let rawContent = response.choices.first?.message.content ?? ""
         if let jsonData = rawContent.data(using: .utf8),
            let parsed = try? JSONDecoder().decode(TranslationJSON.self, from: jsonData) {
-            return TranslationResult(translation: parsed.translation, pronunciation: parsed.pronunciation)
+            return TranslationResult(translation: parsed.translation, pronunciation: parsed.pronunciation, inputPronunciation: parsed.inputPronunciation)
         }
-        return TranslationResult(translation: rawContent.isEmpty ? "번역 실패" : rawContent, pronunciation: nil)
+        return TranslationResult(translation: rawContent.isEmpty ? "번역 실패" : rawContent, pronunciation: nil, inputPronunciation: nil)
     }
 }

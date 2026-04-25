@@ -5,7 +5,7 @@ final class HiddenAppsManager {
 
     private let fileURL: URL = {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = support.appendingPathComponent("ClaudeSpot")
+        let dir = support.appendingPathComponent("Lumen")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("hidden_apps.json")
     }()

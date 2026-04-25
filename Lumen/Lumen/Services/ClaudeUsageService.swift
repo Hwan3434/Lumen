@@ -211,7 +211,7 @@ final class ClaudeUsageService {
     // mmap으로 파일을 RSS에 복사하지 않고 가상 메모리 매핑 → 디코드 peak 감소.
     private static let cacheURL: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("ClaudeSpot", isDirectory: true)
+            .appendingPathComponent("Lumen", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("jsonl_cache.json")
     }()

@@ -1,4 +1,4 @@
-# ClaudeSpot - 추후 추가 기능
+# Lumen - 추후 추가 기능
 
 ## 미구현 내장 기능 후보
 - [ ] Color Picker - 스포이드로 화면 색상 추출, HEX/RGB 클립보드 복사

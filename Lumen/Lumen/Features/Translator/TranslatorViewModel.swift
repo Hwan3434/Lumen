@@ -53,7 +53,7 @@ final class TranslatorViewModel {
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("ClaudeSpot")
+        let dir = appSupport.appendingPathComponent("Lumen")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         savePath = dir.appendingPathComponent("translation_history.json")
         loadFromDisk()

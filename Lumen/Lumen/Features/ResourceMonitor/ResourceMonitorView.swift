@@ -121,7 +121,7 @@ struct ResourceMonitorView: View {
             .controlSize(.mini)
             .font(.system(size: 10))
             .foregroundColor(.gray)
-            .help("메모리 구간 델타를 ~/Library/Logs/ClaudeSpot/memory_trace.log 에 기록. 끄면 런타임 비용 0.")
+            .help("메모리 구간 델타를 ~/Library/Logs/Lumen/memory_trace.log 에 기록. 끄면 런타임 비용 0.")
 
             Text("\(monitor.history.count) samples · 5s 간격")
                 .font(.system(size: 10)).foregroundColor(.gray.opacity(0.6))

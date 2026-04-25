@@ -116,7 +116,7 @@ final class AppResourceMonitor {
     private static var traceStart: Date = Date()
     private static let logURL: URL = {
         let logs = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Logs/ClaudeSpot", isDirectory: true)
+            .appendingPathComponent("Logs/Lumen", isDirectory: true)
         try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
         return logs.appendingPathComponent("memory_trace.log")
     }()

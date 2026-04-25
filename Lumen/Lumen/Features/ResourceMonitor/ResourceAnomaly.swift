@@ -45,7 +45,7 @@ final class ResourceAnomalyStore {
 
     private init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("ClaudeSpot", isDirectory: true)
+            .appendingPathComponent("Lumen", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         self.savePath = base.appendingPathComponent("resource_anomalies.json")
         loadFromDisk()

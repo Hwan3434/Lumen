@@ -8,7 +8,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
         super.init()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        let image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "ClaudeSpot")
+        let image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "Lumen")
         image?.isTemplate = true
         statusItem.button?.image = image
 
@@ -24,7 +24,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu(_ menu: NSMenu) {
-        let header = NSMenuItem(title: "ClaudeSpot", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "Lumen", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(NSMenuItem.separator())

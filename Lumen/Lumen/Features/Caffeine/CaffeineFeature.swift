@@ -42,7 +42,7 @@ final class CaffeineFeature: BuiltInFeature {
         let result = IOPMAssertionCreateWithName(
             kIOPMAssertionTypeNoDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "ClaudeSpot Caffeine" as CFString,
+            "Lumen Caffeine" as CFString,
             &assertionID
         )
         if result == kIOReturnSuccess {

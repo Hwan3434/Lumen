@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		245DCC6E2F8B1FED00EC21BF /* ClaudeSpot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeSpot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		245DCC6E2F8B1FED00EC21BF /* Lumen.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumen.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		245DCC702F8B1FED00EC21BF /* ClaudeSpot */ = {
+		245DCC702F8B1FED00EC21BF /* Lumen */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ClaudeSpot;
+			path = Lumen;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		245DCC652F8B1FED00EC21BF = {
 			isa = PBXGroup;
 			children = (
-				245DCC702F8B1FED00EC21BF /* ClaudeSpot */,
+				245DCC702F8B1FED00EC21BF /* Lumen */,
 				245DCC6F2F8B1FED00EC21BF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,7 +45,7 @@
 		245DCC6F2F8B1FED00EC21BF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				245DCC6E2F8B1FED00EC21BF /* ClaudeSpot.app */,
+				245DCC6E2F8B1FED00EC21BF /* Lumen.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		245DCC6D2F8B1FED00EC21BF /* ClaudeSpot */ = {
+		245DCC6D2F8B1FED00EC21BF /* Lumen */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 245DCC792F8B1FEE00EC21BF /* Build configuration list for PBXNativeTarget "ClaudeSpot" */;
+			buildConfigurationList = 245DCC792F8B1FEE00EC21BF /* Build configuration list for PBXNativeTarget "Lumen" */;
 			buildPhases = (
 				245DCC6A2F8B1FED00EC21BF /* Sources */,
 				245DCC6B2F8B1FED00EC21BF /* Frameworks */,
@@ -66,14 +66,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				245DCC702F8B1FED00EC21BF /* ClaudeSpot */,
+				245DCC702F8B1FED00EC21BF /* Lumen */,
 			);
-			name = ClaudeSpot;
+			name = Lumen;
 			packageProductDependencies = (
 				24189B0C2F8CD30A00643EC5 /* MarkdownUI */,
 			);
-			productName = ClaudeSpot;
-			productReference = 245DCC6E2F8B1FED00EC21BF /* ClaudeSpot.app */;
+			productName = Lumen;
+			productReference = 245DCC6E2F8B1FED00EC21BF /* Lumen.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 245DCC692F8B1FED00EC21BF /* Build configuration list for PBXProject "ClaudeSpot" */;
+			buildConfigurationList = 245DCC692F8B1FED00EC21BF /* Build configuration list for PBXProject "Lumen" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				245DCC6D2F8B1FED00EC21BF /* ClaudeSpot */,
+				245DCC6D2F8B1FED00EC21BF /* Lumen */,
 			);
 		};
 /* End PBXProject section */
@@ -272,7 +272,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jh.ClaudeSpot;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jh.Lumen;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -304,7 +304,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jh.ClaudeSpot;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jh.Lumen;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -319,7 +319,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		245DCC692F8B1FED00EC21BF /* Build configuration list for PBXProject "ClaudeSpot" */ = {
+		245DCC692F8B1FED00EC21BF /* Build configuration list for PBXProject "Lumen" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				245DCC772F8B1FEE00EC21BF /* Debug */,
@@ -328,7 +328,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		245DCC792F8B1FEE00EC21BF /* Build configuration list for PBXNativeTarget "ClaudeSpot" */ = {
+		245DCC792F8B1FEE00EC21BF /* Build configuration list for PBXNativeTarget "Lumen" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				245DCC7A2F8B1FEE00EC21BF /* Debug */,

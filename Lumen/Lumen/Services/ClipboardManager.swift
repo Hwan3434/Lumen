@@ -94,7 +94,7 @@ final class ClipboardManager {
 
     private init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let base = appSupport.appendingPathComponent("ClaudeSpot")
+        let base = appSupport.appendingPathComponent("Lumen")
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         self.baseDir = base
         self.savePath = base.appendingPathComponent("clipboard_history.json")

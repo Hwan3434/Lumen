@@ -1,7 +1,7 @@
 import Foundation
 
 final class UsageTracker {
-    private let key = "ClaudeSpot.appUsageCounts"
+    private let key = "Lumen.appUsageCounts"
     private var cache: [String: Int]
 
     init() {

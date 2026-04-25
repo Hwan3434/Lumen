@@ -175,42 +175,8 @@ struct UsagePanelView: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Claude Max 잔여")
             gaugeRow(label: "세션", pct: live.sessionPct)
-            resetRow(label: "세션 리셋", date: live.sessionResetDate)
             gaugeRow(label: "주간", pct: live.weeklyPct)
-            resetRow(label: "주간 리셋", date: live.weeklyResetDate)
         }
-    }
-
-    private func resetRow(label: String, date: Date?) -> some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(.system(size: 9)).foregroundColor(.gray.opacity(0.5))
-                .frame(width: 46, alignment: .leading)
-            if let date {
-                Text(resetTimeText(date))
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(date < Date() ? .green.opacity(0.7) : .gray.opacity(0.7))
-            } else {
-                Text("—").font(.system(size: 9)).foregroundColor(.gray.opacity(0.3))
-            }
-        }
-        .padding(.bottom, 2)
-    }
-
-    private static let resetTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M/d(E) HH:mm"
-        return f
-    }()
-
-    private func resetTimeText(_ date: Date) -> String {
-        let mins = Int(date.timeIntervalSinceNow / 60)
-        if mins <= 0 { return "✓ 새 세션 사용 가능" }
-        if mins < 60 { return "\(mins)분 후 초기화" }
-        let hours = mins / 60
-        if hours < 24 { return "\(hours)시간 \(mins % 60)분 후 초기화" }
-        return Self.resetTimeFormatter.string(from: date) + " 초기화"
     }
 
     private func gaugeRow(label: String, pct: Int) -> some View {

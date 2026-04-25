@@ -8,15 +8,29 @@
 
 /* Begin PBXBuildFile section */
 		24189B0D2F8CD30A00643EC5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 24189B0C2F8CD30A00643EC5 /* MarkdownUI */; };
+		D1B07B7A2F9D8432005C51FE /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D1B07B792F9D8432005C51FE /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		245DCC6E2F8B1FED00EC21BF /* Lumen.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumen.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		245DCC712F8B1FED00EC21BF /* Exceptions for "Lumen" folder in "Lumen" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 245DCC6D2F8B1FED00EC21BF /* Lumen */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		245DCC702F8B1FED00EC21BF /* Lumen */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				245DCC712F8B1FED00EC21BF /* Exceptions for "Lumen" folder in "Lumen" target */,
+			);
 			path = Lumen;
 			sourceTree = "<group>";
 		};
@@ -28,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				24189B0D2F8CD30A00643EC5 /* MarkdownUI in Frameworks */,
+				D1B07B7A2F9D8432005C51FE /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +86,7 @@
 			name = Lumen;
 			packageProductDependencies = (
 				24189B0C2F8CD30A00643EC5 /* MarkdownUI */,
+				D1B07B792F9D8432005C51FE /* Sparkle */,
 			);
 			productName = Lumen;
 			productReference = 245DCC6E2F8B1FED00EC21BF /* Lumen.app */;
@@ -102,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				24189B0B2F8CD30A00643EC5 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				D1B07B782F9D8432005C51FE /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 245DCC6F2F8B1FED00EC21BF /* Products */;
@@ -264,9 +281,8 @@
 				DEVELOPMENT_TEAM = 928X8H4B4T;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Lumen/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -296,9 +312,8 @@
 				DEVELOPMENT_TEAM = 928X8H4B4T;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Lumen/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -348,6 +363,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		D1B07B782F9D8432005C51FE /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -355,6 +378,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 24189B0B2F8CD30A00643EC5 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
+		};
+		D1B07B792F9D8432005C51FE /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D1B07B782F9D8432005C51FE /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

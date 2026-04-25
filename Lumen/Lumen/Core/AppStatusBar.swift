@@ -1,10 +1,13 @@
 import AppKit
+import Sparkle
 
 final class AppStatusBar: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
+    private let updater: SPUUpdater
 
-    override init() {
+    init(updater: SPUUpdater) {
+        self.updater = updater
         super.init()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
@@ -57,6 +60,17 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let updateItem = NSMenuItem(
+            title: "업데이트 확인…",
+            action: #selector(checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        updateItem.target = self
+        updateItem.isEnabled = updater.canCheckForUpdates
+        menu.addItem(updateItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let quitItem = NSMenuItem(
             title: "종료",
             action: #selector(quitApp(_:)),
@@ -75,6 +89,10 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
 
     @objc private func toggleLoginItem(_ sender: NSMenuItem) {
         LoginItemManager.toggle()
+    }
+
+    @objc private func checkForUpdates(_ sender: NSMenuItem) {
+        updater.checkForUpdates()
     }
 
     @objc private func quitApp(_ sender: NSMenuItem) {

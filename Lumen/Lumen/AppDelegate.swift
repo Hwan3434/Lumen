@@ -1,9 +1,15 @@
 import AppKit
+import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let hotkeyManager = HotkeyManager()
     let searchWindowController = SearchWindowController()
     var appStatusBar: AppStatusBar!
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppResourceMonitor.resetTrace()
@@ -78,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let names = FeatureRegistry.shared.enabledFeatures.map(\.name).joined(separator: ", ")
         AppResourceMonitor.trace("enabled_features: \(names)")
 
-        appStatusBar = AppStatusBar()
+        appStatusBar = AppStatusBar(updater: updaterController.updater)
         AppResourceMonitor.trace("statusbar_ready")
 
         if ClaudeUsageService.isAvailable {

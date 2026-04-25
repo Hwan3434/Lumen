@@ -27,7 +27,8 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu(_ menu: NSMenu) {
-        let header = NSMenuItem(title: "Lumen", action: nil, keyEquivalent: "")
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let header = NSMenuItem(title: "Lumen \(version)", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(NSMenuItem.separator())

@@ -76,7 +76,7 @@ struct JiraDashboardView: View {
             HStack(spacing: 6) {
                 Image(systemName: "square.grid.2x2").font(.system(size: 11)).foregroundColor(.blue.opacity(0.8))
                 Text("Jira 대시보드").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
-                Text(Constants.jiraProjects.map(\.key).joined(separator: " · ")).font(.system(size: 10)).foregroundColor(.gray)
+                Text(Constants.jiraProjects.map(\.displayName).joined(separator: " · ")).font(.system(size: 10)).foregroundColor(.gray)
             }
             Spacer()
             HStack(spacing: 8) {
@@ -130,8 +130,10 @@ struct JiraDashboardView: View {
                     ForEach(Array(byProject.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
-                                Text(item.0).font(.system(size: 10, weight: .medium))
+                                Text(projectDisplayName(item.0))
+                                    .font(.system(size: 10, weight: .medium))
                                     .foregroundColor(projectColor(item.0))
+                                    .lineLimit(1)
                                 Spacer()
                                 Text("\(item.1)건").font(.system(size: 10)).foregroundColor(.white)
                             }
@@ -224,7 +226,7 @@ struct JiraDashboardView: View {
 
             ForEach(Array(Constants.jiraProjects.enumerated()), id: \.offset) { idx, proj in
                 let button = Button { selectedProject = proj.key } label: {
-                    Text(proj.key)
+                    Text(proj.displayName)
                         .font(.system(size: 11, weight: selectedProject == proj.key ? .semibold : .regular))
                         .foregroundColor(selectedProject == proj.key ? proj.color : .gray.opacity(0.5))
                         .frame(maxWidth: .infinity)
@@ -270,9 +272,10 @@ struct JiraDashboardView: View {
                     HStack(spacing: 8) {
                         ForEach(Constants.jiraProjects, id: \.key) { proj in
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(proj.key)
+                                Text(proj.displayName)
                                     .font(.system(size: 9, weight: .medium))
                                     .foregroundColor(proj.color)
+                                    .lineLimit(1)
                                 Text("\(data.backlogCountByProject[proj.key] ?? 0)")
                                     .font(.system(size: 22, weight: .bold)).foregroundColor(.white)
                                 Text("건").font(.system(size: 9)).foregroundColor(.gray)
@@ -314,9 +317,10 @@ struct JiraDashboardView: View {
         let completionColor: Color = sprint.completionPct >= 80 ? .green : sprint.completionPct >= 50 ? .blue : .orange
         return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(sprint.projectKey)
+                Text(projectDisplayName(sprint.projectKey))
                     .font(.system(size: 9, weight: .medium))
                     .foregroundColor(projectColor(sprint.projectKey))
+                    .lineLimit(1)
                     .padding(.horizontal, 5).padding(.vertical, 2)
                     .background(projectColor(sprint.projectKey).opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -355,9 +359,10 @@ struct JiraDashboardView: View {
 
     private func epicRow(_ epic: EpicInfo) -> some View {
         HStack(spacing: 7) {
-            Text(epic.projectKey)
+            Text(projectDisplayName(epic.projectKey))
                 .font(.system(size: 8, weight: .medium))
                 .foregroundColor(projectColor(epic.projectKey).opacity(0.9))
+                .lineLimit(1)
                 .padding(.horizontal, 4).padding(.vertical, 2)
                 .background(projectColor(epic.projectKey).opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -458,9 +463,10 @@ struct JiraDashboardView: View {
 
     private func issueRow(_ issue: JiraIssue) -> some View {
         HStack(spacing: 7) {
-            Text(issue.projectKey)
+            Text(projectDisplayName(issue.projectKey))
                 .font(.system(size: 8, weight: .medium))
                 .foregroundColor(projectColor(issue.projectKey).opacity(0.9))
+                .lineLimit(1)
                 .padding(.horizontal, 4).padding(.vertical, 2)
                 .background(projectColor(issue.projectKey).opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -681,8 +687,17 @@ struct JiraDashboardView: View {
     private static let projectColorMap: [String: Color] =
         Dictionary(uniqueKeysWithValues: Constants.jiraProjects.map { ($0.key, $0.color) })
 
+    private static let projectNameMap: [String: String] =
+        Dictionary(uniqueKeysWithValues: Constants.jiraProjects.map { ($0.key, $0.displayName) })
+
     private func projectColor(_ key: String) -> Color {
         Self.projectColorMap[key] ?? .cyan
+    }
+
+    /// projectKey에 대응하는 표시명(별칭이 있으면 별칭, 없으면 key 자체).
+    /// 설정에 없는 key가 들어오면 key를 그대로 반환한다.
+    private func projectDisplayName(_ key: String) -> String {
+        Self.projectNameMap[key] ?? key
     }
 
     private func priorityColor(_ priority: String) -> Color {

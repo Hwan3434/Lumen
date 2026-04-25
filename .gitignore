@@ -1,4 +1,5 @@
 # Xcode
+**/xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
@@ -20,5 +21,3 @@ build/
 .build/
 .swiftpm/
 
-# 민감 정보 (API 키 포함)
-ClaudeSpot/ClaudeSpot/Helpers/Constants.swift

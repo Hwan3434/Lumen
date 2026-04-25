@@ -70,7 +70,9 @@ final class ClaudeUsageService {
         guard !isLoadingHeavy else { return }
         isLoadingHeavy = true
 
-        let result = await background { self.fetchJSONLAggregate() }
+        let result = await withCheckedContinuation { cont in
+            cacheDiskQueue.async { cont.resume(returning: self.fetchJSONLAggregate()) }
+        }
 
         await MainActor.run {
             self.heavyData = result

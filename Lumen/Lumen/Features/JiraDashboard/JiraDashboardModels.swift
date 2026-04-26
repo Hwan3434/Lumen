@@ -90,11 +90,11 @@ func jiraProjectDisplayName(_ key: String) -> String {
 
 /// 행 클릭 시 jira 웹사이트 열고 패널 닫기. ProjectKey 기반 deep link.
 func openJira(_ key: String) {
-    if let url = URL(string: Constants.jiraBrowseURL + key) {
-        NSWorkspace.shared.open(url)
-        if let panel = NSApp.keyWindow as? KeyablePanel {
-            panel.activatePreviousAppOnClose = false
-            panel.orderOut(nil)
-        }
+    let prefix = Constants.jiraBrowseURL
+    guard !prefix.isEmpty, let url = URL(string: prefix + key) else { return }
+    NSWorkspace.shared.open(url)
+    if let panel = NSApp.keyWindow as? KeyablePanel {
+        panel.activatePreviousAppOnClose = false
+        panel.orderOut(nil)
     }
 }

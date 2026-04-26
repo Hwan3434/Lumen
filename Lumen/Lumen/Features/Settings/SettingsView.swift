@@ -395,8 +395,9 @@ private struct JiraSettingsTab: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         SettingsSection(title: "Jira 자격증명") {
-                            SettingsField(label: "Cloud ID") {
-                                LumenTextField(text: $cloudId, placeholder: "bankx-playplanet", monospaced: true)
+                            SettingsField(label: "Cloud ID",
+                                          hint: "Atlassian URL의 서브도메인 — https://{Cloud ID}.atlassian.net") {
+                                LumenTextField(text: $cloudId, placeholder: "your-workspace", monospaced: true)
                             }
                             SettingsField(label: "Email") {
                                 LumenTextField(text: $email, placeholder: "you@example.com")
@@ -411,7 +412,7 @@ private struct JiraSettingsTab: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach($projects) { $entry in
                                     HStack(spacing: 8) {
-                                        LumenTextField(text: $entry.key, placeholder: "예: PPDEV1", monospaced: true)
+                                        LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
                                             .frame(width: 130)
                                         LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
                                         Button {
@@ -453,7 +454,7 @@ private struct JiraSettingsTab: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            Text("Key는 대문자 식별자(예: PPDEV1) — API 호출용. 별칭은 비워두면 Key가 그대로 표시됩니다. 프로젝트를 모두 비우면 기본값(\(Constants.defaultJiraProjectKeys.joined(separator: ", ")))으로 복원됩니다.")
+                            Text(jiraProjectsHint)
                                 .font(.system(size: 11))
                                 .foregroundStyle(LumenTokens.TextColor.muted)
                                 .lineSpacing(3)
@@ -490,6 +491,14 @@ private struct JiraSettingsTab: View {
         }
         initialSnapshot = snapshot()
         action.dirty = false
+    }
+
+    /// 프로젝트 리스트 하단 도움말 — 기본값 폴백 메시지는 폴백 키가 있을 때만 보여준다.
+    private var jiraProjectsHint: String {
+        let base = "Key는 대문자 식별자(예: PROJ) — API 호출용. 별칭은 비워두면 Key가 그대로 표시됩니다."
+        let defaults = Constants.defaultJiraProjectKeys
+        guard !defaults.isEmpty else { return base }
+        return base + " 프로젝트를 모두 비우면 기본값(\(defaults.joined(separator: ", ")))으로 복원됩니다."
     }
 
     private func snapshot() -> String {

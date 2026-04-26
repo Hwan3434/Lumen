@@ -114,7 +114,7 @@ private struct SidebarRow: View {
         Button(action: onTap) {
             HStack(spacing: 10) {
                 tabIcon
-                    .frame(width: 14, height: 14)
+                    .frame(width: 18, height: 18)
                     .foregroundStyle(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.secondary)
                 Text(tab.label)
                     .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
@@ -122,7 +122,7 @@ private struct SidebarRow: View {
                 Spacer()
             }
             .padding(.horizontal, 10)
-            .frame(height: 30)
+            .frame(height: 34)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.14) : .clear)
@@ -145,7 +145,7 @@ private struct SidebarRow: View {
                 .scaledToFit()
         } else {
             Image(systemName: tab.systemImage)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
         }
     }
 }

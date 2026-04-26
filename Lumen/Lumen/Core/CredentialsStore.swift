@@ -1,7 +1,7 @@
 import Foundation
 
 /// 사용자 입력 자격증명의 단일 접근점.
-/// 민감 값(Jira/OpenAI 토큰)은 Keychain에, 비-민감 설정(프로젝트 목록·별칭, 토글)은 UserDefaults에 둔다.
+/// 민감 값(Jira/OpenAI 토큰)은 SecretStore(파일, XOR-obfuscated)에, 비-민감 설정(프로젝트 목록·별칭, 토글)은 UserDefaults에 둔다.
 /// Settings UI에서 값을 쓰고, Service 레이어에서 값을 읽는다.
 /// 반영 시점은 앱 재시작 후 — Service 초기화 시 한 번 읽어 캐싱하는 구조를 가정한다.
 final class CredentialsStore {
@@ -9,6 +9,7 @@ final class CredentialsStore {
 
     private init() {
         migrateLegacyPlaintextIfNeeded()
+        migrateKeychainToFileIfNeeded()
     }
 
     private let defaults = UserDefaults.standard
@@ -29,18 +30,19 @@ final class CredentialsStore {
         static let jiraEnabled         = "jiraEnabled"
         static let openAIEnabled       = "openAIEnabled"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
+        static let didMigrateToFile    = "didMigrateKeychainToFileV1"
     }
 
     // MARK: - Read
 
     /// Atlassian Cloud ID (=tenantId, UUID 형태). API path에 들어간다:
     /// `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`
-    var jiraCloudId:        String { Keychain.read(KCAccount.jiraCloudId)       ?? Constants.jiraCloudId  }
+    var jiraCloudId:        String { SecretStore.read(KCAccount.jiraCloudId)       ?? Constants.jiraCloudId  }
     /// 워크스페이스 URL slug (브라우저 표기용). `https://{slug}.atlassian.net/browse/...`
-    var jiraWorkspaceSlug:  String { Keychain.read(KCAccount.jiraWorkspaceSlug) ?? "" }
-    var jiraEmail:          String { Keychain.read(KCAccount.jiraEmail)         ?? Constants.jiraEmail    }
-    var jiraApiToken:       String { Keychain.read(KCAccount.jiraApiToken)      ?? Constants.jiraApiToken }
-    var openAIAPIKey:       String { Keychain.read(KCAccount.openAIAPIKey)      ?? Constants.openAIAPIKey }
+    var jiraWorkspaceSlug:  String { SecretStore.read(KCAccount.jiraWorkspaceSlug) ?? "" }
+    var jiraEmail:          String { SecretStore.read(KCAccount.jiraEmail)         ?? Constants.jiraEmail    }
+    var jiraApiToken:       String { SecretStore.read(KCAccount.jiraApiToken)      ?? Constants.jiraApiToken }
+    var openAIAPIKey:       String { SecretStore.read(KCAccount.openAIAPIKey)      ?? Constants.openAIAPIKey }
 
     /// Jira 대시보드가 조회할 프로젝트 key 목록. UserDefaults에 저장된 값이 있으면 그것을,
     /// 없으면 Constants.defaultJiraProjectKeys 를 반환한다.
@@ -85,18 +87,18 @@ final class CredentialsStore {
     /// 다음 fetch 시점에 새 slug로 resolve된 cloudId가 다시 채워진다.
     func setJira(workspaceSlug: String, email: String, token: String) {
         let cleanSlug = sanitize(workspaceSlug)
-        if cleanSlug != Keychain.read(KCAccount.jiraWorkspaceSlug) {
-            Keychain.delete(KCAccount.jiraCloudId)
+        if cleanSlug != SecretStore.read(KCAccount.jiraWorkspaceSlug) {
+            SecretStore.delete(KCAccount.jiraCloudId)
         }
-        Keychain.write(cleanSlug,        for: KCAccount.jiraWorkspaceSlug)
-        Keychain.write(sanitize(email),  for: KCAccount.jiraEmail)
-        Keychain.write(sanitize(token),  for: KCAccount.jiraApiToken)
+        SecretStore.write(cleanSlug,        for: KCAccount.jiraWorkspaceSlug)
+        SecretStore.write(sanitize(email),  for: KCAccount.jiraEmail)
+        SecretStore.write(sanitize(token),  for: KCAccount.jiraApiToken)
     }
 
     /// JiraService가 resolve된 cloudId를 캐싱할 때 호출. 사용자 입력 경로가 아니므로
     /// 일반적인 setJira와 분리해둔다.
     func cacheJiraCloudId(_ cloudId: String) {
-        Keychain.write(sanitize(cloudId), for: KCAccount.jiraCloudId)
+        SecretStore.write(sanitize(cloudId), for: KCAccount.jiraCloudId)
     }
 
     /// 대소문자/공백 정규화 후 중복을 제거한 상태로 저장한다.
@@ -132,7 +134,7 @@ final class CredentialsStore {
     }
 
     func setOpenAI(apiKey: String) {
-        Keychain.write(sanitize(apiKey), for: KCAccount.openAIAPIKey)
+        SecretStore.write(sanitize(apiKey), for: KCAccount.openAIAPIKey)
     }
 
     /// 붙여넣기 시 끼어 들어가는 줄바꿈·공백·탭을 제거. API 호출 시 401의 흔한 원인.
@@ -154,16 +156,16 @@ final class CredentialsStore {
 
     /// Jira 자격증명 + 프로젝트 목록 + 별칭을 제거 — 다음 read부터 Constants 기본값 폴백.
     func resetJira() {
-        Keychain.delete(KCAccount.jiraCloudId)
-        Keychain.delete(KCAccount.jiraWorkspaceSlug)
-        Keychain.delete(KCAccount.jiraEmail)
-        Keychain.delete(KCAccount.jiraApiToken)
+        SecretStore.delete(KCAccount.jiraCloudId)
+        SecretStore.delete(KCAccount.jiraWorkspaceSlug)
+        SecretStore.delete(KCAccount.jiraEmail)
+        SecretStore.delete(KCAccount.jiraApiToken)
         defaults.removeObject(forKey: UDKey.jiraProjectKeys)
         defaults.removeObject(forKey: UDKey.jiraProjectNames)
     }
 
     func resetOpenAI() {
-        Keychain.delete(KCAccount.openAIAPIKey)
+        SecretStore.delete(KCAccount.openAIAPIKey)
     }
 
     // MARK: - Convenience
@@ -196,12 +198,39 @@ final class CredentialsStore {
         for (udKey, account) in pairs {
             guard let legacy = defaults.string(forKey: udKey), !legacy.isEmpty else { continue }
             // Keychain에 이미 값이 있으면(예: 다른 디바이스/이전 설치) 덮어쓰지 않는다.
-            if Keychain.read(account) == nil {
-                Keychain.write(legacy, for: account)
+            if SecretStore.read(account) == nil {
+                SecretStore.write(legacy, for: account)
             }
             defaults.removeObject(forKey: udKey)
         }
 
         defaults.set(true, forKey: UDKey.didMigrateKeychain)
+    }
+
+    /// 자가서명 빌드에서 Keychain ACL이 매 업데이트마다 prompt를 띄우는 문제를 회피하기 위해
+    /// 기존 Keychain 항목을 SecretStore(파일)로 한 번 옮긴 뒤 Keychain에서 제거한다.
+    /// 이 마이그레이션 자체에서 Keychain.read가 prompt를 띄울 수 있다 — 사용자가 한 번
+    /// "허용"을 누르면 이후로는 SecretStore에서만 읽으므로 더는 prompt가 발생하지 않는다.
+    private func migrateKeychainToFileIfNeeded() {
+        guard !defaults.bool(forKey: UDKey.didMigrateToFile) else { return }
+
+        let accounts = [
+            KCAccount.jiraCloudId,
+            KCAccount.jiraWorkspaceSlug,
+            KCAccount.jiraEmail,
+            KCAccount.jiraApiToken,
+            KCAccount.openAIAPIKey,
+        ]
+
+        for account in accounts {
+            guard let value = Keychain.read(account), !value.isEmpty else { continue }
+            // SecretStore에 이미 값이 있으면 덮어쓰지 않는다 — 사용자가 새로 입력한 값 보존.
+            if SecretStore.read(account) == nil {
+                SecretStore.write(value, for: account)
+            }
+            Keychain.delete(account)
+        }
+
+        defaults.set(true, forKey: UDKey.didMigrateToFile)
     }
 }

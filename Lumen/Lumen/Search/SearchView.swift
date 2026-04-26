@@ -4,6 +4,10 @@ struct SearchView: View {
     @State var viewModel = SearchViewModel()
     var onDismiss: () -> Void
 
+    /// X 버튼 클릭 시 즉시 숨기지 않고 확인 alert를 띄우기 위한 pending state.
+    /// (app id, 표시용 이름)을 동시에 들고 있어 alert 메시지에 이름을 넣을 수 있다.
+    @State private var pendingHide: (id: String, name: String)?
+
     var body: some View {
         ZStack {
             LumenGlassBackground(radius: LumenTokens.Radius.window)
@@ -19,6 +23,24 @@ struct SearchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .alert(
+            "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
+            isPresented: Binding(
+                get: { pendingHide != nil },
+                set: { if !$0 { pendingHide = nil } }
+            ),
+            presenting: pendingHide
+        ) { item in
+            Button("숨기기", role: .destructive) {
+                viewModel.hideApp(item.id)
+                pendingHide = nil
+            }
+            Button("취소", role: .cancel) {
+                pendingHide = nil
+            }
+        } message: { _ in
+            Text("검색 결과에서 더 이상 보이지 않습니다.\nSettings → 숨긴 앱에서 언제든 되돌릴 수 있습니다.")
+        }
     }
 
     private var sidePanelDivider: some View {
@@ -219,7 +241,7 @@ struct SearchView: View {
         switch item {
         case .app(let appItem):
             AppRowContent(appItem: appItem, isSelected: isSelected) {
-                viewModel.hideApp(appItem.id)
+                pendingHide = (id: appItem.id, name: appItem.name)
             }
 
         case .calculation(let expr, let result):

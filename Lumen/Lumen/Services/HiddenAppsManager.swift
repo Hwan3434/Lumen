@@ -1,11 +1,11 @@
 import Foundation
+import Observation
 
+@Observable
 final class HiddenAppsManager {
-    static let shared = HiddenAppsManager()
+    @MainActor static let shared = HiddenAppsManager()
 
-    private let fileURL: URL = LumenStorage.url(for: .hiddenApps)
-
-    private var hiddenIDs: Set<String>
+    private(set) var hiddenIDs: Set<String>
 
     private init() {
         hiddenIDs = LumenStorage.read(Set<String>.self, from: .hiddenApps) ?? []
@@ -16,11 +16,13 @@ final class HiddenAppsManager {
     }
 
     func hide(_ bundleID: String) {
+        guard !hiddenIDs.contains(bundleID) else { return }
         hiddenIDs.insert(bundleID)
         save()
     }
 
     func unhide(_ bundleID: String) {
+        guard hiddenIDs.contains(bundleID) else { return }
         hiddenIDs.remove(bundleID)
         save()
     }

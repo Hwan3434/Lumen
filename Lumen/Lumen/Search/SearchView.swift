@@ -218,19 +218,8 @@ struct SearchView: View {
     private func rowContent(item: SearchResultItem, isSelected: Bool) -> some View {
         switch item {
         case .app(let appItem):
-            HStack(spacing: 10) {
-                Image(nsImage: appItem.icon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 24, height: 24)
-                    .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile))
-                Text(appItem.name)
-                    .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 8)
-                AppBadge()
+            AppRowContent(appItem: appItem, isSelected: isSelected) {
+                viewModel.hideApp(appItem.id)
             }
 
         case .calculation(let expr, let result):
@@ -341,6 +330,66 @@ private struct AppBadge: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(LumenTokens.Accent.violet.opacity(0.10))
             )
+    }
+}
+
+/// 앱 결과 행. 호버 시 우측 끝에 작은 X 버튼이 페이드인 — 클릭하면 onHide 콜백.
+/// X 버튼 영역에서는 행 자체의 selection이 트리거되지 않도록 stop-propagation.
+private struct AppRowContent: View {
+    let appItem: AppItem
+    let isSelected: Bool
+    let onHide: () -> Void
+
+    @State private var hovered = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(nsImage: appItem.icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile))
+            Text(appItem.name)
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
+            if hovered {
+                HideButton(action: onHide)
+                    .transition(.opacity)
+            } else {
+                AppBadge()
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { hovered = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovered)
+    }
+}
+
+private struct HideButton: View {
+    let action: () -> Void
+    @State private var pressed = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "eye.slash")
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(LumenTokens.TextColor.muted)
+                .frame(width: 22, height: 22)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(pressed ? LumenTokens.Accent.amber.opacity(0.16) : Color.white.opacity(0.04))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .help("검색 결과에서 숨기기")
+        .onHover { pressed = $0 }
     }
 }
 

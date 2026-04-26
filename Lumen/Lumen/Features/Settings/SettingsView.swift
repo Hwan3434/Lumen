@@ -5,21 +5,31 @@ import SwiftUI
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
 struct SettingsView: View {
     enum Tab: String, Hashable, CaseIterable {
-        case jira, openai, claude
+        case jira, openai, claude, hiddenApps
 
         var label: String {
             switch self {
-            case .jira:   return "Jira"
-            case .openai: return "OpenAI"
-            case .claude: return "Claude"
+            case .jira:       return "Jira"
+            case .openai:     return "OpenAI"
+            case .claude:     return "Claude"
+            case .hiddenApps: return "숨긴 앱"
             }
         }
 
-        var asset: String {
+        /// asset 이름이 있으면 그쪽이 우선, 없으면 SF Symbol 폴백.
+        var asset: String? {
             switch self {
-            case .jira:   return "JiraLogo"
-            case .openai: return "OpenAILogo"
-            case .claude: return "ClaudeLogo"
+            case .jira:       return "JiraLogo"
+            case .openai:     return "OpenAILogo"
+            case .claude:     return "ClaudeLogo"
+            case .hiddenApps: return nil
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .hiddenApps: return "eye.slash"
+            default:          return "questionmark"
             }
         }
     }
@@ -69,9 +79,10 @@ struct SettingsView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selection {
-        case .jira:   JiraSettingsTab(action: actionVM)
-        case .openai: OpenAISettingsTab(action: actionVM)
-        case .claude: ClaudeSettingsTab(action: actionVM)
+        case .jira:       JiraSettingsTab(action: actionVM)
+        case .openai:     OpenAISettingsTab(action: actionVM)
+        case .claude:     ClaudeSettingsTab(action: actionVM)
+        case .hiddenApps: HiddenAppsSettingsTab(action: actionVM)
         }
     }
 
@@ -102,10 +113,7 @@ private struct SidebarRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 10) {
-                Image(tab.asset)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
+                tabIcon
                     .frame(width: 14, height: 14)
                     .foregroundStyle(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.secondary)
                 Text(tab.label)
@@ -126,6 +134,19 @@ private struct SidebarRow: View {
             .padding(.horizontal, 8)
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var tabIcon: some View {
+        if let asset = tab.asset {
+            Image(asset)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: tab.systemImage)
+                .font(.system(size: 12, weight: .medium))
+        }
     }
 }
 

@@ -4,8 +4,6 @@ struct SearchView: View {
     @State var viewModel = SearchViewModel()
     var onDismiss: () -> Void
 
-    @FocusState private var queryFieldFocused: Bool
-
     var body: some View {
         ZStack {
             LumenGlassBackground(radius: LumenTokens.Radius.window)
@@ -43,31 +41,20 @@ struct SearchView: View {
     // MARK: - Search input
 
     private var searchInput: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(LumenTokens.Accent.violetSoft.opacity(0.85))
-
-            ZStack(alignment: .leading) {
-                if viewModel.query.isEmpty {
-                    Text("앱 검색, 명령 실행, 계산…")
-                        .font(.system(size: 18))
-                        .foregroundStyle(LumenTokens.TextColor.placeholder)
-                }
-                TextField("", text: $viewModel.query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 18))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                    .tint(LumenTokens.Accent.violetSoft)
-                    .focused($queryFieldFocused)
-            }
-
-            LumenKbd(label: "⌘K")
-        }
+        LumenInputField(
+            text: $viewModel.query,
+            placeholder: "앱 검색, 명령 실행, 계산…",
+            fontSize: 18,
+            leading: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LumenTokens.Accent.violetSoft.opacity(0.85))
+            },
+            trailing: { LumenKbd(label: "⌘K") }
+        )
         .padding(.horizontal, 18)
         .frame(height: 56)
-        .overlay(alignment: .bottom) { LumenHairline().padding(.horizontal, 0) }
-        .onAppear { queryFieldFocused = true }
+        .overlay(alignment: .bottom) { LumenHairline() }
     }
 
     // MARK: - Quick row (built-in features)

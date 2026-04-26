@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
-    @FocusState private var queryFocused: Bool
 
     private let listColumnWidth: CGFloat = 320
     private let totalCapacity = 500
@@ -88,39 +87,32 @@ struct ClipboardView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(viewModel.query.isEmpty ? LumenTokens.TextColor.muted : LumenTokens.Accent.violetSoft)
-
-            ZStack(alignment: .leading) {
-                if viewModel.query.isEmpty {
-                    Text("클립보드 검색…")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(LumenTokens.TextColor.placeholder)
+        LumenInputField(
+            text: $viewModel.query,
+            placeholder: "클립보드 검색…",
+            fontSize: 12.5,
+            leading: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(viewModel.query.isEmpty
+                                     ? LumenTokens.TextColor.muted
+                                     : LumenTokens.Accent.violetSoft)
+            },
+            trailing: {
+                if !viewModel.query.isEmpty {
+                    Button {
+                        viewModel.query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
                 }
-                TextField("", text: $viewModel.query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                    .tint(LumenTokens.Accent.violetSoft)
-                    .focused($queryFocused)
             }
-
-            if !viewModel.query.isEmpty {
-                Button {
-                    viewModel.query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-            }
-        }
+        )
         .padding(.horizontal, 14)
         .frame(height: 36)
-        .onAppear { queryFocused = true }
     }
 
     private var listEmptyState: some View {

@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TranslatorView: View {
     @State var viewModel: TranslatorViewModel
-    @FocusState private var inputFocused: Bool
 
     private let historyRailWidth: CGFloat = 240
 
@@ -75,23 +74,11 @@ struct TranslatorView: View {
                 }
             }
 
-            ZStack(alignment: .topLeading) {
-                if viewModel.inputText.isEmpty {
-                    Text("여기에 한국어 또는 영어 문장을 입력하세요…")
-                        .font(.system(size: 17))
-                        .foregroundStyle(LumenTokens.TextColor.placeholder)
-                        .padding(.top, 2)
-                        .allowsHitTesting(false)
-                }
-                TextEditor(text: $viewModel.inputText)
-                    .font(.system(size: 17))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .tint(LumenTokens.Accent.violetSoft)
-                    .focused($inputFocused)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            LumenTextArea(
+                text: $viewModel.inputText,
+                placeholder: "여기에 한국어 또는 영어 문장을 입력하세요…",
+                fontSize: 17
+            )
 
             if !viewModel.inputText.isEmpty {
                 PronunRow(
@@ -104,7 +91,6 @@ struct TranslatorView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .frame(maxHeight: .infinity)
-        .onAppear { inputFocused = true }
     }
 
     private var outputArea: some View {

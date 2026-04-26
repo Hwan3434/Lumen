@@ -3,7 +3,6 @@ import MarkdownUI
 
 struct NoteView: View {
     @State var viewModel = NoteViewModel()
-    @FocusState private var editorFocused: Bool
 
     var body: some View {
         ZStack {
@@ -73,29 +72,17 @@ struct NoteView: View {
     }
 
     private var editor: some View {
-        ZStack(alignment: .topLeading) {
-            if viewModel.text.isEmpty {
-                Text("여기에 메모… 마크다운 지원")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.placeholder)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 20)
-                    .allowsHitTesting(false)
-            }
-            TextEditor(text: $viewModel.text)
-                .font(.system(size: 13, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .tint(LumenTokens.Accent.violetSoft)
-                .padding(.horizontal, 22)
-                .padding(.vertical, 14)
-                .focused($editorFocused)
-                .onChange(of: viewModel.text) { _, _ in
-                    viewModel.onTextChanged()
-                }
+        LumenTextArea(
+            text: $viewModel.text,
+            placeholder: "여기에 메모… 마크다운 지원",
+            fontSize: 13,
+            monospaced: true
+        )
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+        .onChange(of: viewModel.text) { _, _ in
+            viewModel.onTextChanged()
         }
-        .onAppear { editorFocused = true }
     }
 
     // MARK: - Footer

@@ -36,5 +36,11 @@
 	<true/>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
+	<!-- Self-signed + ~/Applications 조합에서 admin 비밀번호 prompt를 띄우는 권한 escalation 경로를 끈다.
+	     사용자 홈 디렉터리는 admin 없이 in-process로 교체 가능하므로 prompt 없이 업데이트가 마무리된다. -->
+	<key>SUEnableInstallerLauncherService</key>
+	<false/>
+	<key>SUEnableDownloaderService</key>
+	<false/>
 </dict>
 </plist>

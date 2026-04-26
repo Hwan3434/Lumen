@@ -99,8 +99,10 @@ struct LumenTextArea: View {
     @FocusState private var focused: Bool
 
     /// macOS TextEditor 내부 NSTextView 기본 textContainerInset 보정값.
-    /// padding 0인 TextEditor의 첫 글자가 그려지는 좌상단 위치를 placeholder가 따라가도록.
-    private static let textViewInset = EdgeInsets(top: 8, leading: 5, bottom: 0, trailing: 5)
+    /// top/trailing은 글자 시작 위치를 그대로 따라가지만, leading은 caret이
+    /// 그려지는 자리(약 5pt) *오른쪽*으로 placeholder를 밀어서 caret과 글자가
+    /// 겹쳐 보이지 않게 한다 — Safari 주소창·macOS 검색창과 같은 관례.
+    private static let textViewInset = EdgeInsets(top: 8, leading: 9, bottom: 0, trailing: 5)
 
     var body: some View {
         ZStack(alignment: .topLeading) {

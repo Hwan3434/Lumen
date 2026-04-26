@@ -48,8 +48,8 @@ final class NoteWindowController: PanelWindowController {
     }
 
     /// 단축키 매핑:
-    /// ⌘W      = 패널 닫기
-    /// ⌘N      = 새 노트
+    /// ⌘W       = 패널 닫기
+    /// ⌘N / ⌘T = 새 노트
     /// ⌘1..⌘9  = N번째 탭으로 이동
     /// ⌘⇧]/[   = 다음/이전 탭
     /// ⌘⇧E     = 편집/미리보기 토글
@@ -65,7 +65,7 @@ final class NoteWindowController: PanelWindowController {
         if flags == .command && kc == UInt16(kVK_ANSI_W) {
             hide(); return nil
         }
-        if flags == .command && kc == UInt16(kVK_ANSI_N) {
+        if flags == .command && (kc == UInt16(kVK_ANSI_N) || kc == UInt16(kVK_ANSI_T)) {
             vm.createNewNote(activate: true); return nil
         }
         if flags == .command && kc == UInt16(kVK_Delete) {

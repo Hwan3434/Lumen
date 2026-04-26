@@ -1,13 +1,16 @@
 import AppKit
 import SwiftUI
+import os
 
 final class SearchWindowController: PanelWindowController {
     private var viewModel: SearchViewModel?
 
     override func show() {
         let isFirstShow = panel == nil
+        LumenLog.ui.notice("search:show enter firstShow=\(isFirstShow)")
         AppResourceMonitor.trace("search:show:enter(firstShow=\(isFirstShow))")
         super.show()
+        LumenLog.ui.notice("search:show exit visible=\(self.isVisible)")
         AppResourceMonitor.trace("search:show:exit")
     }
 

@@ -1,4 +1,5 @@
 import AppKit
+import os
 import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -111,10 +112,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { notification in
-            guard let window = notification.object as? NSWindow,
-                  !(window is KeyablePanel),
-                  window.isVisible
-            else { return }
+            guard let window = notification.object as? NSWindow else { return }
+            let cls = String(describing: type(of: window))
+            let title = window.title.isEmpty ? "(no title)" : window.title
+            let isPanel = window is KeyablePanel
+            LumenLog.ui.debug("didBecomeKey class=\(cls, privacy: .public) title=\(title, privacy: .public) visible=\(window.isVisible) isPanel=\(isPanel)")
+
+            guard !isPanel, window.isVisible else { return }
+            LumenLog.ui.notice("non-panel window took key → dismissing visible panels")
             for case let panel as KeyablePanel in NSApp.windows where panel.isVisible {
                 panel.activatePreviousAppOnClose = false
                 panel.orderOut(nil)

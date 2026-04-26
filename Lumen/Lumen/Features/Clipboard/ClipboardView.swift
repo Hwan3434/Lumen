@@ -282,13 +282,13 @@ private struct ClipboardPreview: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     bodyContent
-                    metaBlock
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
+            metaFooter
         }
         .onAppear { refreshCachedFileImage() }
         .onChange(of: item.id) { _, _ in refreshCachedFileImage() }
@@ -409,35 +409,42 @@ private struct ClipboardPreview: View {
         }
     }
 
-    // MARK: - Meta block
+    // MARK: - Meta footer (하단 가로 stripe)
 
+    /// 우측 패널 하단에 고정되는 메타데이터 띠. 본문 영역을 줄이지 않도록 ScrollView 밖에 둔다.
+    /// 항목들은 `·`로 연결돼 한 줄로, 너무 길어지면 가로 스크롤로 처리.
     @ViewBuilder
-    private var metaBlock: some View {
+    private var metaFooter: some View {
         let rows = buildMetaRows()
         if !rows.isEmpty {
             VStack(spacing: 0) {
                 Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), alignment: .topLeading),
-                        GridItem(.flexible(), alignment: .topLeading),
-                    ],
-                    alignment: .leading,
-                    spacing: 12
-                ) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        VStack(alignment: .leading, spacing: 3) {
-                            LumenSectionLabel(text: row.key)
-                            Text(row.value)
-                                .font(.system(size: 12, design: row.mono ? .monospaced : .default))
-                                .foregroundStyle(LumenTokens.TextColor.secondary)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
+                            HStack(spacing: 6) {
+                                Text(row.key)
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .tracking(0.4)
+                                    .foregroundStyle(LumenTokens.TextColor.muted)
+                                Text(row.value)
+                                    .font(.system(size: 11.5, design: row.mono ? .monospaced : .default))
+                                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            if idx < rows.count - 1 {
+                                Text("·")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.5))
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
-                .padding(.top, 14)
             }
+            .background(LumenTokens.BG.sidePanel)
         }
     }
 

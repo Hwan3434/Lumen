@@ -9,7 +9,7 @@ final class CaffeineFeature: BuiltInFeature {
 
     private var assertionID: IOPMAssertionID = 0
     private(set) var isActive = false
-    private let statusBar = CaffeineStatusBar()
+    private var statusHandle: StatusBarItemHandle?
 
     var name: String {
         isActive ? "카페인 끄기" : "카페인 켜기"
@@ -19,15 +19,19 @@ final class CaffeineFeature: BuiltInFeature {
         toggle()
     }
 
-    func setup() {
-        statusBar.onClick = { [weak self] in
-            self?.toggle()
-        }
-    }
-
     func teardown() {
         if isActive { deactivateSleep() }
-        statusBar.remove()
+        // status item 정리는 coordinator.teardownAll()이 일괄 처리.
+    }
+
+    func attachStatusBar(_ coordinator: StatusBarCoordinator) {
+        // 카페인은 평소엔 메뉴바에 없음. 활성화 시점에 show() 한다.
+        statusHandle = coordinator.addItem(
+            initialIcon: "cup.and.saucer.fill",
+            accessibility: "카페인",
+            visible: false,
+            onClick: { [weak self] in self?.toggle() }
+        )
     }
 
     private func toggle() {
@@ -47,7 +51,8 @@ final class CaffeineFeature: BuiltInFeature {
         )
         if result == kIOReturnSuccess {
             isActive = true
-            statusBar.show(isActive: true)
+            statusHandle?.updateIcon("cup.and.saucer.fill")
+            statusHandle?.show()
         }
     }
 
@@ -55,6 +60,6 @@ final class CaffeineFeature: BuiltInFeature {
         IOPMAssertionRelease(assertionID)
         assertionID = 0
         isActive = false
-        statusBar.updateIcon(isActive: false)
+        statusHandle?.hide()
     }
 }

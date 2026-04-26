@@ -1,10 +1,18 @@
 import AppKit
 import Sparkle
 
+/// 앱의 메뉴바 영역을 한 곳에서 관리.
+///   - 메인 Lumen 메뉴 (자기 NSStatusItem)
+///   - feature가 요청한 부가 status item들 (StatusBarCoordinator로 위임)
+///
+/// Feature는 NSStatusBar.system을 직접 호출하지 않는다 — coordinator를 통해서만.
 final class AppStatusBar: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
     private let updater: SPUUpdater
+
+    /// Feature가 등록하는 부가 status item을 관리.
+    let coordinator = StatusBarCoordinator()
 
     init(updater: SPUUpdater) {
         self.updater = updater
@@ -17,6 +25,24 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
 
         menu.delegate = self
         statusItem.menu = menu
+    }
+
+    /// 등록된 모든 feature에게 status item attach 기회를 준다. setup() 이후에 호출.
+    @MainActor
+    func attachFeatures(_ features: [BuiltInFeature]) {
+        for feature in features {
+            feature.attachStatusBar(coordinator)
+        }
+    }
+
+    /// 앱 종료 시 자체 NSStatusItem과 coordinator가 보유한 모든 status item을 정리.
+    @MainActor
+    func teardown() {
+        coordinator.teardownAll()
+        if let item = statusItem {
+            NSStatusBar.system.removeStatusItem(item)
+            statusItem = nil
+        }
     }
 
     // MARK: - NSMenuDelegate

@@ -86,6 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppResourceMonitor.trace("enabled_features: \(names)")
 
         appStatusBar = AppStatusBar(updater: updaterController.updater)
+        appStatusBar.attachFeatures(FeatureRegistry.shared.enabledFeatures)
         AppResourceMonitor.trace("statusbar_ready")
 
         if ClaudeUsageService.isAvailable {
@@ -128,6 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotkeyManager.stop()
         FeatureRegistry.shared.teardownAll()
+        appStatusBar?.teardown()
         ClipboardManager.shared.flushPendingSave()
     }
 }

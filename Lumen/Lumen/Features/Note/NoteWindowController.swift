@@ -24,7 +24,6 @@ final class NoteWindowController: PanelWindowController {
         panel.isOpaque = false
         panel.isReleasedWhenClosed = false
         panel.minSize = NSSize(width: 300, height: 250)
-        panel.autoFocusTextField = false
 
         let vm = NoteViewModel()
         self.viewModel = vm

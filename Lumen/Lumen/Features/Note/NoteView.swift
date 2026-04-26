@@ -10,7 +10,7 @@ struct NoteView: View {
             VStack(spacing: 0) {
                 header
                 LumenHairline()
-                body_
+                bodyContent
                 footer
             }
         }
@@ -48,7 +48,7 @@ struct NoteView: View {
 
     // MARK: - Body
 
-    private var body_: some View {
+    private var bodyContent: some View {
         ZStack(alignment: .topLeading) {
             if viewModel.isPreview {
                 ScrollView(.vertical) {
@@ -88,31 +88,11 @@ struct NoteView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                LinearGradient(
-                    colors: [LumenTokens.Accent.violetSoft, LumenTokens.Accent.amber],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                Text("Lumen")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            Spacer()
-            HStack(spacing: 14) {
-                NoteFooterAction(label: "모드 전환", kbd: "⌘⇧E", primary: true)
-                NoteFooterAction(label: "닫기", kbd: "esc")
-                NoteFooterAction(label: "패널", kbd: "⌘⇧X")
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 32)
-        .background(LumenTokens.BG.footer)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        LumenFooterBar(actions: [
+            .init(label: "모드 전환", kbd: "⌘⇧E", primary: true),
+            .init(label: "닫기", kbd: "esc"),
+            .init(label: "패널", kbd: "⌘⇧X"),
+        ])
     }
 }
 
@@ -207,19 +187,3 @@ private struct ModeToggle: View {
     }
 }
 
-// MARK: - Footer action
-
-private struct NoteFooterAction: View {
-    let label: String
-    let kbd: String
-    var primary: Bool = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text(label)
-                .font(.system(size: 11, weight: primary ? .medium : .regular))
-                .foregroundStyle(primary ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-            LumenKbd(label: kbd, primary: primary)
-        }
-    }
-}

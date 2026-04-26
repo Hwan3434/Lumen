@@ -248,31 +248,11 @@ struct TranslatorView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                LinearGradient(
-                    colors: [LumenTokens.Accent.violetSoft, LumenTokens.Accent.amber],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                Text("Lumen")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            Spacer()
-            HStack(spacing: 14) {
-                FooterAction(label: "번역", kbd: "⏎", primary: true)
-                FooterAction(label: "결과 복사", kbd: "⌘C")
-                FooterAction(label: "닫기", kbd: "esc")
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 32)
-        .background(LumenTokens.BG.footer)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        LumenFooterBar(actions: [
+            .init(label: "번역", kbd: "⏎", primary: true),
+            .init(label: "결과 복사", kbd: "⌘C"),
+            .init(label: "닫기", kbd: "esc"),
+        ])
     }
 }
 
@@ -311,7 +291,7 @@ private struct HistoryItemRow: View {
                     .foregroundStyle(LumenTokens.TextColor.muted)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(relativeDate(item.date))
+                Text(LumenTime.relative(item.date, granularity: .shortNoSuffix))
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(LumenTokens.TextColor.muted)
                     .padding(.top, 1)
@@ -320,17 +300,6 @@ private struct HistoryItemRow: View {
             .padding(.vertical, 8)
         }
         .contentShape(Rectangle())
-    }
-
-    private func relativeDate(_ date: Date) -> String {
-        let now = Date()
-        let interval = now.timeIntervalSince(date)
-        if interval < 60 { return "방금" }
-        if interval < 3600 { return "\(Int(interval / 60))분" }
-        if interval < 86400 { return "\(Int(interval / 3600))시간" }
-        let days = Int(interval / 86400)
-        if days == 1 { return "어제" }
-        return "\(days)일"
     }
 }
 
@@ -547,19 +516,3 @@ struct AmberChip: View {
     }
 }
 
-// MARK: - Footer action
-
-private struct FooterAction: View {
-    let label: String
-    let kbd: String
-    var primary: Bool = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text(label)
-                .font(.system(size: 11, weight: primary ? .medium : .regular))
-                .foregroundStyle(primary ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-            LumenKbd(label: kbd, primary: primary)
-        }
-    }
-}

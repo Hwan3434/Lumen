@@ -2,25 +2,12 @@ import SwiftUI
 import AppKit
 
 // MARK: - LumenInputField (single-line, borderless)
-//
-// Search / Clipboard 등 패널 헤더 자리에 들어가는 borderless 검색·입력 필드.
-// SwiftUI TextField의 placeholder는 시스템 색을 따르고 커스텀이 어렵기 때문에,
-// AppKit NSTextField를 NSViewRepresentable로 감싸 placeholderAttributedString을
-// 직접 LumenTokens 색으로 칠한다. 이렇게 하면 placeholder와 입력 텍스트의
-// 베이스라인이 동일 NSTextField 내부에서 결정되므로 정렬 어긋남이 원천 차단된다.
-//
-// leading/trailing slot은 SwiftUI ViewBuilder로 받아 아이콘·키 힌트 등을 자유롭게
-// 끼워 넣을 수 있다.
-//
-// `tint`는 SwiftUI .tint()로 커서/선택색을 지정 — NSTextField가 이 값을
-// insertionPointColor로 자동 사용한다.
 
 struct LumenInputField<Leading: View, Trailing: View>: View {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = 18
     var monospaced: Bool = false
-    var autoFocus: Bool = true
     var onSubmit: (() -> Void)? = nil
 
     @ViewBuilder var leading: () -> Leading
@@ -34,7 +21,6 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
                 placeholder: placeholder,
                 fontSize: fontSize,
                 monospaced: monospaced,
-                autoFocus: autoFocus,
                 onSubmit: onSubmit
             )
             trailing()
@@ -43,12 +29,11 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
 }
 
 extension LumenInputField where Leading == EmptyView, Trailing == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, autoFocus: Bool = true, onSubmit: (() -> Void)? = nil) {
+    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil) {
         self._text = text
         self.placeholder = placeholder
         self.fontSize = fontSize
         self.monospaced = monospaced
-        self.autoFocus = autoFocus
         self.onSubmit = onSubmit
         self.leading = { EmptyView() }
         self.trailing = { EmptyView() }
@@ -56,12 +41,11 @@ extension LumenInputField where Leading == EmptyView, Trailing == EmptyView {
 }
 
 extension LumenInputField where Leading == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, autoFocus: Bool = true, onSubmit: (() -> Void)? = nil, @ViewBuilder trailing: @escaping () -> Trailing) {
+    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil, @ViewBuilder trailing: @escaping () -> Trailing) {
         self._text = text
         self.placeholder = placeholder
         self.fontSize = fontSize
         self.monospaced = monospaced
-        self.autoFocus = autoFocus
         self.onSubmit = onSubmit
         self.leading = { EmptyView() }
         self.trailing = trailing
@@ -69,25 +53,21 @@ extension LumenInputField where Leading == EmptyView {
 }
 
 extension LumenInputField where Trailing == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, autoFocus: Bool = true, onSubmit: (() -> Void)? = nil, @ViewBuilder leading: @escaping () -> Leading) {
+    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil, @ViewBuilder leading: @escaping () -> Leading) {
         self._text = text
         self.placeholder = placeholder
         self.fontSize = fontSize
         self.monospaced = monospaced
-        self.autoFocus = autoFocus
         self.onSubmit = onSubmit
         self.leading = leading
         self.trailing = { EmptyView() }
     }
 }
 
-// MARK: - LumenTextArea (multi-line — Translator input, Note editor)
+// MARK: - LumenTextArea (multi-line)
 //
-// AppKit NSTextView를 SwiftUI로 감싼 멀티라인 에디터. placeholder는
-// NSTextView 자체가 그리므로 caret과 placeholder의 정렬을 *AppKit이
-// 자기 좌표계 안에서* 보장한다 — 우리는 픽셀을 보정하지 않는다.
-// Safari 주소창·macOS 검색창이 단일라인에서 보여주는 자연스러운 동작을
-// 멀티라인으로 옮긴 형태.
+// AppKit NSTextView를 SwiftUI로 감싸 caret과 placeholder가 같은 좌표계에서
+// 자동 정렬되도록 한다 — 픽셀 보정 없음.
 
 struct LumenTextArea: View {
     @Binding var text: String
@@ -111,7 +91,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     let fontSize: CGFloat
     let monospaced: Bool
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -145,20 +125,26 @@ private struct TextAreaRepresentable: NSViewRepresentable {
             width: 0, height: CGFloat.greatestFiniteMagnitude
         )
 
-        applyAttributes(to: textView)
+        context.coordinator.bind(parent: self)
+        applyAttributes(to: textView, coordinator: context.coordinator)
         scroll.documentView = textView
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let textView = scroll.documentView as? PlaceholderTextView else { return }
+        context.coordinator.bind(parent: self)
         if textView.string != text {
             textView.string = text
         }
-        applyAttributes(to: textView)
+        applyAttributes(to: textView, coordinator: context.coordinator)
     }
 
-    private func applyAttributes(to textView: PlaceholderTextView) {
+    private func applyAttributes(to textView: PlaceholderTextView, coordinator: Coordinator) {
+        let key = AttrKey(fontSize: fontSize, monospaced: monospaced, placeholder: placeholder)
+        guard coordinator.lastAttrKey != key else { return }
+        coordinator.lastAttrKey = key
+
         let font = monospaced
             ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             : NSFont.systemFont(ofSize: fontSize)
@@ -170,19 +156,29 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
-        let parent: TextAreaRepresentable
-        init(_ parent: TextAreaRepresentable) { self.parent = parent }
+        var parent: TextAreaRepresentable?
+        var lastAttrKey: AttrKey?
+
+        func bind(parent: TextAreaRepresentable) {
+            self.parent = parent
+        }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            parent.text = textView.string
+            parent?.text = textView.string
         }
+    }
+
+    struct AttrKey: Equatable {
+        let fontSize: CGFloat
+        let monospaced: Bool
+        let placeholder: String
     }
 }
 
-/// NSTextView 서브클래스로 placeholder를 *NSTextView 자기 좌표계*에서 직접 그린다.
-/// 첫 글자가 들어갈 자리는 `textContainerOrigin`이 가리키므로 그 origin을 그대로
-/// 쓰면 caret과 baseline이 자동으로 일치한다 — 픽셀 보정 불필요.
+/// NSTextView가 빈 상태일 때 placeholder를 자기 좌표계에서 직접 그린다.
+/// caret(insertion point)이 그려지는 자리 = textContainerOrigin + lineFragmentPadding.
+/// 첫 글자도 같은 자리에서 시작하므로 placeholder를 거기 그리면 caret과 자동 정렬.
 private final class PlaceholderTextView: NSTextView {
     var placeholderString: String = ""
     var placeholderColor: NSColor = .placeholderTextColor
@@ -197,11 +193,6 @@ private final class PlaceholderTextView: NSTextView {
             .font: placeholderFont,
         ]
         let attributed = NSAttributedString(string: placeholderString, attributes: attrs)
-
-        // caret(insertion point)는 textContainerOrigin이 아니라
-        // textContainerOrigin + textContainer.lineFragmentPadding에 그려진다.
-        // (lineFragmentPadding 기본값 5pt — 라인 시작 부분의 가로 padding)
-        // 첫 글자도 같은 위치에서 시작하므로 placeholder도 동일 origin을 쓴다.
         let pad = textContainer?.lineFragmentPadding ?? 0
         let origin = textContainerOrigin
         attributed.draw(at: NSPoint(x: origin.x + pad, y: origin.y))
@@ -209,23 +200,20 @@ private final class PlaceholderTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
-        // 비어있다 → 채워지거나, 채워졌다 → 비어지는 전이 시 placeholder 영역이
-        // 다시 그려지도록 강제. NSTextView 기본 동작은 텍스트 영역만 invalidate함.
         needsDisplay = true
     }
 }
 
-// MARK: - TintedTextField (NSViewRepresentable, placeholder color customization)
+// MARK: - TintedTextField (NSViewRepresentable for placeholder color)
 
 private struct TintedTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = 13
     var monospaced: Bool = false
-    var autoFocus: Bool = false
     var onSubmit: (() -> Void)? = nil
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSTextField {
         let tf = NSTextField()
@@ -238,20 +226,26 @@ private struct TintedTextField: NSViewRepresentable {
         tf.cell?.usesSingleLineMode = true
         tf.cell?.wraps = false
         tf.cell?.isScrollable = true
-        applyAttributes(to: tf)
+        context.coordinator.bind(parent: self)
+        applyAttributes(to: tf, coordinator: context.coordinator)
         // KeyablePanel.becomeKey 가 findFirstEditableField()로 이 NSTextField를 찾아
         // makeFirstResponder 한다. 패널 생명주기에 맡기는 게 옳다.
         return tf
     }
 
     func updateNSView(_ nsView: NSTextField, context: Context) {
+        context.coordinator.bind(parent: self)
         if nsView.stringValue != text {
             nsView.stringValue = text
         }
-        applyAttributes(to: nsView)
+        applyAttributes(to: nsView, coordinator: context.coordinator)
     }
 
-    private func applyAttributes(to tf: NSTextField) {
+    private func applyAttributes(to tf: NSTextField, coordinator: Coordinator) {
+        let key = AttrKey(fontSize: fontSize, monospaced: monospaced, placeholder: placeholder)
+        guard coordinator.lastAttrKey != key else { return }
+        coordinator.lastAttrKey = key
+
         let font = monospaced
             ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             : NSFont.systemFont(ofSize: fontSize)
@@ -267,21 +261,31 @@ private struct TintedTextField: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
-        let parent: TintedTextField
-        init(_ parent: TintedTextField) { self.parent = parent }
+        var parent: TintedTextField?
+        var lastAttrKey: AttrKey?
+
+        func bind(parent: TintedTextField) {
+            self.parent = parent
+        }
 
         func controlTextDidChange(_ note: Notification) {
             guard let tf = note.object as? NSTextField else { return }
-            parent.text = tf.stringValue
+            parent?.text = tf.stringValue
         }
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             if selector == #selector(NSResponder.insertNewline(_:)),
-               let onSubmit = parent.onSubmit {
+               let onSubmit = parent?.onSubmit {
                 onSubmit()
                 return true
             }
             return false
         }
+    }
+
+    struct AttrKey: Equatable {
+        let fontSize: CGFloat
+        let monospaced: Bool
+        let placeholder: String
     }
 }

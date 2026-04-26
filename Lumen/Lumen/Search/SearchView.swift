@@ -269,31 +269,11 @@ struct SearchView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                LinearGradient(
-                    colors: [LumenTokens.Accent.violetSoft, LumenTokens.Accent.amber],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                Text("Lumen")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            Spacer()
-            HStack(spacing: 14) {
-                footerAction(label: footerActionLabel, kbd: "⏎", primary: true)
-                footerAction(label: "명령", kbd: "⌘K")
-                footerAction(label: "실행", kbd: "⌥⏎")
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 32)
-        .background(LumenTokens.BG.footer)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        LumenFooterBar(actions: [
+            .init(label: footerActionLabel, kbd: "⏎", primary: true),
+            .init(label: "명령", kbd: "⌘K"),
+            .init(label: "실행", kbd: "⌥⏎"),
+        ])
     }
 
     private var footerActionLabel: String {
@@ -305,15 +285,6 @@ struct SearchView: View {
             }
         }
         return "열기"
-    }
-
-    private func footerAction(label: String, kbd: String, primary: Bool = false) -> some View {
-        HStack(spacing: 5) {
-            Text(label)
-                .font(.system(size: 11, weight: primary ? .medium : .regular))
-                .foregroundStyle(primary ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-            LumenKbd(label: kbd, primary: primary)
-        }
     }
 }
 

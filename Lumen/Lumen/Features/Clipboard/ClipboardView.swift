@@ -181,31 +181,11 @@ struct ClipboardView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                LinearGradient(
-                    colors: [LumenTokens.Accent.violetSoft, LumenTokens.Accent.amber],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                Text("Lumen")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            Spacer()
-            HStack(spacing: 14) {
-                ClipFooterAction(label: "복사", kbd: "⏎", primary: true)
-                ClipFooterAction(label: "닫기", kbd: "esc")
-                ClipFooterAction(label: "패널", kbd: "⌘⇧V")
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 32)
-        .background(LumenTokens.BG.footer)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        LumenFooterBar(actions: [
+            .init(label: "복사", kbd: "⏎", primary: true),
+            .init(label: "닫기", kbd: "esc"),
+            .init(label: "패널", kbd: "⌘⇧V"),
+        ])
     }
 }
 
@@ -290,6 +270,11 @@ private struct ClipboardPreview: View {
     let item: ClipboardItem
     let viewModel: ClipboardViewModel
 
+    /// 파일 URL이 이미지일 때 디스크에서 1회 로드한 결과를 캐시 — body 재호출마다
+    /// NSImage(contentsOf:)를 다시 디코드하지 않게 한다. item이 바뀌면 무효화.
+    @State private var cachedFileImage: NSImage?
+    @State private var cachedFileImageItemID: UUID?
+
     var body: some View {
         VStack(spacing: 0) {
             previewHeader
@@ -305,6 +290,21 @@ private struct ClipboardPreview: View {
             }
             .scrollIndicators(.hidden)
         }
+        .onAppear { refreshCachedFileImage() }
+        .onChange(of: item.id) { _, _ in refreshCachedFileImage() }
+    }
+
+    private func refreshCachedFileImage() {
+        guard cachedFileImageItemID != item.id else { return }
+        cachedFileImageItemID = item.id
+        cachedFileImage = loadFileImage()
+    }
+
+    private func loadFileImage() -> NSImage? {
+        guard let urls = item.fileURLs, let url = urls.first else { return nil }
+        let exts = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"]
+        guard exts.contains(url.pathExtension.lowercased()) else { return nil }
+        return NSImage(contentsOf: url)
     }
 
     private var previewHeader: some View {
@@ -358,7 +358,7 @@ private struct ClipboardPreview: View {
 
     @ViewBuilder
     private var bodyContent: some View {
-        if let image = item.resolvedImage ?? loadedFileImage {
+        if let image = item.resolvedImage ?? cachedFileImage {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -407,13 +407,6 @@ private struct ClipboardPreview: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-
-    private var loadedFileImage: NSImage? {
-        guard let urls = item.fileURLs, let url = urls.first else { return nil }
-        let exts = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"]
-        guard exts.contains(url.pathExtension.lowercased()) else { return nil }
-        return NSImage(contentsOf: url)
     }
 
     // MARK: - Meta block
@@ -486,8 +479,8 @@ private struct ClipboardPreview: View {
                 }
             } else {
                 rows.append(.init(key: "항목 수", value: "\(urls.count)개", mono: false))
-                let total = urls.compactMap {
-                    (try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int64)?.flatMap { $0 }
+                let total = urls.compactMap { url -> Int64? in
+                    try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64
                 }.reduce(Int64(0), +)
                 if total > 0 {
                     rows.append(.init(key: "총 크기",
@@ -506,25 +499,19 @@ private struct ClipboardPreview: View {
         return rows
     }
 
-    private func timeOnly(_ date: Date) -> String {
+    private static let hourMinuteFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
         f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return f
+    }()
+
+    private func timeOnly(_ date: Date) -> String {
+        Self.hourMinuteFormatter.string(from: date)
     }
 
     private func fullTime(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        let cal = Calendar.current
-        if cal.isDateInToday(date) {
-            f.dateFormat = "오늘 HH:mm"
-        } else if cal.isDateInYesterday(date) {
-            f.dateFormat = "어제 HH:mm"
-        } else {
-            f.dateFormat = "M월 d일 HH:mm"
-        }
-        return f.string(from: date)
+        LumenTime.relative(date, granularity: .calendar)
     }
 
     private func shortPath(_ url: URL) -> String {
@@ -537,19 +524,3 @@ private struct ClipboardPreview: View {
     }
 }
 
-// MARK: - Footer action
-
-private struct ClipFooterAction: View {
-    let label: String
-    let kbd: String
-    var primary: Bool = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text(label)
-                .font(.system(size: 11, weight: primary ? .medium : .regular))
-                .foregroundStyle(primary ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-            LumenKbd(label: kbd, primary: primary)
-        }
-    }
-}

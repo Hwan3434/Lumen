@@ -116,7 +116,7 @@ private struct JiraHeader: View {
                             .foregroundStyle(LumenTokens.Accent.violetSoft)
                     }
                 } else {
-                    Text("\(relativeTime(lastUpdated)) 업데이트")
+                    Text("\(LumenTime.relative(lastUpdated)) 업데이트")
                         .font(.system(size: 11.5))
                         .foregroundStyle(LumenTokens.TextColor.muted)
                 }
@@ -143,12 +143,6 @@ private struct JiraHeader: View {
         .background(Color.white.opacity(0.012))
     }
 
-    private func relativeTime(_ date: Date) -> String {
-        let mins = Int(Date().timeIntervalSince(date) / 60)
-        if mins < 1 { return "방금" }
-        if mins < 60 { return "\(mins)분 전" }
-        return "\(mins / 60)시간 전"
-    }
 }
 
 private struct LegendDot: View {
@@ -249,11 +243,6 @@ private func dueTone(_ date: Date, isDone: Bool) -> DueTone {
     return .future
 }
 
-private func projectChipAlias(for key: String) -> String {
-    // 사용자가 alias를 입력했더라도 chip은 짧은 식별자(key)를 그대로 노출 — 정직하고 일관됨.
-    key
-}
-
 private func projectColor(_ key: String) -> Color {
     Constants.jiraProjects.first { $0.key == key }?.color ?? LumenTokens.Accent.violetSoft
 }
@@ -276,7 +265,7 @@ private struct ProjectChip: View {
         let px: CGFloat = size == .small ? 6 : 8
         let fs: CGFloat = size == .small ? 10 : 11
 
-        Text(projectChipAlias(for: key))
+        Text(key)
             .font(.system(size: fs, weight: .semibold))
             .tracking(0.4)
             .foregroundStyle(color)
@@ -332,13 +321,11 @@ private struct DueLabel: View {
 
     private var text: String {
         let cal = Calendar.current
-        let f = DateFormatter()
-        f.dateFormat = "MM/dd"
+        let f = LumenDateFormat.monthDay
         if let start = startDate, !cal.isDate(start, inSameDayAs: date) {
             let startStr = f.string(from: start)
             if cal.component(.month, from: start) == cal.component(.month, from: date) {
-                let dayF = DateFormatter(); dayF.dateFormat = "dd"
-                return "\(startStr)~\(dayF.string(from: date))"
+                return "\(startStr)~\(LumenDateFormat.dayOnly.string(from: date))"
             } else {
                 return "\(startStr)~\(f.string(from: date))"
             }
@@ -910,26 +897,25 @@ private struct FutureColumn: View {
         }
     }
 
+    @ViewBuilder
     private var epicsSection: some View {
         let epics = data.epicInfos.filter { $0.dueDate != nil }
-        return Group {
-            if !epics.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "flag")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color(red: 0x9B/255, green: 0x7B/255, blue: 0xD9/255))
-                        Text("활성 에픽")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(LumenTokens.TextColor.secondary)
-                        Text("\(epics.count)")
-                            .font(.system(size: 10.5, design: .monospaced))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                    }
-                    .padding(.horizontal, 4)
-                    VStack(spacing: 1) {
-                        ForEach(epics) { EpicRow(epic: $0) }
-                    }
+        if !epics.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "flag")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color(red: 0x9B/255, green: 0x7B/255, blue: 0xD9/255))
+                    Text("활성 에픽")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LumenTokens.TextColor.secondary)
+                    Text("\(epics.count)")
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                }
+                .padding(.horizontal, 4)
+                VStack(spacing: 1) {
+                    ForEach(epics) { EpicRow(epic: $0) }
                 }
             }
         }
@@ -1032,8 +1018,7 @@ private struct SprintCard: View {
     }
 
     private func short(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MM/dd"
-        return f.string(from: date)
+        LumenDateFormat.monthDay.string(from: date)
     }
 }
 
@@ -1173,8 +1158,7 @@ private struct TrendChart: View {
     }
 
     private func short(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "MM/dd"
-        return f.string(from: date)
+        LumenDateFormat.monthDay.string(from: date)
     }
 }
 

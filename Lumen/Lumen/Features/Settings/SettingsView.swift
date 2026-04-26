@@ -114,7 +114,7 @@ private struct SidebarRow: View {
         Button(action: onTap) {
             HStack(spacing: 10) {
                 tabIcon
-                    .frame(width: 18, height: 18)
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.secondary)
                 Text(tab.label)
                     .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
@@ -144,8 +144,9 @@ private struct SidebarRow: View {
                 .resizable()
                 .scaledToFit()
         } else {
+            // SF Symbol은 자산 아이콘보다 글리프가 꽉 차게 그려져 같은 frame이라도 커 보임 — 살짝 작게.
             Image(systemName: tab.systemImage)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
         }
     }
 }

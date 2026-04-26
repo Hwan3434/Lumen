@@ -58,9 +58,9 @@ final class CredentialsStore {
     // MARK: - Write (Settings UI)
 
     func setJira(cloudId: String, email: String, token: String) {
-        Keychain.write(cloudId, for: KCAccount.jiraCloudId)
-        Keychain.write(email,   for: KCAccount.jiraEmail)
-        Keychain.write(token,   for: KCAccount.jiraApiToken)
+        Keychain.write(sanitize(cloudId), for: KCAccount.jiraCloudId)
+        Keychain.write(sanitize(email),   for: KCAccount.jiraEmail)
+        Keychain.write(sanitize(token),   for: KCAccount.jiraApiToken)
     }
 
     /// 대소문자/공백 정규화 후 중복을 제거한 상태로 저장한다.
@@ -96,7 +96,12 @@ final class CredentialsStore {
     }
 
     func setOpenAI(apiKey: String) {
-        Keychain.write(apiKey, for: KCAccount.openAIAPIKey)
+        Keychain.write(sanitize(apiKey), for: KCAccount.openAIAPIKey)
+    }
+
+    /// 붙여넣기 시 끼어 들어가는 줄바꿈·공백·탭을 제거. API 호출 시 401의 흔한 원인.
+    private func sanitize(_ raw: String) -> String {
+        raw.components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
     func setClaudeUsageEnabled(_ enabled: Bool) {

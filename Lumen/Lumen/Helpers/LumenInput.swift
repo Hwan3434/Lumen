@@ -198,10 +198,13 @@ private final class PlaceholderTextView: NSTextView {
         ]
         let attributed = NSAttributedString(string: placeholderString, attributes: attrs)
 
-        // 첫 글자가 그려질 origin = textContainerOrigin + lineFragment의 첫 줄 origin.
-        // 빈 텍스트일 때는 textContainerOrigin 자체가 첫 줄의 시작점이므로 거기 그린다.
+        // caret(insertion point)는 textContainerOrigin이 아니라
+        // textContainerOrigin + textContainer.lineFragmentPadding에 그려진다.
+        // (lineFragmentPadding 기본값 5pt — 라인 시작 부분의 가로 padding)
+        // 첫 글자도 같은 위치에서 시작하므로 placeholder도 동일 origin을 쓴다.
+        let pad = textContainer?.lineFragmentPadding ?? 0
         let origin = textContainerOrigin
-        attributed.draw(at: origin)
+        attributed.draw(at: NSPoint(x: origin.x + pad, y: origin.y))
     }
 
     override func didChangeText() {

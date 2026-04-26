@@ -122,15 +122,19 @@ private struct SidebarRow: View {
                 Spacer()
             }
             .padding(.horizontal, 10)
-            .frame(height: 38)
+            .frame(maxWidth: .infinity, minHeight: 38, maxHeight: 38, alignment: .leading)
+            // hit-testable 배경 — 비선택 행도 row 전체가 클릭 영역이 되도록 거의 투명한 fill을
+            // 깔아둔다. 완전 .clear 면 SwiftUI가 픽셀이 없는 영역을 hit test에서 제외해
+            // Spacer/패딩 영역 클릭이 먹히지 않는 사례가 있다.
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.14) : .clear)
+                    .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.14) : Color.white.opacity(0.0001))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(isSelected ? LumenTokens.Accent.violetSoft.opacity(0.25) : .clear, lineWidth: 0.5)
                     )
             )
+            .contentShape(Rectangle())
             .padding(.horizontal, 8)
         }
         .buttonStyle(.plain)

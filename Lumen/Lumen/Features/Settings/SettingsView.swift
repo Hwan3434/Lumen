@@ -114,15 +114,15 @@ private struct SidebarRow: View {
         Button(action: onTap) {
             HStack(spacing: 10) {
                 tabIcon
-                    .frame(width: 20, height: 20)
                     .foregroundStyle(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.secondary)
+                    .frame(width: 24, alignment: .center)
                 Text(tab.label)
                     .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
                     .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
                 Spacer()
             }
             .padding(.horizontal, 10)
-            .frame(height: 34)
+            .frame(height: 38)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.14) : .clear)
@@ -139,14 +139,16 @@ private struct SidebarRow: View {
     @ViewBuilder
     private var tabIcon: some View {
         if let asset = tab.asset {
+            // 자산 아이콘은 글리프 안에 padding이 있어 같은 frame이라도 작아 보인다 — 24pt까지 키움.
             Image(asset)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
+                .frame(height: 24)
         } else {
-            // SF Symbol은 자산 아이콘보다 글리프가 꽉 차게 그려져 같은 frame이라도 커 보임 — 살짝 작게.
+            // SF Symbol은 글리프가 frame을 거의 다 채우므로 작게.
             Image(systemName: tab.systemImage)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
         }
     }
 }

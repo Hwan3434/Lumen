@@ -33,7 +33,8 @@ enum LumenStorage {
 
     enum Slot {
         case translationHistory
-        case note
+        case legacyNote          // 0.x 단일 노트 — 첫 실행 시 notesDir 첫 항목으로 마이그레이션 후 삭제
+        case notesDir
         case clipboardHistory
         case clipboardImagesDir
         case hiddenApps
@@ -45,7 +46,8 @@ enum LumenStorage {
         var relativePath: String {
             switch self {
             case .translationHistory:  return "translation_history.json"
-            case .note:                return "note.md"
+            case .legacyNote:          return "note.md"
+            case .notesDir:            return "notes"
             case .clipboardHistory:    return "clipboard_history.json"
             case .clipboardImagesDir:  return "images"
             case .hiddenApps:          return "hidden_apps.json"
@@ -56,7 +58,12 @@ enum LumenStorage {
             }
         }
 
-        var isDirectory: Bool { self == .clipboardImagesDir }
+        var isDirectory: Bool {
+            switch self {
+            case .clipboardImagesDir, .notesDir: return true
+            default: return false
+            }
+        }
     }
 
     static func url(for slot: Slot) -> URL {

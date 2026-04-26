@@ -2,23 +2,33 @@ import SwiftUI
 import MarkdownUI
 
 struct NoteView: View {
-    @State var viewModel = NoteViewModel()
+    @State var viewModel = NotesViewModel()
 
     var body: some View {
         ZStack {
             LumenGlassBackground(radius: LumenTokens.Radius.window)
-            VStack(spacing: 0) {
-                header
-                LumenHairline()
-                bodyContent
-                footer
+            HStack(spacing: 0) {
+                NotesSidebar(viewModel: viewModel)
+                    .frame(width: 200)
+                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                mainPane
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
     }
 
-    // MARK: - Header
+    // MARK: - Main pane
+
+    private var mainPane: some View {
+        VStack(spacing: 0) {
+            header
+            LumenHairline()
+            bodyContent
+            footer
+        }
+        .frame(maxWidth: .infinity)
+    }
 
     private var header: some View {
         HStack {
@@ -26,12 +36,10 @@ struct NoteView: View {
                 Image(systemName: "note.text")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(LumenTokens.Accent.violetSoft)
-                Text("메모")
+                Text(activeTitle)
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(LumenTokens.TextColor.primary)
-                Text("· 단일 노트")
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .lineLimit(1)
                 Rectangle()
                     .fill(LumenTokens.divider)
                     .frame(width: 1, height: 12)
@@ -46,13 +54,16 @@ struct NoteView: View {
         .frame(height: 44)
     }
 
-    // MARK: - Body
+    private var activeTitle: String {
+        guard let idx = viewModel.selectedIndex else { return "메모" }
+        return viewModel.notes[idx].displayTitle
+    }
 
     private var bodyContent: some View {
         ZStack(alignment: .topLeading) {
             if viewModel.isPreview {
                 ScrollView(.vertical) {
-                    Markdown(viewModel.text)
+                    Markdown(viewModel.activeText)
                         .markdownTheme(.lumen)
                         .textSelection(.enabled)
                         .environment(\.openURL, OpenURLAction { url in
@@ -72,34 +83,151 @@ struct NoteView: View {
     }
 
     private var editor: some View {
+        // 활성 노트가 바뀌어도 LumenTextArea가 새 인스턴스로 리셋되도록 .id() 부여.
+        // 같은 NSTextView를 재사용하면 캐럿/스크롤 위치가 이전 노트 기준으로 남는다.
         LumenTextArea(
-            text: $viewModel.text,
+            text: Binding(
+                get: { viewModel.activeText },
+                set: { viewModel.activeText = $0 }
+            ),
             placeholder: "여기에 메모… 마크다운 지원",
             fontSize: 13,
             monospaced: true
         )
+        .id(viewModel.selectedID ?? "")
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
-        .onChange(of: viewModel.text) { _, _ in
-            viewModel.onTextChanged()
-        }
     }
-
-    // MARK: - Footer
 
     private var footer: some View {
         LumenFooterBar(actions: [
-            .init(label: "모드 전환", kbd: "⌘⇧E", primary: true),
+            .init(label: "새 노트", kbd: "⌘N", primary: true),
+            .init(label: "모드 전환", kbd: "⌘⇧E"),
             .init(label: "닫기", kbd: "⌘W"),
-            .init(label: "패널", kbd: "⌘⇧X"),
         ])
+    }
+}
+
+// MARK: - Sidebar
+
+private struct NotesSidebar: View {
+    @Bindable var viewModel: NotesViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            sidebarHeader
+            LumenHairline()
+            ScrollView {
+                LazyVStack(spacing: 1) {
+                    ForEach(Array(viewModel.notes.enumerated()), id: \.element.id) { index, note in
+                        SidebarRow(
+                            note: note,
+                            index: index,
+                            isSelected: viewModel.selectedID == note.id,
+                            onSelect: { viewModel.selectNote(id: note.id) }
+                        )
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .frame(maxHeight: .infinity)
+        .background(LumenTokens.BG.sidePanel)
+    }
+
+    private var sidebarHeader: some View {
+        HStack(spacing: 8) {
+            Text("노트")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.4)
+                .foregroundStyle(LumenTokens.TextColor.muted)
+            Spacer()
+            Button {
+                viewModel.createNewNote(activate: true)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("새 노트 (⌘N)")
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 44)
+    }
+}
+
+private struct SidebarRow: View {
+    let note: NoteItem
+    let index: Int
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(note.displayTitle)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if index < 9 {
+                        Text("⌘\(index + 1)")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                            .padding(.horizontal, 3)
+                            .frame(minWidth: 18, minHeight: 13)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                            )
+                    }
+                }
+                if !note.preview.isEmpty {
+                    Text(note.preview)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(isSelected ? LumenTokens.Accent.amber.opacity(0.18) : .clear, lineWidth: 0.5)
+                    )
+            )
+            .overlay(alignment: .leading) {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(LumenTokens.Accent.amber)
+                        .frame(width: 2)
+                        .padding(.vertical, 4)
+                        .padding(.leading, 1)
+                        .shadow(color: LumenTokens.Accent.amberDim, radius: 4)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Save status
 
 private struct SaveStatusView: View {
-    let state: NoteViewModel.SaveStatus
+    let state: NotesViewModel.SaveStatus
 
     var body: some View {
         HStack(spacing: 7) {
@@ -186,4 +314,3 @@ private struct ModeToggle: View {
         )
     }
 }
-

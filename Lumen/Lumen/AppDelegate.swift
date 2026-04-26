@@ -116,7 +116,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                   window.isVisible
             else { return }
             let cls = String(describing: type(of: window))
+            // Sparkle 업데이트 알림(SP/SU…) 무시.
             if cls.hasPrefix("SP") || cls.hasPrefix("SU") { return }
+            // SwiftUI/AppKit이 패널 안에서 띄우는 보조 윈도우(alert, popover 백업 등)는
+            // 우리 패널의 자식이므로 무시 — 닫혀버리면 사용자 입력 흐름이 끊긴다.
+            //   • _NSAlertPanel / NSAlertWindow 등 NSAlert 계열
+            //   • _NSPopoverWindow (메뉴/툴팁)
+            //   • parentWindow가 우리 KeyablePanel인 경우 일반화로 처리
+            if cls.contains("Alert") || cls.contains("Popover") { return }
+            if window.parent is KeyablePanel { return }
             for case let panel as KeyablePanel in NSApp.windows where panel.isVisible {
                 panel.activatePreviousAppOnClose = false
                 panel.orderOut(nil)

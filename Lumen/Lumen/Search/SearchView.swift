@@ -48,7 +48,7 @@ struct SearchView: View {
     private var searchInput: some View {
         LumenInputField(
             text: $viewModel.query,
-            placeholder: "앱 검색, 명령 실행, 계산…",
+            placeholder: "앱 검색, 명령 실행, 계산, 환율…",
             fontSize: 18,
             leading: {
                 Image(systemName: "magnifyingglass")
@@ -143,7 +143,7 @@ struct SearchView: View {
                     LazyVStack(spacing: 1) {
                         ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, item in
                             switch item {
-                            case .app, .calculation:
+                            case .app, .calculation, .currency:
                                 resultRow(item: item, index: index)
                             case .feature:
                                 EmptyView()
@@ -167,7 +167,13 @@ struct SearchView: View {
     }
 
     private var resultsHeaderLabel: String {
-        if let first = viewModel.results.first, case .calculation = first { return "계산" }
+        if let first = viewModel.results.first {
+            switch first {
+            case .calculation: return "계산"
+            case .currency:    return "환율"
+            default:           break
+            }
+        }
         return "결과"
     }
 
@@ -259,6 +265,38 @@ struct SearchView: View {
                 .foregroundStyle(LumenTokens.Accent.amber)
             }
 
+        case .currency(let input, let result, _):
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile)
+                        .fill(LumenTokens.Accent.violet.opacity(0.15))
+                    Image(systemName: "dollarsign.arrow.circlepath")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                }
+                .frame(width: 24, height: 24)
+
+                HStack(spacing: 8) {
+                    Text(input)
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    Text(result)
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.primary)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("복사")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(LumenTokens.Accent.violetSoft)
+            }
+
         case .feature:
             EmptyView()
         }
@@ -277,9 +315,9 @@ struct SearchView: View {
     private var footerActionLabel: String {
         if let item = viewModel.results[safe: viewModel.selectedIndex] {
             switch item {
-            case .calculation: return "결과 복사"
-            case .app:         return "열기"
-            case .feature:     return "실행"
+            case .calculation, .currency: return "결과 복사"
+            case .app:                    return "열기"
+            case .feature:                return "실행"
             }
         }
         return "열기"

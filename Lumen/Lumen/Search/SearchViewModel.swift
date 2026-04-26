@@ -5,12 +5,14 @@ enum SearchResultItem: Identifiable {
     case app(AppItem)
     case feature(BuiltInFeature)
     case calculation(expression: String, result: String)
+    case currency(input: String, result: String, copyValue: String)
 
     var id: String {
         switch self {
         case .app(let item): return "app_\(item.id)"
         case .feature(let f): return "feature_\(f.name)"
         case .calculation(let expr, _): return "calc_\(expr)"
+        case .currency(let input, _, _): return "fx_\(input)"
         }
     }
 
@@ -70,6 +72,10 @@ final class SearchViewModel {
             items.append(.calculation(expression: query, result: calcResult))
         }
 
+        if let fx = convertCurrency(query) {
+            items.append(fx)
+        }
+
         let matchedFeatures = FeatureRegistry.shared.search(query: query)
         features = matchedFeatures
 
@@ -112,6 +118,10 @@ final class SearchViewModel {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(result, forType: .string)
             onDismiss(true)
+        case .currency(_, _, let copyValue):
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(copyValue, forType: .string)
+            onDismiss(true)
         }
     }
 
@@ -124,6 +134,33 @@ final class SearchViewModel {
         query = ""
         selectedIndex = 0
         if allApps.isEmpty { loadApps() }
+    }
+
+    /// "100 usd", "5만원" 같은 입력을 환산 결과 행으로. 캐시된 환율이 없으면 nil.
+    private func convertCurrency(_ query: String) -> SearchResultItem? {
+        guard let match = CurrencyQuery.parse(query),
+              let converted = CurrencyService.shared.convert(amount: match.amount,
+                                                             from: match.from,
+                                                             to: match.to) else { return nil }
+
+        let inputLabel  = "\(formatCurrency(match.amount, code: match.from)) \(match.from)"
+        let resultLabel = "\(formatCurrency(converted, code: match.to)) \(match.to)"
+        let copyValue   = formatCurrency(converted, code: match.to)
+        return .currency(input: inputLabel, result: resultLabel, copyValue: copyValue)
+    }
+
+    /// KRW/JPY는 정수, 그 외는 소수점 2자리. 천단위 콤마.
+    private func formatCurrency(_ value: Double, code: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        if code == "KRW" || code == "JPY" {
+            formatter.maximumFractionDigits = 0
+        } else {
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 0
+        }
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 
     private func evaluate(_ expression: String) -> String? {

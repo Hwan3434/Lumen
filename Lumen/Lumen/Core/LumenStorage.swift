@@ -40,6 +40,7 @@ enum LumenStorage {
         case usageHistory
         case claudeJSONLCache
         case resourceAnomalies
+        case currencyRates
 
         var relativePath: String {
             switch self {
@@ -51,6 +52,7 @@ enum LumenStorage {
             case .usageHistory:        return "usage_history.json"
             case .claudeJSONLCache:    return "jsonl_cache.json"
             case .resourceAnomalies:   return "resource_anomalies.json"
+            case .currencyRates:       return "currency_rates.json"
             }
         }
 

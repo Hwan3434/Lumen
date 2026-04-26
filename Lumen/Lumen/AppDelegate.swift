@@ -1,5 +1,4 @@
 import AppKit
-import os
 import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -98,32 +97,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로,
-        // non-panel 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다.
-        // Cmd+, 의 기본 시스템 경로는 그대로 두고 여기서만 후처리.
-        //
-        // window.isVisible 가드가 중요: 첫 ⌘Space에 NSApp.activate()가 처음
-        // 호출되는 순간 macOS가 보이지 않는 placeholder NSWindow(AppKit 내부
-        // helper / Sparkle background updater 등)를 잠깐 key로 만드는 케이스가
-        // 있어, 그 알림에 우리 옵저버가 막 떠올린 search panel을 도로 닫아버리는
-        // race가 있었다. visible한 NSWindow가 key를 가져갔을 때만 우리 패널을 내린다.
+        // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로, non-panel
+        // 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다. 두 가지 가드로
+        // 부모 앱이 띄우지 않은 transient/framework window는 무시한다:
+        //   • isVisible — 보이지 않는 helper window(첫 NSApp.activate 시 잠깐 등장)
+        //   • SP/SU prefix — Sparkle 자동 업데이트 알림(SPRoundedWindow 등). 첫
+        //     ⌘Space ~300ms 후에 떠서 검색창을 도로 내려버리는 사례가 있었음.
         keyWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
         ) { notification in
-            guard let window = notification.object as? NSWindow else { return }
+            guard let window = notification.object as? NSWindow,
+                  !(window is KeyablePanel),
+                  window.isVisible
+            else { return }
             let cls = String(describing: type(of: window))
-            let isPanel = window is KeyablePanel
-            // Sparkle 업데이트 알림 윈도우(SUUpdateAlert / SPRoundedWindow 등)가
-            // 백그라운드 체크 후 키를 가져갈 수 있다 — 사용자가 명시적으로 띄운 게
-            // 아니므로 우리 패널을 닫으면 안 된다. SP 또는 SU 접두사로 시작하는
-            // 클래스는 Sparkle 소속으로 간주.
-            let isSparkleWindow = cls.hasPrefix("SP") || cls.hasPrefix("SU")
-            LumenLog.ui.debug("didBecomeKey class=\(cls, privacy: .public) visible=\(window.isVisible) isPanel=\(isPanel) sparkle=\(isSparkleWindow)")
-
-            guard !isPanel, !isSparkleWindow, window.isVisible else { return }
-            LumenLog.ui.notice("non-panel window took key → dismissing visible panels (class=\(cls, privacy: .public))")
+            if cls.hasPrefix("SP") || cls.hasPrefix("SU") { return }
             for case let panel as KeyablePanel in NSApp.windows where panel.isVisible {
                 panel.activatePreviousAppOnClose = false
                 panel.orderOut(nil)

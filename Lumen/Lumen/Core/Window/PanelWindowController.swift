@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import os
 
 /// KeyablePanel 기반 floating window controller의 공통 base class.
 /// 생명주기(show/hide), 스페이스 전환 감지, 이전 앱 복귀 제어를 담당한다.
@@ -90,8 +89,6 @@ class PanelWindowController: NSObject {
     }
 
     func hide(activatePreviousApp: Bool = true) {
-        let cls = String(describing: type(of: self))
-        LumenLog.ui.notice("hide called controller=\(cls, privacy: .public) activatePrev=\(activatePreviousApp)")
         willHide()
         let shouldActivate = activatePreviousApp && !spaceChangedSinceShow
         panel?.activatePreviousAppOnClose = shouldActivate

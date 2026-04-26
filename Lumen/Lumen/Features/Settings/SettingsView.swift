@@ -365,6 +365,7 @@ private struct JiraSettingsTab: View {
 
     @State private var enabled: Bool = false
     @State private var cloudId: String = ""
+    @State private var workspaceSlug: String = ""
     @State private var email: String = ""
     @State private var token: String = ""
     @State private var projects: [JiraProjectEntry] = []
@@ -396,8 +397,12 @@ private struct JiraSettingsTab: View {
                     VStack(alignment: .leading, spacing: 22) {
                         SettingsSection(title: "Jira 자격증명") {
                             SettingsField(label: "Cloud ID",
-                                          hint: "Atlassian URL의 서브도메인 — https://{Cloud ID}.atlassian.net") {
-                                LumenTextField(text: $cloudId, placeholder: "your-workspace", monospaced: true)
+                                          hint: "Atlassian tenant 식별자 (UUID). https://{워크스페이스}.atlassian.net/_edge/tenant_info 에서 확인.") {
+                                LumenTextField(text: $cloudId, placeholder: "00000000-0000-0000-0000-000000000000", monospaced: true)
+                            }
+                            SettingsField(label: "워크스페이스 URL",
+                                          hint: "브라우저 주소의 서브도메인. https://{여기}.atlassian.net") {
+                                LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
                             }
                             SettingsField(label: "Email") {
                                 LumenTextField(text: $email, placeholder: "you@example.com")
@@ -472,6 +477,7 @@ private struct JiraSettingsTab: View {
             wireActionVM()
         }
         .onChange(of: cloudId) { _, _ in updateDirty() }
+        .onChange(of: workspaceSlug) { _, _ in updateDirty() }
         .onChange(of: email) { _, _ in updateDirty() }
         .onChange(of: token) { _, _ in updateDirty() }
         .onChange(of: projects.map { "\($0.key)|\($0.name)" }.joined(separator: ",")) { _, _ in
@@ -481,10 +487,11 @@ private struct JiraSettingsTab: View {
 
     private func loadFromStore() {
         let store = CredentialsStore.shared
-        enabled = store.isJiraEnabled
-        cloudId = store.jiraCloudId
-        email   = store.jiraEmail
-        token   = store.jiraApiToken
+        enabled       = store.isJiraEnabled
+        cloudId       = store.jiraCloudId
+        workspaceSlug = store.jiraWorkspaceSlug
+        email         = store.jiraEmail
+        token         = store.jiraApiToken
         let nameMap = store.jiraProjectNameByKey
         projects = store.jiraProjectKeys.map { key in
             JiraProjectEntry(key: key, name: nameMap[key] ?? "")
@@ -503,7 +510,7 @@ private struct JiraSettingsTab: View {
 
     private func snapshot() -> String {
         let p = projects.map { "\($0.key)|\($0.name)" }.joined(separator: ",")
-        return "\(cloudId)|\(email)|\(token)|\(p)"
+        return "\(cloudId)|\(workspaceSlug)|\(email)|\(token)|\(p)"
     }
 
     private func updateDirty() {
@@ -515,7 +522,7 @@ private struct JiraSettingsTab: View {
         action.hidden = false
         action.save = {
             let store = CredentialsStore.shared
-            store.setJira(cloudId: cloudId, email: email, token: token)
+            store.setJira(cloudId: cloudId, workspaceSlug: workspaceSlug, email: email, token: token)
             store.setJiraProjectKeys(projects.map(\.key))
             var nameMap: [String: String] = [:]
             for entry in projects { nameMap[entry.key] = entry.name }

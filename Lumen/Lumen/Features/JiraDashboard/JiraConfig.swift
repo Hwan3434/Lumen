@@ -38,13 +38,13 @@ extension Constants {
         }
     }
 
-    /// Jira browse URL prefix — 사용자 cloudId(=`{tenant}`)에 따라 매번 다르므로
-    /// 사용자가 Settings에 입력한 값으로 동적 생성한다. 잘못/미입력 시 빈 문자열.
+    /// Jira browse URL prefix — 워크스페이스 slug(`{slug}.atlassian.net`)는 API용 cloudId(UUID)와
+    /// 다른 값이라 별도 필드(jiraWorkspaceSlug)를 쓴다. 미입력 시 빈 문자열.
     static var jiraBrowseURL: String {
-        let cloudId = CredentialsStore.shared.jiraCloudId
+        let slug = CredentialsStore.shared.jiraWorkspaceSlug
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cloudId.isEmpty else { return "" }
-        return "https://\(cloudId).atlassian.net/browse/"
+        guard !slug.isEmpty else { return "" }
+        return "https://\(slug).atlassian.net/browse/"
     }
 
     /// Jira "Start date" 커스텀 필드 ID

@@ -14,10 +14,11 @@ final class CredentialsStore {
     private let defaults = UserDefaults.standard
 
     private enum KCAccount {
-        static let jiraCloudId  = "jiraCloudId"
-        static let jiraEmail    = "jiraEmail"
-        static let jiraApiToken = "jiraApiToken"
-        static let openAIAPIKey = "openAIAPIKey"
+        static let jiraCloudId       = "jiraCloudId"
+        static let jiraWorkspaceSlug = "jiraWorkspaceSlug"
+        static let jiraEmail         = "jiraEmail"
+        static let jiraApiToken      = "jiraApiToken"
+        static let openAIAPIKey      = "openAIAPIKey"
     }
 
     private enum UDKey {
@@ -31,10 +32,14 @@ final class CredentialsStore {
 
     // MARK: - Read
 
-    var jiraCloudId:  String { Keychain.read(KCAccount.jiraCloudId)  ?? Constants.jiraCloudId  }
-    var jiraEmail:    String { Keychain.read(KCAccount.jiraEmail)    ?? Constants.jiraEmail    }
-    var jiraApiToken: String { Keychain.read(KCAccount.jiraApiToken) ?? Constants.jiraApiToken }
-    var openAIAPIKey: String { Keychain.read(KCAccount.openAIAPIKey) ?? Constants.openAIAPIKey }
+    /// Atlassian Cloud ID (=tenantId, UUID 형태). API path에 들어간다:
+    /// `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/...`
+    var jiraCloudId:        String { Keychain.read(KCAccount.jiraCloudId)       ?? Constants.jiraCloudId  }
+    /// 워크스페이스 URL slug (브라우저 표기용). `https://{slug}.atlassian.net/browse/...`
+    var jiraWorkspaceSlug:  String { Keychain.read(KCAccount.jiraWorkspaceSlug) ?? "" }
+    var jiraEmail:          String { Keychain.read(KCAccount.jiraEmail)         ?? Constants.jiraEmail    }
+    var jiraApiToken:       String { Keychain.read(KCAccount.jiraApiToken)      ?? Constants.jiraApiToken }
+    var openAIAPIKey:       String { Keychain.read(KCAccount.openAIAPIKey)      ?? Constants.openAIAPIKey }
 
     /// Jira 대시보드가 조회할 프로젝트 key 목록. UserDefaults에 저장된 값이 있으면 그것을,
     /// 없으면 Constants.defaultJiraProjectKeys 를 반환한다.
@@ -75,10 +80,11 @@ final class CredentialsStore {
 
     // MARK: - Write (Settings UI)
 
-    func setJira(cloudId: String, email: String, token: String) {
-        Keychain.write(sanitize(cloudId), for: KCAccount.jiraCloudId)
-        Keychain.write(sanitize(email),   for: KCAccount.jiraEmail)
-        Keychain.write(sanitize(token),   for: KCAccount.jiraApiToken)
+    func setJira(cloudId: String, workspaceSlug: String, email: String, token: String) {
+        Keychain.write(sanitize(cloudId),       for: KCAccount.jiraCloudId)
+        Keychain.write(sanitize(workspaceSlug), for: KCAccount.jiraWorkspaceSlug)
+        Keychain.write(sanitize(email),         for: KCAccount.jiraEmail)
+        Keychain.write(sanitize(token),         for: KCAccount.jiraApiToken)
     }
 
     /// 대소문자/공백 정규화 후 중복을 제거한 상태로 저장한다.
@@ -137,6 +143,7 @@ final class CredentialsStore {
     /// Jira 자격증명 + 프로젝트 목록 + 별칭을 제거 — 다음 read부터 Constants 기본값 폴백.
     func resetJira() {
         Keychain.delete(KCAccount.jiraCloudId)
+        Keychain.delete(KCAccount.jiraWorkspaceSlug)
         Keychain.delete(KCAccount.jiraEmail)
         Keychain.delete(KCAccount.jiraApiToken)
         defaults.removeObject(forKey: UDKey.jiraProjectKeys)
@@ -150,7 +157,10 @@ final class CredentialsStore {
     // MARK: - Convenience
 
     var isJiraConfigured: Bool {
-        !jiraCloudId.isEmpty && !jiraEmail.isEmpty && !jiraApiToken.isEmpty
+        !jiraCloudId.isEmpty
+            && !jiraWorkspaceSlug.isEmpty
+            && !jiraEmail.isEmpty
+            && !jiraApiToken.isEmpty
     }
 
     var isOpenAIConfigured: Bool {

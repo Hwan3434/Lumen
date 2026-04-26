@@ -154,4 +154,10 @@ final class TranslatorViewModel {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(pron, forType: .string)
     }
+
+    func copyInputPronunciation() {
+        guard let pron = inputPronunciationText else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(pron, forType: .string)
+    }
 }

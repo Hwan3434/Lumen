@@ -37,6 +37,13 @@ enum LumenTokens {
         static let kbd: CGFloat = 4
         static let appTile: CGFloat = 6
     }
+
+    enum ErrorTone {
+        static let title  = Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255)
+        static let icon   = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255)
+        static let bg     = Color(red: 1.0, green: 90/255, blue: 90/255).opacity(0.04)
+        static let border = Color(red: 1.0, green: 110/255, blue: 110/255).opacity(0.18)
+    }
 }
 
 struct LumenSectionLabel: View {

@@ -47,8 +47,8 @@ enum Constants {
     static let searchWindowHeight: CGFloat = 600
 
     // MARK: - Translator Window
-    static let translatorWindowWidth: CGFloat = 700
-    static let translatorWindowHeight: CGFloat = 560
+    static let translatorWindowWidth: CGFloat = 760
+    static let translatorWindowHeight: CGFloat = 620
 
     // MARK: - OpenAI
     static let openAIAPIKey = ""

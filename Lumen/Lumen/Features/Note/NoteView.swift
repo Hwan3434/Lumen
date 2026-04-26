@@ -90,7 +90,7 @@ struct NoteView: View {
     private var footer: some View {
         LumenFooterBar(actions: [
             .init(label: "모드 전환", kbd: "⌘⇧E", primary: true),
-            .init(label: "닫기", kbd: "esc"),
+            .init(label: "닫기", kbd: "⌘W"),
             .init(label: "패널", kbd: "⌘⇧X"),
         ])
     }

@@ -10,6 +10,11 @@ class PanelWindowController: NSObject {
 
     var panel: KeyablePanel?
 
+    /// 단일 패널 정책: true면 show 시 다른 exclusive 패널을 모두 닫고,
+    /// 다른 exclusive 패널이 show 될 때 자기도 닫힘. Note처럼 "옆에 그냥 떠 있어도
+    /// 좋은" 패널만 false로 설정해 정책 밖에 둔다.
+    var isExclusive: Bool { true }
+
     private var spaceObserver: Any?
     /// 패널이 열린 뒤 스페이스가 바뀌었으면 hide 시 이전 앱 activate 금지
     /// (그렇지 않으면 다른 스페이스에서 닫을 때 이전 스페이스로 딸려감).
@@ -62,6 +67,8 @@ class PanelWindowController: NSObject {
         }
         guard let panel else { return }
 
+        if isExclusive { Self.hideOtherExclusivePanels(except: self) }
+
         spaceChangedSinceShow = false
         panel.activatePreviousAppOnClose = true
         panel.previousApp = NSWorkspace.shared.frontmostApplication
@@ -70,6 +77,15 @@ class PanelWindowController: NSObject {
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate()
         didShow(panel)
+    }
+
+    /// `caller`를 제외한 모든 visible exclusive 패널을 닫는다.
+    /// 이전 앱 복귀를 막아 — 우리 앱 안에서의 패널 전환은 외부 앱에 포커스를 보내지 않는다.
+    private static func hideOtherExclusivePanels(except caller: PanelWindowController) {
+        for controller in registry.allObjects where controller !== caller {
+            guard controller.isExclusive, controller.isVisible else { continue }
+            controller.hide(activatePreviousApp: false)
+        }
     }
 
     func hide(activatePreviousApp: Bool = true) {

@@ -3,6 +3,10 @@ import SwiftUI
 import Carbon.HIToolbox
 
 final class NoteWindowController: PanelWindowController {
+    /// Note는 단일 패널 정책 예외 — 다른 패널과 나란히 떠 있을 수 있고,
+    /// 다른 패널이 떠도 자기는 안 닫는다.
+    override var isExclusive: Bool { false }
+
     private static let panelSize = NSSize(width: 580, height: 680)
     private var viewModel: NoteViewModel?
     private var previewMonitor: Any?
@@ -33,12 +37,18 @@ final class NoteWindowController: PanelWindowController {
             return false
         }
 
-        // Cmd+Shift+E로 미리보기 토글 — sendEvent 오버라이드 대신 로컬 모니터 사용
+        // 로컬 키 모니터: ⌘⇧E (preview toggle), ⌘W (close).
+        // sendEvent 오버라이드 대신 modifier가 들어간 키만 여기서 잡는다 — 단순 키
+        // (esc, ↑↓⏎)는 KeyablePanel.onKeyEvent 경로 그대로 사용.
         previewMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
             guard let panel, panel.isKeyWindow else { return event }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if flags == [.command, .shift] && event.keyCode == UInt16(kVK_ANSI_E) {
                 self?.viewModel?.togglePreview()
+                return nil
+            }
+            if flags == .command && event.keyCode == UInt16(kVK_ANSI_W) {
+                self?.hide()
                 return nil
             }
             return event

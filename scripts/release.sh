@@ -56,15 +56,17 @@ xcodebuild \
   DEVELOPMENT_TEAM="" \
   archive >/dev/null
 
+rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR"
 cp -R "$ARCHIVE/Products/Applications/Lumen.app" "$APP_DIR/"
 
 # 검증: Lumen Self-Signed 가 실제로 서명에 사용됐는지
-SIGNER=$(codesign -dv "$APP_DIR/Lumen.app" 2>&1 | grep "Authority=" | head -1)
-echo "  signer: $SIGNER"
-if ! echo "$SIGNER" | grep -q "Lumen Self-Signed"; then
-  echo "  WARN: 서명이 'Lumen Self-Signed'가 아님 — Keychain 항목 확인 필요"
-fi
+SIGNER=$(codesign -dvvv "$APP_DIR/Lumen.app" 2>&1 | awk -F= '/Authority=/{print $2; exit}' || true)
+echo "  signer: ${SIGNER:-<unknown>}"
+case "$SIGNER" in
+  "Lumen Self-Signed") ;;
+  *) echo "  WARN: 서명이 'Lumen Self-Signed'가 아님 — Keychain 항목 확인 필요" ;;
+esac
 
 echo "[2/5] zip..."
 ditto -c -k --keepParent "$APP_DIR/Lumen.app" "$ZIP"

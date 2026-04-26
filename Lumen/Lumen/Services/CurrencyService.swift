@@ -3,10 +3,13 @@ import Foundation
 /// open.er-api.com 무료 API에서 USD 기준 환율을 받아 LumenStorage에 캐싱.
 /// 앱 시작 시 24시간 경과 캐시면 백그라운드 갱신, 그 외에는 캐시만으로 변환.
 /// 외부 의존성(네트워크)이 죽어도 캐시가 있으면 변환은 계속 동작한다.
+///
+/// rates/lastUpdated가 init·백그라운드 fetch·convert 호출에서 모두 접근되므로
+/// MainActor 격리로 데이터 레이스를 방지한다. 호출자(SearchViewModel)도 메인.
+@MainActor
 final class CurrencyService {
     static let shared = CurrencyService()
 
-    /// 디스크 + 메모리에 들고 있는 가장 최근 환율 (USD 1당 X 통화).
     private(set) var rates: [String: Double] = [:]
     private(set) var lastUpdated: Date?
 
@@ -32,9 +35,7 @@ final class CurrencyService {
         if let updated = lastUpdated, Date().timeIntervalSince(updated) < 86_400 {
             return
         }
-        Task.detached(priority: .background) { [weak self] in
-            await self?.fetch()
-        }
+        Task { await fetch() }
     }
 
     private func fetch() async {
@@ -42,11 +43,9 @@ final class CurrencyService {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let resp = try JSONDecoder().decode(APIResponse.self, from: data)
-            await MainActor.run {
-                self.rates = resp.rates
-                self.lastUpdated = Date()
-                LumenStorage.write(Cache(rates: resp.rates, updated: Date()), to: .currencyRates)
-            }
+            self.rates = resp.rates
+            self.lastUpdated = Date()
+            LumenStorage.write(Cache(rates: resp.rates, updated: Date()), to: .currencyRates)
         } catch {
             // 캐시가 있으면 그걸 쓰고, 없으면 다음 refresh까지 변환은 비활성.
         }
@@ -60,6 +59,20 @@ final class CurrencyService {
         guard let fromRate = (f == "USD") ? 1.0 : rates[f],
               let toRate   = (t == "USD") ? 1.0 : rates[t] else { return nil }
         return amount / fromRate * toRate
+    }
+
+    /// 통화별 자릿수 규칙 + 천단위 콤마. KRW/JPY는 정수, 그 외는 소수점 2자리.
+    static func format(_ value: Double, code: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        if code == "KRW" || code == "JPY" {
+            formatter.maximumFractionDigits = 0
+        } else {
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 0
+        }
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 }
 
@@ -91,7 +104,6 @@ enum CurrencyQuery {
         let sorted = aliases.sorted { $0.token.count > $1.token.count }
         guard let hit = sorted.first(where: { q.contains($0.token) }) else { return nil }
 
-        // alias 토큰을 제거해서 숫자 부분만 남기고, 한글 단위 (`만`, `천`) 처리.
         var numberPart = q.replacingOccurrences(of: hit.token, with: " ")
         numberPart = numberPart.replacingOccurrences(of: ",", with: "")
 
@@ -106,7 +118,6 @@ enum CurrencyQuery {
         let s = raw.trimmingCharacters(in: .whitespaces)
         guard !s.isEmpty else { return nil }
 
-        // "5만", "5만원" 같은 패턴 — 숫자 + 만/천
         if let manRange = s.range(of: "만") {
             let head = String(s[..<manRange.lowerBound]).trimmingCharacters(in: .whitespaces)
             guard let n = Double(head) else { return nil }

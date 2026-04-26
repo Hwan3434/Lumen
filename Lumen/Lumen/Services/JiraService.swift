@@ -2,15 +2,27 @@ import Foundation
 
 // MARK: - Models
 
+/// Atlassian의 표준 statusCategory — 워크스페이스/언어 무관한 4분류 식별자.
+/// API의 raw string을 그대로 들고 다니지 않도록 디코드 시점에 변환한다.
+enum JiraStatusCategory: String {
+    case new            // statusCategory.key == "new" — to-do
+    case indeterminate  // statusCategory.key == "indeterminate" — in-progress
+    case done           // statusCategory.key == "done"
+    case undefined      // 알 수 없음 / 없음
+
+    init(rawAPIKey: String) {
+        self = JiraStatusCategory(rawValue: rawAPIKey) ?? .undefined
+    }
+}
+
 struct JiraIssue: Identifiable {
     let id: String
     let key: String
     let summary: String
     /// 워크스페이스 status 라벨 원문 (예: "In Progress", "진행중", "Code Review"). 표시 전용.
     let status: String
-    /// Atlassian 표준 statusCategory key — `new`/`indeterminate`/`done`/`undefined`.
     /// 분류·필터링은 모두 이 값으로 한다.
-    let statusCategoryKey: String
+    let statusCategory: JiraStatusCategory
     let priority: String
     let startDate: Date?
     let dueDate: Date?
@@ -19,20 +31,20 @@ struct JiraIssue: Identifiable {
     let issueType: String
     let projectKey: String
 
-    var isDone: Bool { statusCategoryKey == "done" }
+    var isDone: Bool { statusCategory == .done }
 }
 
 struct JiraStatusCounts {
-    var todo: Int = 0        // statusCategory == new
-    var inProgress: Int = 0  // statusCategory == indeterminate
-    var done: Int = 0        // statusCategory == done
+    var todo: Int = 0
+    var inProgress: Int = 0
+    var done: Int = 0
 
-    mutating func add(categoryKey: String) {
-        switch categoryKey {
-        case "new":           todo       += 1
-        case "indeterminate": inProgress += 1
-        case "done":          done       += 1
-        default:              todo       += 1
+    mutating func add(_ category: JiraStatusCategory) {
+        switch category {
+        case .new:           todo       += 1
+        case .indeterminate: inProgress += 1
+        case .done:          done       += 1
+        case .undefined:     todo       += 1
         }
     }
 }
@@ -220,8 +232,8 @@ final class JiraService {
             var byProjectCounts: [String: JiraStatusCounts] = [:]
 
             for issue in thisWeek {
-                weekCounts.add(categoryKey: issue.statusCategoryKey)
-                byProjectCounts[issue.projectKey, default: JiraStatusCounts()].add(categoryKey: issue.statusCategoryKey)
+                weekCounts.add(issue.statusCategory)
+                byProjectCounts[issue.projectKey, default: JiraStatusCounts()].add(issue.statusCategory)
             }
 
             let projectStats: [ProjectWeekStats] = Constants.jiraProjects.map { proj in
@@ -303,7 +315,8 @@ final class JiraService {
 
         let statusObj     = fields["status"] as? [String: Any]
         let statusName    = statusObj?["name"] as? String ?? ""
-        let categoryKey   = (statusObj?["statusCategory"] as? [String: Any])?["key"] as? String ?? "undefined"
+        let categoryRaw   = (statusObj?["statusCategory"] as? [String: Any])?["key"] as? String ?? "undefined"
+        let category      = JiraStatusCategory(rawAPIKey: categoryRaw)
         let priorityName  = (fields["priority"] as? [String: Any])?["name"] as? String ?? "Medium"
         let issueTypeName = (fields["issuetype"] as? [String: Any])?["name"] as? String ?? ""
         let projectKey    = (fields["project"] as? [String: Any])?["key"] as? String ?? ""
@@ -331,7 +344,7 @@ final class JiraService {
         return JiraIssue(
             id: key, key: key, summary: summary,
             status: statusName,
-            statusCategoryKey: categoryKey,
+            statusCategory: category,
             priority: priorityName, startDate: startDate, dueDate: dueDate,
             resolutionDate: resolutionDate, created: created,
             issueType: issueTypeName, projectKey: projectKey

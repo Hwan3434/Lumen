@@ -38,6 +38,11 @@ final class NotesViewModel {
     var isPreview = false
     var saveStatus: SaveStatus = .resting
 
+    /// 키 입력은 이 드래프트만 갱신하고, 디바운스 만료 시점에만 `notes`로 commit한다.
+    /// 사이드바가 매 keystroke마다 displayTitle/preview를 다시 계산하지 않게 하려는 분리.
+    /// 노트 전환·외부 commit 시점에 동기화된다.
+    var activeText: String = ""
+
     /// 현재 선택된 노트 인덱스 — 키 핸들러가 ⌘1~9 매핑할 때 사용.
     var selectedIndex: Int? {
         guard let selectedID else { return nil }
@@ -55,25 +60,25 @@ final class NotesViewModel {
         if notes.isEmpty {
             createNewNote(activate: true)
         } else if selectedID == nil {
-            selectedID = notes.first?.id
+            selectNote(id: notes.first!.id)
         }
     }
 
     // MARK: - Selection / Tabs
 
-    /// 활성 탭의 본문에 직접 바인딩 (없으면 빈 문자열 반환 / 무시).
-    var activeText: String {
-        get { notes.first { $0.id == selectedID }?.text ?? "" }
-        set {
-            guard let idx = notes.firstIndex(where: { $0.id == selectedID }) else { return }
-            notes[idx].text = newValue
-            scheduleSave(for: notes[idx])
-        }
+    /// View에서 매 keystroke마다 호출 — 드래프트만 갱신하고 디바운스 commit 예약.
+    func draftDidChange(_ newValue: String) {
+        guard activeText != newValue else { return }
+        activeText = newValue
+        scheduleCommitAndSave()
     }
 
     func selectNote(id: String) {
         guard notes.contains(where: { $0.id == id }) else { return }
+        // 노트 전환 전, 펜딩 변경분이 있으면 즉시 commit해서 잃지 않도록 한다.
+        commitDraftNow()
         selectedID = id
+        activeText = notes.first { $0.id == id }?.text ?? ""
         isPreview = false
         saveStatus = .resting
     }
@@ -96,16 +101,24 @@ final class NotesViewModel {
     }
 
     func createNewNote(activate: Bool) {
+        if activate { commitDraftNow() }
         let id = String(Int(Date().timeIntervalSince1970 * 1000))
         let item = NoteItem(id: id, text: "")
         notes.append(item)
         writeToDisk(item)
-        if activate { selectNote(id: id) }
+        if activate {
+            selectedID = id
+            activeText = ""
+            isPreview = false
+            saveStatus = .resting
+        }
     }
 
     /// 마지막 한 개는 지울 수 없음 — 항상 빈 노트라도 하나는 남겨둔다.
     func deleteCurrent() {
         guard notes.count > 1, let idx = selectedIndex else { return }
+        // 삭제 대상의 펜딩 commit은 의미 없으니 cancel.
+        saveWorkItem?.cancel()
         let id = notes[idx].id
         notes.remove(at: idx)
         try? FileManager.default.removeItem(at: fileURL(for: id))
@@ -115,18 +128,33 @@ final class NotesViewModel {
 
     // MARK: - Editing
 
-    func togglePreview() { isPreview.toggle() }
+    func togglePreview() {
+        // 미리보기로 전환할 때는 draft를 commit해서 미리보기가 stale하지 않게.
+        if !isPreview { commitDraftNow() }
+        isPreview.toggle()
+    }
 
-    private func scheduleSave(for note: NoteItem) {
+    /// keystroke 디바운스: 1초 후 draft를 notes 배열에 반영하고 디스크에 쓴다.
+    private func scheduleCommitAndSave() {
         saveStatus = .editing
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            self?.writeToDisk(note)
-            self?.saveStatus = .saved
-            self?.flashSavedReset()
+            self?.commitDraftNow()
         }
         saveWorkItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: item)
+    }
+
+    /// draft → notes 배열 커밋 + 디스크 저장 + saved flash. 이미 동일하면 무시.
+    private func commitDraftNow() {
+        saveWorkItem?.cancel()
+        guard let id = selectedID,
+              let idx = notes.firstIndex(where: { $0.id == id }),
+              notes[idx].text != activeText else { return }
+        notes[idx].text = activeText
+        writeToDisk(notes[idx])
+        saveStatus = .saved
+        flashSavedReset()
     }
 
     private func flashSavedReset() {

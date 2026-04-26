@@ -40,10 +40,12 @@ struct HiddenAppsSettingsTab: View {
             action.hidden = true
             action.dirty = false
             action.saved = false
-            // AppIndexer는 SearchViewModel이 들고 있어서 별도로 한 번 인덱싱.
-            // 자주 열리는 화면이 아니라 매번 다시 도는 비용이 부담스럽지 않다.
+            // 인덱싱은 디스크 스캔이라 메인 스레드 블록을 피해 백그라운드로.
             if allApps.isEmpty {
-                allApps = AppIndexer().loadApps()
+                Task.detached(priority: .userInitiated) {
+                    let apps = AppIndexer().loadApps()
+                    await MainActor.run { self.allApps = apps }
+                }
             }
         }
     }
@@ -52,9 +54,8 @@ struct HiddenAppsSettingsTab: View {
     /// 삭제된 앱이라면 매니저에 ID는 남아있지만 UI에선 자동으로 사라진다.
     /// 정렬은 이름순.
     private var hiddenApps: [AppItem] {
-        let ids = manager.hiddenIDs
-        return allApps
-            .filter { ids.contains($0.id) }
+        allApps
+            .filter { manager.isHidden($0.id) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 

@@ -35,11 +35,11 @@ struct PriorityDot: View {
 struct StatusBadge: View {
     /// 표시 라벨 — 워크스페이스가 보내준 status.name 원문.
     let label: String
-    /// 색상 분류용 — Atlassian statusCategory key.
-    let categoryKey: String
+    /// 색상 분류용 — Atlassian 표준 statusCategory.
+    let category: JiraStatusCategory
 
     var body: some View {
-        let key = JiraStatusKey(categoryKey: categoryKey)
+        let key = JiraStatusKey(category)
         Text(label)
             .font(.system(size: 10, weight: .medium))
             .tracking(0.1)
@@ -118,7 +118,7 @@ struct IssueRow: View {
             if let due = issue.dueDate {
                 DueLabel(date: due, isDone: issue.isDone, startDate: issue.startDate)
             }
-            StatusBadge(label: issue.status, categoryKey: issue.statusCategoryKey)
+            StatusBadge(label: issue.status, category: issue.statusCategory)
         }
         .padding(.horizontal, 8)
         .frame(height: 28)

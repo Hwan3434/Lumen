@@ -88,7 +88,7 @@ struct NoteView: View {
         LumenTextArea(
             text: Binding(
                 get: { viewModel.activeText },
-                set: { viewModel.activeText = $0 }
+                set: { viewModel.draftDidChange($0) }
             ),
             placeholder: "여기에 메모… 마크다운 지원",
             fontSize: 13,

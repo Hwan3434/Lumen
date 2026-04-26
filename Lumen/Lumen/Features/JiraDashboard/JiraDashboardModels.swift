@@ -1,35 +1,32 @@
 import SwiftUI
 
-/// Atlassian의 표준 statusCategory(언어/워크스페이스 무관 식별자)로 분류.
-/// `new`/`indeterminate`/`done`/`undefined` 4종 — workspace가 어떤 status 이름을 쓰든
-/// 이 카테고리로만 분기한다. 사용자가 보는 라벨은 issue.status 원문을 그대로 표시한다.
+/// JiraStatusCategory(데이터 분류) → 디자인 토큰(fg/bg) 매핑.
+/// UI에서 직접 categoryKey 문자열을 쓰지 않도록 이 한 곳에서 색을 결정한다.
 enum JiraStatusKey {
     case todo, inProgress, done, undefined
 
-    init(categoryKey: String) {
-        switch categoryKey {
-        case "new":            self = .todo
-        case "indeterminate":  self = .inProgress
-        case "done":           self = .done
-        default:               self = .undefined
+    init(_ category: JiraStatusCategory) {
+        switch category {
+        case .new:           self = .todo
+        case .indeterminate: self = .inProgress
+        case .done:          self = .done
+        case .undefined:     self = .undefined
         }
     }
 
     var fg: Color {
         switch self {
-        case .todo:       return LumenTokens.JiraStatusTone.todoFg
-        case .inProgress: return LumenTokens.JiraStatusTone.inProgressFg
-        case .done:       return LumenTokens.JiraStatusTone.completedFg
-        case .undefined:  return LumenTokens.JiraStatusTone.todoFg
+        case .todo, .undefined: return LumenTokens.JiraStatusTone.todoFg
+        case .inProgress:       return LumenTokens.JiraStatusTone.inProgressFg
+        case .done:             return LumenTokens.JiraStatusTone.completedFg
         }
     }
 
     var bg: Color {
         switch self {
-        case .todo:       return LumenTokens.JiraStatusTone.todoBg
-        case .inProgress: return LumenTokens.JiraStatusTone.inProgressBg
-        case .done:       return LumenTokens.JiraStatusTone.completedBg
-        case .undefined:  return LumenTokens.JiraStatusTone.todoBg
+        case .todo, .undefined: return LumenTokens.JiraStatusTone.todoBg
+        case .inProgress:       return LumenTokens.JiraStatusTone.inProgressBg
+        case .done:             return LumenTokens.JiraStatusTone.completedBg
         }
     }
 }

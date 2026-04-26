@@ -19,6 +19,7 @@ enum SearchResultItem: Identifiable {
 }
 
 @Observable
+@MainActor
 final class SearchViewModel {
     var query = "" {
         didSet { updateResults() }
@@ -143,24 +144,10 @@ final class SearchViewModel {
                                                              from: match.from,
                                                              to: match.to) else { return nil }
 
-        let inputLabel  = "\(formatCurrency(match.amount, code: match.from)) \(match.from)"
-        let resultLabel = "\(formatCurrency(converted, code: match.to)) \(match.to)"
-        let copyValue   = formatCurrency(converted, code: match.to)
+        let inputLabel  = "\(CurrencyService.format(match.amount, code: match.from)) \(match.from)"
+        let resultLabel = "\(CurrencyService.format(converted, code: match.to)) \(match.to)"
+        let copyValue   = CurrencyService.format(converted, code: match.to)
         return .currency(input: inputLabel, result: resultLabel, copyValue: copyValue)
-    }
-
-    /// KRW/JPY는 정수, 그 외는 소수점 2자리. 천단위 콤마.
-    private func formatCurrency(_ value: Double, code: String) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        if code == "KRW" || code == "JPY" {
-            formatter.maximumFractionDigits = 0
-        } else {
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 0
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 
     private func evaluate(_ expression: String) -> String? {

@@ -30,9 +30,14 @@ struct SearchView: View {
     private var mainPanel: some View {
         VStack(spacing: 0) {
             searchInput
-            quickRow
-            LumenHairline()
-                .padding(.horizontal, 18)
+            // Quick row가 빈 상태일 땐 search input의 자체 hairline 하나만
+            // 보이고 results 위에 또 그어지지 않도록 — quick row가 있는 경우에만
+            // 그 아래 구분선을 둔다.
+            if !viewModel.features.isEmpty {
+                quickRow
+                LumenHairline()
+                    .padding(.horizontal, 18)
+            }
             resultsList
             footer
         }
@@ -59,41 +64,34 @@ struct SearchView: View {
 
     // MARK: - Quick row (built-in features)
 
-    @ViewBuilder
     private var quickRow: some View {
-        if !viewModel.features.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                LumenSectionLabel(text: "빠른 실행")
-                    .padding(.horizontal, 18)
-                    .padding(.top, 14)
+        VStack(alignment: .leading, spacing: 10) {
+            LumenSectionLabel(text: "빠른 실행")
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.features, id: \.name) { feature in
-                            quickCard(feature: feature)
-                        }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.features, id: \.name) { feature in
+                        quickCard(feature: feature)
                     }
-                    .padding(.leading, 18)
-                    .padding(.trailing, 36)
-                    .padding(.bottom, 4)
                 }
-                .mask(
-                    // Soft right-edge fade — last 24px scrollable region
-                    // dissolves to transparent so cards read as horizontally
-                    // scrollable without leaking past the column.
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0),
-                            .init(color: .black, location: 0.92),
-                            .init(color: .clear, location: 1.0),
-                        ],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                )
-                .padding(.bottom, 12)
+                .padding(.leading, 18)
+                .padding(.trailing, 36)
+                .padding(.bottom, 4)
             }
-        } else {
-            Spacer().frame(height: 8)
+            .mask(
+                // 우측 끝 24px 페이드 — quick row가 가로 스크롤 가능하다는 시그널.
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.92),
+                        .init(color: .clear, location: 1.0),
+                    ],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .padding(.bottom, 12)
         }
     }
 

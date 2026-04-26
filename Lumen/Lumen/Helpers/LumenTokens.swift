@@ -44,6 +44,39 @@ enum LumenTokens {
         static let bg     = Color(red: 1.0, green: 90/255, blue: 90/255).opacity(0.04)
         static let border = Color(red: 1.0, green: 110/255, blue: 110/255).opacity(0.18)
     }
+
+    /// Jira 대시보드 전용 status·priority 색 매핑.
+    /// 6-way status 구분을 유지하되 Lumen 팔레트 안으로 끌어와, 진행중=violet, 보류=amber 등
+    /// 액센트 시스템과 의미적으로 정렬되게 한다. 자세한 사유는 디자인 spec 참고.
+    enum JiraStatusTone {
+        static let todoFg         = TextColor.muted
+        static let inProgressFg   = Accent.violet
+        static let onHoldFg       = Accent.amber
+        static let waitingFg      = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.55)
+        static let completedFg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255)
+        static let cancelledFg    = ErrorTone.icon
+
+        static let todoBg         = Color(red: 0x73/255, green: 0x6C/255, blue: 0x90/255).opacity(0.10)
+        static let inProgressBg   = Color(red: 0x7B/255, green: 0x6B/255, blue: 0xFF/255).opacity(0.14)
+        static let onHoldBg       = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.12)
+        static let waitingBg      = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.07)
+        static let completedBg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255).opacity(0.12)
+        static let cancelledBg    = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255).opacity(0.10)
+    }
+
+    enum JiraPriorityTone {
+        static let highest = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255)
+        static let high    = Color(red: 0xE2/255, green: 0xA4/255, blue: 0x72/255)
+        static let medium  = TextColor.muted
+        static let low     = Color(red: 0x9A/255, green: 0xAE/255, blue: 0xDB/255)
+        static let lowest  = Color(red: 0x70/255, green: 0x88/255, blue: 0xB8/255)
+    }
+
+    enum JiraTrendTone {
+        static let created   = Color(red: 0x7B/255, green: 0xA8/255, blue: 0xD9/255)
+        static let completed = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255)
+        static let grid      = Color.white.opacity(0.05)
+    }
 }
 
 struct LumenSectionLabel: View {

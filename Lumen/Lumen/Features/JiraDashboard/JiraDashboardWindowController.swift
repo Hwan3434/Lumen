@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 final class JiraDashboardWindowController: PanelWindowController {
-    private static let panelSize = NSSize(width: 1160, height: 700)
+    private static let panelSize = NSSize(width: 1160, height: 840)
 
     override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(

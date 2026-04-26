@@ -1,20 +1,21 @@
 import SwiftUI
 
+/// Result-row press feedback. Selected state is rendered by the row itself
+/// (amber stripe + tinted background), so this style only handles the brief
+/// scale dip on press without duplicating the selected fill.
 struct PressableRowStyle: ButtonStyle {
     let isSelected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
                     .fill(
                         configuration.isPressed
-                            ? Color.blue.opacity(0.5)
-                            : isSelected
-                                ? Color.blue.opacity(0.3)
-                                : Color.clear
+                            ? LumenTokens.Accent.amberDim.opacity(0.18)
+                            : Color.clear
                     )
             )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
     }
 }

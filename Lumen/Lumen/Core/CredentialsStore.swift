@@ -24,6 +24,8 @@ final class CredentialsStore {
         static let jiraProjectKeys     = "jiraProjectKeys"
         static let jiraProjectNames    = "jiraProjectNames"   // [String: String] — projectKey → 별칭
         static let claudeUsageEnabled  = "claudeUsageEnabled"
+        static let jiraEnabled         = "jiraEnabled"
+        static let openAIEnabled       = "openAIEnabled"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
     }
 
@@ -53,6 +55,22 @@ final class CredentialsStore {
         defaults.object(forKey: UDKey.claudeUsageEnabled) == nil
             ? false
             : defaults.bool(forKey: UDKey.claudeUsageEnabled)
+    }
+
+    /// Jira 기능 사용 여부. 자격증명과 별개로 사용자가 명시적으로 켜야 활성화된다.
+    /// OFF면 자격증명이 채워져 있어도 feature가 isEnabled=false가 되어 핫키·메뉴·검색
+    /// 어디에도 노출되지 않는다. 토글을 꺼도 자격증명은 보존된다.
+    var isJiraEnabled: Bool {
+        defaults.object(forKey: UDKey.jiraEnabled) == nil
+            ? false
+            : defaults.bool(forKey: UDKey.jiraEnabled)
+    }
+
+    /// OpenAI(Translator) 사용 여부. Jira와 같은 정책.
+    var isOpenAIEnabled: Bool {
+        defaults.object(forKey: UDKey.openAIEnabled) == nil
+            ? false
+            : defaults.bool(forKey: UDKey.openAIEnabled)
     }
 
     // MARK: - Write (Settings UI)
@@ -106,6 +124,14 @@ final class CredentialsStore {
 
     func setClaudeUsageEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: UDKey.claudeUsageEnabled)
+    }
+
+    func setJiraEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: UDKey.jiraEnabled)
+    }
+
+    func setOpenAIEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: UDKey.openAIEnabled)
     }
 
     /// Jira 자격증명 + 프로젝트 목록 + 별칭을 제거 — 다음 read부터 Constants 기본값 폴백.

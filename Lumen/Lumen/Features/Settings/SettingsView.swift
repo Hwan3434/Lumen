@@ -363,6 +363,7 @@ private struct JiraProjectEntry: Identifiable {
 private struct JiraSettingsTab: View {
     let action: SettingsActionViewModel
 
+    @State private var enabled: Bool = false
     @State private var cloudId: String = ""
     @State private var email: String = ""
     @State private var token: String = ""
@@ -373,18 +374,30 @@ private struct JiraSettingsTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                SettingsSection(title: "Jira 자격증명") {
-                    SettingsField(label: "Cloud ID") {
-                        LumenTextField(text: $cloudId, placeholder: "bankx-playplanet", monospaced: true)
-                    }
-                    SettingsField(label: "Email") {
-                        LumenTextField(text: $email, placeholder: "you@example.com")
-                    }
-                    SettingsField(label: "API Token",
-                                  hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
-                        LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
+                SettingsSection(title: "Jira") {
+                    SwitchRow(
+                        on: $enabled,
+                        title: "사용",
+                        description: "꺼져 있으면 Jira 대시보드 핫키와 메뉴 항목이 노출되지 않습니다. 자격증명은 꺼도 보존됩니다."
+                    ) { newValue in
+                        enabled = newValue
+                        CredentialsStore.shared.setJiraEnabled(newValue)
                     }
                 }
+
+                if enabled {
+                    SettingsSection(title: "Jira 자격증명") {
+                        SettingsField(label: "Cloud ID") {
+                            LumenTextField(text: $cloudId, placeholder: "bankx-playplanet", monospaced: true)
+                        }
+                        SettingsField(label: "Email") {
+                            LumenTextField(text: $email, placeholder: "you@example.com")
+                        }
+                        SettingsField(label: "API Token",
+                                      hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
+                            LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
+                        }
+                    }
 
                 SettingsSection(title: "대시보드 조회 프로젝트") {
                     VStack(alignment: .leading, spacing: 8) {
@@ -437,6 +450,7 @@ private struct JiraSettingsTab: View {
                         .foregroundStyle(LumenTokens.TextColor.muted)
                         .lineSpacing(3)
                 }
+                }
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 20)
@@ -456,6 +470,7 @@ private struct JiraSettingsTab: View {
 
     private func loadFromStore() {
         let store = CredentialsStore.shared
+        enabled = store.isJiraEnabled
         cloudId = store.jiraCloudId
         email   = store.jiraEmail
         token   = store.jiraApiToken
@@ -502,40 +517,54 @@ private struct JiraSettingsTab: View {
 private struct OpenAISettingsTab: View {
     let action: SettingsActionViewModel
 
+    @State private var enabled: Bool = false
     @State private var apiKey: String = ""
     @State private var initialSnapshot: String = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                SettingsSection(title: "OpenAI 자격증명") {
-                    SettingsField(label: "API Key",
-                                  hint: "번역 패널에서 사용합니다. platform.openai.com → API keys에서 발급.") {
-                        LumenTextField(text: $apiKey, placeholder: "sk-proj-…", secure: true)
+                SettingsSection(title: "OpenAI") {
+                    SwitchRow(
+                        on: $enabled,
+                        title: "사용",
+                        description: "꺼져 있으면 번역 패널 핫키와 메뉴 항목이 노출되지 않습니다. API Key는 꺼도 보존됩니다."
+                    ) { newValue in
+                        enabled = newValue
+                        CredentialsStore.shared.setOpenAIEnabled(newValue)
                     }
                 }
 
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 13))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .padding(.top, 1)
-                    Text("키는 macOS 키체인에 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다.")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .lineSpacing(3)
+                if enabled {
+                    SettingsSection(title: "OpenAI 자격증명") {
+                        SettingsField(label: "API Key",
+                                      hint: "번역 패널에서 사용합니다. platform.openai.com → API keys에서 발급.") {
+                            LumenTextField(text: $apiKey, placeholder: "sk-proj-…", secure: true)
+                        }
+                    }
+
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                            .padding(.top, 1)
+                        Text("키는 macOS 키체인에 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다.")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                            .lineSpacing(3)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.white.opacity(0.02))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                            )
+                    )
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.02))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                        )
-                )
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 20)
@@ -549,7 +578,9 @@ private struct OpenAISettingsTab: View {
     }
 
     private func loadFromStore() {
-        apiKey = CredentialsStore.shared.openAIAPIKey
+        let store = CredentialsStore.shared
+        enabled = store.isOpenAIEnabled
+        apiKey = store.openAIAPIKey
         initialSnapshot = apiKey
         action.dirty = false
     }

@@ -90,7 +90,12 @@ final class JiraService {
 
     /// 자격증명 3종이 모두 설정되어 있어야 이 Service가 활성화된다.
     /// Feature.isEnabled 체크, FeatureRegistry 격리의 기준점.
-    static var isAvailable: Bool { CredentialsStore.shared.isJiraConfigured }
+    /// Jira 기능이 살아있는지 — 사용자가 Settings에서 켰고(`isJiraEnabled`)
+    /// 자격증명도 모두 채워져야(`isJiraConfigured`) true.
+    static var isAvailable: Bool {
+        let store = CredentialsStore.shared
+        return store.isJiraEnabled && store.isJiraConfigured
+    }
 
     var data: JiraDashboardData?
     var isLoading = false

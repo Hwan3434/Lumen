@@ -7,9 +7,12 @@ struct TranslationResult {
 }
 
 final class OpenAIService {
-    /// API 키가 존재하면 이 Service가 활성화된다.
-    /// TranslatorFeature.isEnabled 기준점.
-    static var isAvailable: Bool { CredentialsStore.shared.isOpenAIConfigured }
+    /// Translator 기능이 살아있는지 — Settings 토글 ON + API Key 채워졌을 때만 true.
+    /// TranslatorFeature.isEnabled의 기준점.
+    static var isAvailable: Bool {
+        let store = CredentialsStore.shared
+        return store.isOpenAIEnabled && store.isOpenAIConfigured
+    }
 
     // init 시점에 캡처 — 런타임 키 교체는 재시작 필요. JiraService와 동일 정책.
     private let apiKey: String

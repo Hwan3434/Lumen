@@ -11,6 +11,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         userDriverDelegate: nil
     )
     private var keyWindowObserver: NSObjectProtocol?
+    private var sparkleWindowObserver: NSObjectProtocol?
+    /// 같은 SP/SU 창에 중복 적용하지 않도록 한 번 처리한 창은 기억해둔다.
+    private var promotedSparkleWindows: Set<ObjectIdentifier> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppResourceMonitor.resetTrace()
@@ -106,6 +109,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         //   • isVisible — 보이지 않는 helper window(첫 NSApp.activate 시 잠깐 등장)
         //   • SP/SU prefix — Sparkle 자동 업데이트 알림(SPRoundedWindow 등). 첫
         //     ⌘Space ~300ms 후에 떠서 검색창을 도로 내려버리는 사례가 있었음.
+        // Sparkle 창(SP/SU…)을 풀스크린 다른 앱 위로 띄우기 위한 별도 옵저버 — didBecomeKey는
+        // "이미 키가 된 후"라 풀스크린 Space에서는 트리거 자체가 늦거나 안 올 수 있다.
+        // didBecomeMain은 창이 NSApp에 합류하는 시점에 더 안정적으로 발생한다.
+        sparkleWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeMainNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let window = notification.object as? NSWindow,
+                  !(window is KeyablePanel)
+            else { return }
+            let cls = String(describing: type(of: window))
+            guard cls.hasPrefix("SP") || cls.hasPrefix("SU") else { return }
+            let id = ObjectIdentifier(window)
+            guard !self.promotedSparkleWindows.contains(id) else { return }
+            self.promotedSparkleWindows.insert(id)
+            // .floating 보다 한 단계 더 위인 .modalPanel이 풀스크린 다른 앱 위로 더 안정적으로 뜬다.
+            // .canJoinAllSpaces + .fullScreenAuxiliary 가 풀스크린 Space에 합류하는 핵심 키.
+            window.level = .modalPanel
+            window.collectionBehavior.insert([.canJoinAllSpaces, .fullScreenAuxiliary])
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        }
+
         keyWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
@@ -116,7 +144,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                   window.isVisible
             else { return }
             let cls = String(describing: type(of: window))
-            // Sparkle 업데이트 알림(SP/SU…) 무시.
+            // Sparkle 업데이트 알림(SP/SU…)은 패널을 내리지 않는다.
+            // 풀스크린 위로 올리는 처리는 sparkleWindowObserver가 담당.
             if cls.hasPrefix("SP") || cls.hasPrefix("SU") { return }
             // SwiftUI/AppKit이 패널 안에서 띄우는 보조 윈도우(alert, popover 백업 등)는
             // 우리 패널의 자식이므로 무시 — 닫혀버리면 사용자 입력 흐름이 끊긴다.
@@ -136,6 +165,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let observer = keyWindowObserver {
             NotificationCenter.default.removeObserver(observer)
             keyWindowObserver = nil
+        }
+        if let observer = sparkleWindowObserver {
+            NotificationCenter.default.removeObserver(observer)
+            sparkleWindowObserver = nil
         }
         hotkeyManager.stop()
         FeatureRegistry.shared.teardownAll()

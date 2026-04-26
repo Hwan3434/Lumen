@@ -119,6 +119,10 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
     }
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {
+        // LSUIElement 앱이라 메뉴바에서 호출하면 Sparkle 알림창이 풀스크린 다른 앱
+        // 뒤에 깔린다. 먼저 우리 앱을 전면화 — 이후 창 등장 시 floating으로 승격하는
+        // 처리는 AppDelegate.keyWindowObserver가 담당.
+        NSApp.activate(ignoringOtherApps: true)
         updater.checkForUpdates()
     }
 

@@ -83,51 +83,132 @@ extension LumenInputField where Trailing == EmptyView {
 
 // MARK: - LumenTextArea (multi-line — Translator input, Note editor)
 //
-// TextEditor 기반. placeholder는 ZStack overlay로 그리되, TextEditor 내부의
-// NSTextView가 가지는 기본 textContainerInset (약 8pt top, 5pt leading)을
-// 동일하게 placeholder에 강제한다. 이러면 사용자가 입력하는 순간 caret이
-// placeholder가 보였던 자리에 정확히 등장한다.
-// .allowsHitTesting(false)로 placeholder가 클릭/포커스를 가로막지 못하게 한다.
+// AppKit NSTextView를 SwiftUI로 감싼 멀티라인 에디터. placeholder는
+// NSTextView 자체가 그리므로 caret과 placeholder의 정렬을 *AppKit이
+// 자기 좌표계 안에서* 보장한다 — 우리는 픽셀을 보정하지 않는다.
+// Safari 주소창·macOS 검색창이 단일라인에서 보여주는 자연스러운 동작을
+// 멀티라인으로 옮긴 형태.
 
 struct LumenTextArea: View {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = 17
     var monospaced: Bool = false
-    var autoFocus: Bool = true
-
-    @FocusState private var focused: Bool
-
-    /// macOS TextEditor 내부 NSTextView 기본 textContainerInset 보정값.
-    /// top/trailing은 글자 시작 위치를 그대로 따라가지만, leading은 caret이
-    /// 그려지는 자리(약 5pt) *오른쪽*으로 placeholder를 밀어서 caret과 글자가
-    /// 겹쳐 보이지 않게 한다 — Safari 주소창·macOS 검색창과 같은 관례.
-    private static let textViewInset = EdgeInsets(top: 8, leading: 9, bottom: 0, trailing: 5)
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            if text.isEmpty {
-                Text(placeholder)
-                    .font(font)
-                    .foregroundStyle(LumenTokens.TextColor.placeholder)
-                    .padding(Self.textViewInset)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .allowsHitTesting(false)
-            }
-            TextEditor(text: $text)
-                .font(font)
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .tint(LumenTokens.Accent.violetSoft)
-                .focused($focused)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear { if autoFocus { focused = true } }
+        TextAreaRepresentable(
+            text: $text,
+            placeholder: placeholder,
+            fontSize: fontSize,
+            monospaced: monospaced
+        )
+    }
+}
+
+private struct TextAreaRepresentable: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let fontSize: CGFloat
+    let monospaced: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.scrollerStyle = .overlay
+        scroll.autohidesScrollers = true
+
+        let textView = PlaceholderTextView()
+        textView.delegate = context.coordinator
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.usesFontPanel = false
+        textView.usesRuler = false
+        textView.usesInspectorBar = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.isContinuousSpellCheckingEnabled = false
+        textView.textContainerInset = NSSize(width: 0, height: 0)
+        textView.insertionPointColor = NSColor(LumenTokens.Accent.violetSoft)
+        textView.autoresizingMask = [.width]
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: 0, height: CGFloat.greatestFiniteMagnitude
+        )
+
+        applyAttributes(to: textView)
+        scroll.documentView = textView
+        return scroll
     }
 
-    private var font: Font {
-        .system(size: fontSize, design: monospaced ? .monospaced : .default)
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let textView = scroll.documentView as? PlaceholderTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+        applyAttributes(to: textView)
+    }
+
+    private func applyAttributes(to textView: PlaceholderTextView) {
+        let font = monospaced
+            ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            : NSFont.systemFont(ofSize: fontSize)
+        textView.font = font
+        textView.textColor = NSColor(LumenTokens.TextColor.primary)
+        textView.placeholderString = placeholder
+        textView.placeholderColor = NSColor(LumenTokens.TextColor.placeholder)
+        textView.placeholderFont = font
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        let parent: TextAreaRepresentable
+        init(_ parent: TextAreaRepresentable) { self.parent = parent }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent.text = textView.string
+        }
+    }
+}
+
+/// NSTextView 서브클래스로 placeholder를 *NSTextView 자기 좌표계*에서 직접 그린다.
+/// 첫 글자가 들어갈 자리는 `textContainerOrigin`이 가리키므로 그 origin을 그대로
+/// 쓰면 caret과 baseline이 자동으로 일치한다 — 픽셀 보정 불필요.
+private final class PlaceholderTextView: NSTextView {
+    var placeholderString: String = ""
+    var placeholderColor: NSColor = .placeholderTextColor
+    var placeholderFont: NSFont = .systemFont(ofSize: 13)
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard string.isEmpty, !placeholderString.isEmpty else { return }
+
+        let attrs: [NSAttributedString.Key: Any] = [
+            .foregroundColor: placeholderColor,
+            .font: placeholderFont,
+        ]
+        let attributed = NSAttributedString(string: placeholderString, attributes: attrs)
+
+        // 첫 글자가 그려질 origin = textContainerOrigin + lineFragment의 첫 줄 origin.
+        // 빈 텍스트일 때는 textContainerOrigin 자체가 첫 줄의 시작점이므로 거기 그린다.
+        let origin = textContainerOrigin
+        attributed.draw(at: origin)
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        // 비어있다 → 채워지거나, 채워졌다 → 비어지는 전이 시 placeholder 영역이
+        // 다시 그려지도록 강제. NSTextView 기본 동작은 텍스트 영역만 invalidate함.
+        needsDisplay = true
     }
 }
 

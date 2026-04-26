@@ -131,12 +131,9 @@ struct StatusGrid: View {
 
     private var cells: [StatusCellData] {
         [
-            .init(key: .todo,       label: "해야 할 일", icon: "circle.dashed",     count: counts.todo),
-            .init(key: .inProgress, label: "진행중",     icon: "play.circle",       count: counts.inProgress),
-            .init(key: .onHold,     label: "보류",       icon: "pause.circle",      count: counts.onHold),
-            .init(key: .waiting,    label: "대기",       icon: "hourglass",         count: counts.waiting),
-            .init(key: .completed,  label: "완료",       icon: "checkmark.circle",  count: counts.completed),
-            .init(key: .cancelled,  label: "취소",       icon: "xmark.circle",      count: counts.cancelled),
+            .init(key: .todo,       label: "할 일",   icon: "circle.dashed",    count: counts.todo),
+            .init(key: .inProgress, label: "진행중",  icon: "play.circle",      count: counts.inProgress),
+            .init(key: .done,       label: "완료",    icon: "checkmark.circle", count: counts.done),
         ]
     }
 

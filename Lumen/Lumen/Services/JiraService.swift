@@ -6,7 +6,11 @@ struct JiraIssue: Identifiable {
     let id: String
     let key: String
     let summary: String
+    /// 워크스페이스 status 라벨 원문 (예: "In Progress", "진행중", "Code Review"). 표시 전용.
     let status: String
+    /// Atlassian 표준 statusCategory key — `new`/`indeterminate`/`done`/`undefined`.
+    /// 분류·필터링은 모두 이 값으로 한다.
+    let statusCategoryKey: String
     let priority: String
     let startDate: Date?
     let dueDate: Date?
@@ -15,26 +19,20 @@ struct JiraIssue: Identifiable {
     let issueType: String
     let projectKey: String
 
-    var isDone: Bool { status == "완료" || status == "취소" }
-    var isCancelled: Bool { status == "취소" }
+    var isDone: Bool { statusCategoryKey == "done" }
 }
 
 struct JiraStatusCounts {
-    var todo: Int = 0        // 해야 할 일
-    var inProgress: Int = 0  // 진행중
-    var onHold: Int = 0      // 보류
-    var waiting: Int = 0     // 대기
-    var completed: Int = 0   // 완료
-    var cancelled: Int = 0   // 취소
+    var todo: Int = 0        // statusCategory == new
+    var inProgress: Int = 0  // statusCategory == indeterminate
+    var done: Int = 0        // statusCategory == done
 
-    mutating func add(_ status: String) {
-        switch status {
-        case "완료":       completed  += 1
-        case "진행중":     inProgress += 1
-        case "보류":       onHold     += 1
-        case "대기":       waiting    += 1
-        case "취소":       cancelled  += 1
-        default:           todo       += 1
+    mutating func add(categoryKey: String) {
+        switch categoryKey {
+        case "new":           todo       += 1
+        case "indeterminate": inProgress += 1
+        case "done":          done       += 1
+        default:              todo       += 1
         }
     }
 }
@@ -72,7 +70,6 @@ struct JiraDashboardData {
     let thisWeekIssues: [JiraIssue]
     let highestIncomplete: [JiraIssue]
     let overdueIncomplete: [JiraIssue]
-    let blockedIssues: [JiraIssue]
     let completedLast30: [JiraIssue]
     let createdLast30: [JiraIssue]
     let nextWeekIssues: [JiraIssue]
@@ -190,8 +187,7 @@ final class JiraService {
             ("thisWeek",    "\(base) AND (\(weekOverlapJQL(weekStart, weekEnd))) ORDER BY duedate ASC, priority ASC"),
             ("nextWeek",    "\(base) AND (\(weekOverlapJQL(nextWeekStart, nextWeekEnd))) ORDER BY duedate ASC"),
             ("highest",     "\(base) AND priority = Highest AND statusCategory != done ORDER BY duedate ASC"),
-            ("overdue",     "\(base) AND duedate < \"\(today)\" AND statusCategory != done AND status != 취소 ORDER BY duedate ASC"),
-            ("blocked",     "\(base) AND (status = 보류 OR status = 대기) AND statusCategory != done ORDER BY updated ASC"),
+            ("overdue",     "\(base) AND duedate < \"\(today)\" AND statusCategory != done ORDER BY duedate ASC"),
             ("completed30", "\(base) AND statusCategory = done AND resolutiondate >= -30d ORDER BY resolutiondate DESC"),
             ("backlog",     "\(base) AND statusCategory != done AND (duedate is EMPTY OR duedate > \"\(nextWeekEnd)\") ORDER BY priority ASC, updated DESC"),
             ("created30",   "project in (\(projects.joined(separator: ", "))) AND reporter = currentUser() AND created >= -30d ORDER BY created DESC"),
@@ -224,8 +220,8 @@ final class JiraService {
             var byProjectCounts: [String: JiraStatusCounts] = [:]
 
             for issue in thisWeek {
-                weekCounts.add(issue.status)
-                byProjectCounts[issue.projectKey, default: JiraStatusCounts()].add(issue.status)
+                weekCounts.add(categoryKey: issue.statusCategoryKey)
+                byProjectCounts[issue.projectKey, default: JiraStatusCounts()].add(categoryKey: issue.statusCategoryKey)
             }
 
             let projectStats: [ProjectWeekStats] = Constants.jiraProjects.map { proj in
@@ -240,7 +236,7 @@ final class JiraService {
             async let sprintsFetch = fetchSprintInfos(cloudId: cloudId)
             async let epicsFetch   = fetchEpics(cloudId: cloudId)
 
-            var backlogCountByProject = Dictionary(grouping: backlog, by: \.projectKey).mapValues(\.count)
+            let backlogCountByProject = Dictionary(grouping: backlog, by: \.projectKey).mapValues(\.count)
 
             let (sprints, epics) = await (sprintsFetch, epicsFetch)
 
@@ -251,7 +247,6 @@ final class JiraService {
                 thisWeekIssues: thisWeek,
                 highestIncomplete: highest,
                 overdueIncomplete: overdue,
-                blockedIssues: results["blocked"] ?? [],
                 completedLast30: completed30,
                 createdLast30: created30,
                 nextWeekIssues: nextWeek,
@@ -306,7 +301,9 @@ final class JiraService {
             let summary = fields["summary"] as? String
         else { return nil }
 
-        let statusName    = (fields["status"] as? [String: Any])?["name"] as? String ?? ""
+        let statusObj     = fields["status"] as? [String: Any]
+        let statusName    = statusObj?["name"] as? String ?? ""
+        let categoryKey   = (statusObj?["statusCategory"] as? [String: Any])?["key"] as? String ?? "undefined"
         let priorityName  = (fields["priority"] as? [String: Any])?["name"] as? String ?? "Medium"
         let issueTypeName = (fields["issuetype"] as? [String: Any])?["name"] as? String ?? ""
         let projectKey    = (fields["project"] as? [String: Any])?["key"] as? String ?? ""
@@ -334,6 +331,7 @@ final class JiraService {
         return JiraIssue(
             id: key, key: key, summary: summary,
             status: statusName,
+            statusCategoryKey: categoryKey,
             priority: priorityName, startDate: startDate, dueDate: dueDate,
             resolutionDate: resolutionDate, created: created,
             issueType: issueTypeName, projectKey: projectKey
@@ -419,7 +417,8 @@ final class JiraService {
     }
 
     private func fetchEpics(cloudId: String) async -> [EpicInfo] {
-        let jql = "project in (\(projects.joined(separator: ", "))) AND issuetype in (Epic, 에픽) AND statusCategory != done AND duedate is not EMPTY ORDER BY project ASC, duedate ASC"
+        // Atlassian의 Epic은 워크스페이스/언어 무관하게 issueType id가 "Epic"으로 통일된다.
+        let jql = "project in (\(projects.joined(separator: ", "))) AND issuetype = Epic AND statusCategory != done AND duedate is not EMPTY ORDER BY project ASC, duedate ASC"
         let issues = (try? await searchIssues(cloudId: cloudId, jql: jql, maxResults: 20)) ?? []
         return issues.map { EpicInfo(key: $0.key, summary: $0.summary, projectKey: $0.projectKey, status: $0.status, dueDate: $0.dueDate) }
     }

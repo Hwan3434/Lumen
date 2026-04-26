@@ -43,23 +43,16 @@ enum LumenTokens {
         static let border = Color(red: 1.0, green: 110/255, blue: 110/255).opacity(0.18)
     }
 
-    /// Jira 대시보드 전용 status·priority 색 매핑.
-    /// 6-way status 구분을 유지하되 Lumen 팔레트 안으로 끌어와, 진행중=violet, 보류=amber 등
-    /// 액센트 시스템과 의미적으로 정렬되게 한다. 자세한 사유는 디자인 spec 참고.
+    /// Jira 대시보드 전용 status 색 매핑. Atlassian 표준 statusCategory 3분류
+    /// (`new`/`indeterminate`/`done`) 기준 — 진행중=violet, 완료=green.
     enum JiraStatusTone {
         static let todoFg         = TextColor.muted
         static let inProgressFg   = Accent.violet
-        static let onHoldFg       = Accent.amber
-        static let waitingFg      = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.55)
         static let completedFg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255)
-        static let cancelledFg    = ErrorTone.icon
 
         static let todoBg         = Color(red: 0x73/255, green: 0x6C/255, blue: 0x90/255).opacity(0.10)
         static let inProgressBg   = Color(red: 0x7B/255, green: 0x6B/255, blue: 0xFF/255).opacity(0.14)
-        static let onHoldBg       = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.12)
-        static let waitingBg      = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.07)
         static let completedBg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255).opacity(0.12)
-        static let cancelledBg    = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255).opacity(0.10)
     }
 
     enum JiraPriorityTone {

@@ -1,29 +1,17 @@
 import SwiftUI
 
-/// Jira service가 한국어 status string으로 보내주는 값을 디자인 시스템 컬러
-/// 토큰으로 매핑하는 단일 게이트웨이.
+/// Atlassian의 표준 statusCategory(언어/워크스페이스 무관 식별자)로 분류.
+/// `new`/`indeterminate`/`done`/`undefined` 4종 — workspace가 어떤 status 이름을 쓰든
+/// 이 카테고리로만 분기한다. 사용자가 보는 라벨은 issue.status 원문을 그대로 표시한다.
 enum JiraStatusKey {
-    case todo, inProgress, onHold, waiting, completed, cancelled
+    case todo, inProgress, done, undefined
 
-    init(_ status: String) {
-        switch status {
-        case "완료":   self = .completed
-        case "진행중": self = .inProgress
-        case "보류":   self = .onHold
-        case "대기":   self = .waiting
-        case "취소":   self = .cancelled
-        default:       self = .todo
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .todo: return "할 일"
-        case .inProgress: return "진행중"
-        case .onHold: return "보류"
-        case .waiting: return "대기"
-        case .completed: return "완료"
-        case .cancelled: return "취소"
+    init(categoryKey: String) {
+        switch categoryKey {
+        case "new":            self = .todo
+        case "indeterminate":  self = .inProgress
+        case "done":           self = .done
+        default:               self = .undefined
         }
     }
 
@@ -31,10 +19,8 @@ enum JiraStatusKey {
         switch self {
         case .todo:       return LumenTokens.JiraStatusTone.todoFg
         case .inProgress: return LumenTokens.JiraStatusTone.inProgressFg
-        case .onHold:     return LumenTokens.JiraStatusTone.onHoldFg
-        case .waiting:    return LumenTokens.JiraStatusTone.waitingFg
-        case .completed:  return LumenTokens.JiraStatusTone.completedFg
-        case .cancelled:  return LumenTokens.JiraStatusTone.cancelledFg
+        case .done:       return LumenTokens.JiraStatusTone.completedFg
+        case .undefined:  return LumenTokens.JiraStatusTone.todoFg
         }
     }
 
@@ -42,10 +28,8 @@ enum JiraStatusKey {
         switch self {
         case .todo:       return LumenTokens.JiraStatusTone.todoBg
         case .inProgress: return LumenTokens.JiraStatusTone.inProgressBg
-        case .onHold:     return LumenTokens.JiraStatusTone.onHoldBg
-        case .waiting:    return LumenTokens.JiraStatusTone.waitingBg
-        case .completed:  return LumenTokens.JiraStatusTone.completedBg
-        case .cancelled:  return LumenTokens.JiraStatusTone.cancelledBg
+        case .done:       return LumenTokens.JiraStatusTone.completedBg
+        case .undefined:  return LumenTokens.JiraStatusTone.todoBg
         }
     }
 }

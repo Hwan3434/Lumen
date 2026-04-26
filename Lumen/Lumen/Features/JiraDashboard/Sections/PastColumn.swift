@@ -53,14 +53,6 @@ struct PastColumn: View {
                     items: data.highestIncomplete,
                     emptyText: "해당 이슈 없음"
                 )
-
-                IssueListSection(
-                    icon: "pause.circle",
-                    iconColor: LumenTokens.Accent.amber,
-                    title: "차단됨 (보류·대기)",
-                    items: data.blockedIssues,
-                    emptyText: "차단된 이슈 없음"
-                )
             }
             .padding(14)
         }
@@ -84,8 +76,8 @@ struct PastColumn: View {
         var task = 0, bug = 0
         for i in issues {
             switch i.issueType {
-            case "작업", "Task": task += 1
-            case "버그", "Bug":  bug += 1
+            case "Task": task += 1
+            case "Bug":  bug += 1
             default: break
             }
         }

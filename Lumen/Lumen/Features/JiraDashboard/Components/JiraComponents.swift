@@ -33,11 +33,14 @@ struct PriorityDot: View {
 }
 
 struct StatusBadge: View {
-    let status: String
+    /// 표시 라벨 — 워크스페이스가 보내준 status.name 원문.
+    let label: String
+    /// 색상 분류용 — Atlassian statusCategory key.
+    let categoryKey: String
 
     var body: some View {
-        let key = JiraStatusKey(status)
-        Text(key.label)
+        let key = JiraStatusKey(categoryKey: categoryKey)
+        Text(label)
             .font(.system(size: 10, weight: .medium))
             .tracking(0.1)
             .foregroundStyle(key.fg)
@@ -108,14 +111,14 @@ struct IssueRow: View {
             Text(issue.summary)
                 .font(.system(size: 12))
                 .foregroundStyle(textColor)
-                .strikethrough(issue.isCancelled)
+                .strikethrough(issue.isDone)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let due = issue.dueDate {
                 DueLabel(date: due, isDone: issue.isDone, startDate: issue.startDate)
             }
-            StatusBadge(status: issue.status)
+            StatusBadge(label: issue.status, categoryKey: issue.statusCategoryKey)
         }
         .padding(.horizontal, 8)
         .frame(height: 28)
@@ -129,10 +132,7 @@ struct IssueRow: View {
     }
 
     private var textColor: Color {
-        switch JiraStatusKey(issue.status) {
-        case .completed, .cancelled: return LumenTokens.TextColor.muted
-        default:                     return LumenTokens.TextColor.primary
-        }
+        issue.isDone ? LumenTokens.TextColor.muted : LumenTokens.TextColor.primary
     }
 }
 

@@ -114,12 +114,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { notification in
             guard let window = notification.object as? NSWindow else { return }
             let cls = String(describing: type(of: window))
-            let title = window.title.isEmpty ? "(no title)" : window.title
             let isPanel = window is KeyablePanel
-            LumenLog.ui.debug("didBecomeKey class=\(cls, privacy: .public) title=\(title, privacy: .public) visible=\(window.isVisible) isPanel=\(isPanel)")
+            // Sparkle 업데이트 알림 윈도우(SUUpdateAlert / SPRoundedWindow 등)가
+            // 백그라운드 체크 후 키를 가져갈 수 있다 — 사용자가 명시적으로 띄운 게
+            // 아니므로 우리 패널을 닫으면 안 된다. SP 또는 SU 접두사로 시작하는
+            // 클래스는 Sparkle 소속으로 간주.
+            let isSparkleWindow = cls.hasPrefix("SP") || cls.hasPrefix("SU")
+            LumenLog.ui.debug("didBecomeKey class=\(cls, privacy: .public) visible=\(window.isVisible) isPanel=\(isPanel) sparkle=\(isSparkleWindow)")
 
-            guard !isPanel, window.isVisible else { return }
-            LumenLog.ui.notice("non-panel window took key → dismissing visible panels")
+            guard !isPanel, !isSparkleWindow, window.isVisible else { return }
+            LumenLog.ui.notice("non-panel window took key → dismissing visible panels (class=\(cls, privacy: .public))")
             for case let panel as KeyablePanel in NSApp.windows where panel.isVisible {
                 panel.activatePreviousAppOnClose = false
                 panel.orderOut(nil)

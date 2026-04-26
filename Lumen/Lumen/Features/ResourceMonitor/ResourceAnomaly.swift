@@ -39,15 +39,11 @@ final class ResourceAnomalyStore {
 
     private(set) var anomalies: [ResourceAnomaly] = []
 
-    private let savePath: URL
+    private let savePath: URL = LumenStorage.url(for: .resourceAnomalies)
     private let diskQueue = DispatchQueue(label: "com.claudespot.anomaly.disk", qos: .utility)
     private let maxStored = 200
 
     private init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Lumen", isDirectory: true)
-        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        self.savePath = base.appendingPathComponent("resource_anomalies.json")
         loadFromDisk()
     }
 

@@ -114,12 +114,7 @@ final class AppResourceMonitor {
     private static let traceQueue = DispatchQueue(label: "com.claudespot.memory.trace", qos: .utility)
     private static var lastTraceMB: Double = 0
     private static var traceStart: Date = Date()
-    private static let logURL: URL = {
-        let logs = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Logs/Lumen", isDirectory: true)
-        try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
-        return logs.appendingPathComponent("memory_trace.log")
-    }()
+    private static let logURL: URL = LumenStorage.logsURL.appendingPathComponent("memory_trace.log")
 
     // trace() hot path에서 UserDefaults를 매번 읽지 않기 위한 in-memory mirror.
     // 관측된 이슈: 외부 프로세스가 plist를 업데이트한 뒤에도 내 프로세스 UserDefaults 캐시가

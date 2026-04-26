@@ -12,12 +12,7 @@ final class NoteViewModel {
     private var saveWorkItem: DispatchWorkItem?
     private var savedFlashWorkItem: DispatchWorkItem?
 
-    private let savePath: URL = {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("Lumen")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("note.md")
-    }()
+    private let savePath: URL = LumenStorage.url(for: .note)
 
     init() {
         loadFromDisk()

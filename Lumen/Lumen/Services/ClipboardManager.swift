@@ -84,24 +84,14 @@ final class ClipboardManager {
     private var timer: Timer?
     private let maxItems = 500
 
-    private let baseDir: URL
-    private let savePath: URL
-    private let imagesDir: URL
+    private let savePath: URL = LumenStorage.url(for: .clipboardHistory)
+    private let imagesDir: URL = LumenStorage.url(for: .clipboardImagesDir)
 
     // 디스크 I/O 전용 직렬 큐 — 메인 스레드 블로킹 방지
     private let diskQueue = DispatchQueue(label: "com.claudespot.clipboard.disk", qos: .utility)
     private var saveWorkItem: DispatchWorkItem?
 
-    private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let base = appSupport.appendingPathComponent("Lumen")
-        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        self.baseDir = base
-        self.savePath = base.appendingPathComponent("clipboard_history.json")
-        let imgs = base.appendingPathComponent("images")
-        try? FileManager.default.createDirectory(at: imgs, withIntermediateDirectories: true)
-        self.imagesDir = imgs
-    }
+    private init() {}
 
     func startMonitoring() {
         AppResourceMonitor.trace("ClipboardManager.loadFromDisk:start")

@@ -48,14 +48,10 @@ final class TranslatorViewModel {
 
     private let service = OpenAIService()
     private let maxHistory = 30
-    private let savePath: URL
+    private let savePath: URL = LumenStorage.url(for: .translationHistory)
     private var currentTask: Task<Void, Never>?
 
     init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("Lumen")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        savePath = dir.appendingPathComponent("translation_history.json")
         loadFromDisk()
     }
 

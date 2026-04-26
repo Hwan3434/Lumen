@@ -20,20 +20,26 @@ struct UsagePanelView: View {
 
     private var loadingView: some View {
         VStack(spacing: 8) {
-            ProgressView().scaleEffect(0.7).tint(.gray)
-            Text("불러오는 중...").font(.system(size: 11)).foregroundColor(.gray)
+            ProgressView()
+                .scaleEffect(0.7)
+                .tint(LumenTokens.Accent.violetSoft)
+            Text("불러오는 중…")
+                .font(.system(size: 11))
+                .foregroundStyle(LumenTokens.TextColor.muted)
         }
     }
 
     private var emptyView: some View {
-        Text("데이터 없음").font(.system(size: 11)).foregroundColor(.gray.opacity(0.5))
+        Text("데이터 없음")
+            .font(.system(size: 11))
+            .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.7))
     }
 
     // MARK: - Content
 
     private func contentView(heavy: HeavyUsageData, live: LiveUsageData) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 summarySection(heavy: heavy, live: live)
                 divider
                 sparklineSection(heavy)
@@ -44,20 +50,20 @@ struct UsagePanelView: View {
                 divider
                 gaugeSection(live)
             }
-            .padding(12)
+            .padding(14)
         }
     }
 
     private var divider: some View {
-        Divider().background(Color.gray.opacity(0.2))
+        LumenHairline()
     }
 
     // MARK: - Summary
 
     private func summarySection(heavy: HeavyUsageData, live: LiveUsageData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("AI 사용량")
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            LumenSectionLabel(text: "AI 사용량")
+            HStack(spacing: 8) {
                 statBox(title: "오늘", value: heavy.todayCalls.formatted, sub: "\(heavy.todaySessions) sessions")
                 statBox(title: "이번달 토큰", value: heavy.monthTokens.formatted, sub: "\(heavy.monthCalls.formatted) calls")
             }
@@ -65,36 +71,52 @@ struct UsagePanelView: View {
     }
 
     private func statBox(title: String, value: String, sub: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 10)).foregroundColor(.gray)
-            Text(value).font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
-            Text(sub).font(.system(size: 10)).foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(LumenTokens.TextColor.muted)
+            Text(value)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(LumenTokens.TextColor.primary)
+            Text(sub)
+                .font(.system(size: 10))
+                .foregroundStyle(LumenTokens.TextColor.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
+                .fill(LumenTokens.BG.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
+                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                )
+        )
     }
 
     // MARK: - Sparkline
 
     private func sparklineSection(_ heavy: HeavyUsageData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                sectionLabel("30일 호출 추이")
+                LumenSectionLabel(text: "30일 호출 추이")
                 Spacer()
                 if let max = heavy.dailyHistory.max(by: { $0.calls < $1.calls }) {
                     Text("최대 \(max.calls.formatted)")
-                        .font(.system(size: 10)).foregroundColor(.gray)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
                 }
             }
             SparklineView(values: heavy.dailyHistory.map { Double($0.calls) })
                 .frame(height: 50)
             HStack {
                 Text(heavy.dailyHistory.first?.date.suffix(5).description ?? "")
-                    .font(.system(size: 9)).foregroundColor(.gray)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
                 Spacer()
-                Text("오늘").font(.system(size: 9)).foregroundColor(.gray)
+                Text("오늘")
+                    .font(.system(size: 9))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
             }
         }
     }
@@ -102,11 +124,14 @@ struct UsagePanelView: View {
     // MARK: - Projects
 
     private func projectsSection(_ heavy: HeavyUsageData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("프로젝트별 토큰 (30일)")
+        VStack(alignment: .leading, spacing: 8) {
+            LumenSectionLabel(text: "프로젝트별 토큰 (30일)")
             let maxCalls = heavy.projects.first?.calls ?? 1
-            ForEach(heavy.projects) { proj in
-                barRow(label: proj.name, value: proj.calls, max: maxCalls, color: .blue.opacity(0.6))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(heavy.projects) { proj in
+                    barRow(label: proj.name, value: proj.calls, max: maxCalls,
+                           color: LumenTokens.Accent.violet.opacity(0.7))
+                }
             }
         }
     }
@@ -114,21 +139,27 @@ struct UsagePanelView: View {
     // MARK: - Models
 
     private func modelsSection(_ heavy: HeavyUsageData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                sectionLabel("모델별 (30일)")
+                LumenSectionLabel(text: "모델별 (30일)")
                 Spacer()
-                sectionLabel("합계 \(formatCost(heavy.models.reduce(0) { $0 + $1.cost }))")
+                Text("합계 \(formatCost(heavy.models.reduce(0) { $0 + $1.cost }))")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.secondary)
             }
             let maxCalls = heavy.models.first?.calls ?? 1
-            ForEach(heavy.models) { model in
-                barRow(
-                    label: model.name,
-                    value: model.calls,
-                    sub: formatCost(model.cost),
-                    max: maxCalls,
-                    color: model.name.contains("Opus") ? .purple.opacity(0.7) : .cyan.opacity(0.6)
-                )
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(heavy.models) { model in
+                    barRow(
+                        label: model.name,
+                        value: model.calls,
+                        sub: formatCost(model.cost),
+                        max: maxCalls,
+                        color: model.name.contains("Opus")
+                            ? LumenTokens.Accent.violet.opacity(0.85)
+                            : LumenTokens.Accent.violetSoft.opacity(0.6)
+                    )
+                }
             }
         }
     }
@@ -141,26 +172,27 @@ struct UsagePanelView: View {
     }
 
     private func barRow(label: String, value: Int, sub: String? = nil, max: Int, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text(label)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundStyle(LumenTokens.TextColor.secondary)
                     .lineLimit(1)
                 Spacer()
                 Text(value.formatted)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.gray)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
                 if let sub {
                     Text("(\(sub))")
-                        .font(.system(size: 10))
-                        .foregroundColor(.gray.opacity(0.7))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.7))
                 }
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.white.opacity(0.06))
-                    RoundedRectangle(cornerRadius: 2)
+                    Capsule()
+                        .fill(Color.white.opacity(0.06))
+                    Capsule()
                         .fill(color)
                         .frame(width: geo.size.width * CGFloat(value) / CGFloat(max))
                 }
@@ -169,51 +201,52 @@ struct UsagePanelView: View {
         }
     }
 
-    // MARK: - Gauge (Claude Max 잔여) — 최하단
+    // MARK: - Gauge (Claude Max 잔여)
 
     private func gaugeSection(_ live: LiveUsageData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionLabel("Claude Max 잔여")
-            gaugeRow(label: "세션", pct: live.sessionPct)
-            gaugeRow(label: "주간", pct: live.weeklyPct)
+        VStack(alignment: .leading, spacing: 8) {
+            LumenSectionLabel(text: "Claude Max 잔여")
+            VStack(spacing: 7) {
+                gaugeRow(label: "세션", pct: live.sessionPct)
+                gaugeRow(label: "주간", pct: live.weeklyPct)
+            }
         }
     }
 
     private func gaugeRow(label: String, pct: Int) -> some View {
         HStack(spacing: 8) {
             Text(label)
-                .font(.system(size: 11)).foregroundColor(.gray)
+                .font(.system(size: 11))
+                .foregroundStyle(LumenTokens.TextColor.muted)
                 .frame(width: 28, alignment: .leading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.08))
-                    RoundedRectangle(cornerRadius: 3)
+                    Capsule()
+                        .fill(Color.white.opacity(0.08))
+                    Capsule()
                         .fill(gaugeColor(pct))
                         .frame(width: geo.size.width * CGFloat(pct) / 100)
+                        .shadow(color: pct >= 80 ? LumenTokens.Accent.amberDim : .clear, radius: 4)
                 }
             }
             .frame(height: 6)
             Text("\(pct)%")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(LumenTokens.TextColor.secondary)
                 .frame(width: 32, alignment: .trailing)
         }
     }
 
+    /// 80%↑ amber (한도 임박, 검색창의 amber 액센트와 같은 시각언어로 "주의").
+    /// 50%↑ violet-soft (중간), 그 이하 violet (안전).
     private func gaugeColor(_ pct: Int) -> Color {
-        if pct >= 80 { return .red.opacity(0.8) }
-        if pct >= 50 { return .orange.opacity(0.8) }
-        return .green.opacity(0.7)
-    }
-
-    // MARK: - Helpers
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+        if pct >= 80 { return LumenTokens.Accent.amber }
+        if pct >= 50 { return LumenTokens.Accent.violetSoft }
+        return LumenTokens.Accent.violet.opacity(0.85)
     }
 }
 
-// MARK: - SparklineView
+// MARK: - Sparkline
 
 struct SparklineView: View {
     let values: [Double]
@@ -226,6 +259,7 @@ struct SparklineView: View {
             let count = values.count
 
             ZStack {
+                // Subtle horizontal grid lines at 25% / 75%.
                 Path { path in
                     for frac in [0.25, 0.75] {
                         let y = size.height * (1 - frac)
@@ -235,6 +269,7 @@ struct SparklineView: View {
                 }
                 .stroke(Color.white.opacity(0.05), lineWidth: 0.5)
 
+                // Filled area under the line (violet → transparent).
                 Path { path in
                     guard count > 1 else { return }
                     let pts = points(size: size, range: range)
@@ -244,23 +279,31 @@ struct SparklineView: View {
                     path.closeSubpath()
                 }
                 .fill(LinearGradient(
-                    colors: [.blue.opacity(0.3), .blue.opacity(0.02)],
+                    colors: [
+                        LumenTokens.Accent.violet.opacity(0.30),
+                        LumenTokens.Accent.violet.opacity(0.02),
+                    ],
                     startPoint: .top, endPoint: .bottom
                 ))
 
+                // The line itself.
                 Path { path in
                     guard count > 1 else { return }
                     let pts = points(size: size, range: range)
                     path.move(to: pts[0])
                     pts.dropFirst().forEach { path.addLine(to: $0) }
                 }
-                .stroke(Color.blue.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+                .stroke(LumenTokens.Accent.violetSoft.opacity(0.9),
+                        style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
 
+                // Endpoint dot — pulses subtly through the violet halo.
                 if count > 0 {
+                    let last = points(size: size, range: range).last!
                     Circle()
-                        .fill(Color.blue)
+                        .fill(LumenTokens.Accent.violetSoft)
                         .frame(width: 5, height: 5)
-                        .position(points(size: size, range: range).last!)
+                        .shadow(color: LumenTokens.Accent.violet.opacity(0.6), radius: 4)
+                        .position(last)
                 }
             }
         }

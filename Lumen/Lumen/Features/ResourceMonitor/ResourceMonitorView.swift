@@ -87,7 +87,6 @@ struct ResourceMonitorView: View {
         switch s {
         case .alert:   return .red.opacity(0.85)
         case .warning: return .orange.opacity(0.85)
-        case .info:    return .blue.opacity(0.7)
         }
     }
 

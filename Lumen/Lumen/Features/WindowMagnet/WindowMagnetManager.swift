@@ -117,4 +117,3 @@ final class WindowMagnetManager {
     }
 }
 
-extension WindowMagnetManager.Direction: Equatable {}

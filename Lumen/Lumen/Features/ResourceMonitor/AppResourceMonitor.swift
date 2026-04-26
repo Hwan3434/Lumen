@@ -111,7 +111,7 @@ final class AppResourceMonitor {
     // MARK: - Memory trace (구간별 델타 로깅)
 
     private static let traceEnabledKey = "memory_trace_enabled"
-    private static let traceQueue = DispatchQueue(label: "com.claudespot.memory.trace", qos: .utility)
+    private static let traceQueue = DispatchQueue(label: "com.lumen.memory.trace", qos: .utility)
     private static var lastTraceMB: Double = 0
     private static var traceStart: Date = Date()
     private static let logURL: URL = LumenStorage.logsURL.appendingPathComponent("memory_trace.log")

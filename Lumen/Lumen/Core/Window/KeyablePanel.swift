@@ -33,8 +33,6 @@ class KeyablePanel: NSPanel {
             guard let self = self, self.isKeyWindow else { return }
             if let tf = self.contentView?.findFirstEditableField() {
                 self.makeFirstResponder(tf)
-            } else if let tv = self.contentView?.findFirstResponderCandidate(ofType: "TerminalView") {
-                self.makeFirstResponder(tv)
             }
         }
     }
@@ -55,15 +53,6 @@ extension NSView {
             if let tf = subview as? NSTextField, tf.isEditable { return tf }
             if let tv = subview as? NSTextView, tv.isEditable { return tv }
             if let found = subview.findFirstEditableField() { return found }
-        }
-        return nil
-    }
-
-    func findFirstResponderCandidate(ofType typeName: String) -> NSView? {
-        let viewType = String(describing: type(of: self))
-        if viewType.contains(typeName) { return self }
-        for subview in subviews {
-            if let found = subview.findFirstResponderCandidate(ofType: typeName) { return found }
         }
         return nil
     }

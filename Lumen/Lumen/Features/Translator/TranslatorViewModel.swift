@@ -32,20 +32,6 @@ final class TranslatorViewModel {
 
     var inputExceedsLimit: Bool { inputText.count > 200 }
 
-    var showPronunciation: Bool {
-        guard let pron = pronunciationText, !pron.isEmpty else { return false }
-        return !inputExceedsLimit
-    }
-
-    var showInputPronunciation: Bool {
-        guard let pron = inputPronunciationText, !pron.isEmpty else { return false }
-        return !inputExceedsLimit
-    }
-
-    var showNotice: Bool {
-        !translatedText.isEmpty && inputExceedsLimit
-    }
-
     private let service = OpenAIService()
     private let maxHistory = 30
     private let savePath: URL = LumenStorage.url(for: .translationHistory)

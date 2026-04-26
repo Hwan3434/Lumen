@@ -28,42 +28,6 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
     }
 }
 
-extension LumenInputField where Leading == EmptyView, Trailing == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil) {
-        self._text = text
-        self.placeholder = placeholder
-        self.fontSize = fontSize
-        self.monospaced = monospaced
-        self.onSubmit = onSubmit
-        self.leading = { EmptyView() }
-        self.trailing = { EmptyView() }
-    }
-}
-
-extension LumenInputField where Leading == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil, @ViewBuilder trailing: @escaping () -> Trailing) {
-        self._text = text
-        self.placeholder = placeholder
-        self.fontSize = fontSize
-        self.monospaced = monospaced
-        self.onSubmit = onSubmit
-        self.leading = { EmptyView() }
-        self.trailing = trailing
-    }
-}
-
-extension LumenInputField where Trailing == EmptyView {
-    init(text: Binding<String>, placeholder: String, fontSize: CGFloat = 18, monospaced: Bool = false, onSubmit: (() -> Void)? = nil, @ViewBuilder leading: @escaping () -> Leading) {
-        self._text = text
-        self.placeholder = placeholder
-        self.fontSize = fontSize
-        self.monospaced = monospaced
-        self.onSubmit = onSubmit
-        self.leading = leading
-        self.trailing = { EmptyView() }
-    }
-}
-
 // MARK: - LumenTextArea (multi-line)
 //
 // AppKit NSTextView를 SwiftUI로 감싸 caret과 placeholder가 같은 좌표계에서

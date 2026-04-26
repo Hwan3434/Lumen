@@ -5,22 +5,15 @@ import AppKit
 
 struct ProjectChip: View {
     let key: String
-    var size: ChipSize = .small
-
-    enum ChipSize { case small, medium }
 
     var body: some View {
         let color = jiraProjectColor(key)
-        let h: CGFloat = size == .small ? 16 : 20
-        let px: CGFloat = size == .small ? 6 : 8
-        let fs: CGFloat = size == .small ? 10 : 11
-
         Text(key)
-            .font(.system(size: fs, weight: .semibold))
+            .font(.system(size: 10, weight: .semibold))
             .tracking(0.4)
             .foregroundStyle(color)
-            .padding(.horizontal, px)
-            .frame(height: h)
+            .padding(.horizontal, 6)
+            .frame(height: 16)
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(color.opacity(0.12))

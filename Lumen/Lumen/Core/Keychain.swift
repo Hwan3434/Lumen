@@ -4,7 +4,7 @@ import Security
 /// 앱 전용 Keychain 래퍼. account 문자열을 키로, UTF-8 문자열을 값으로 다룬다.
 /// service는 번들 식별자를 사용해 다른 앱과 격리된다.
 enum Keychain {
-    private static let service: String = Bundle.main.bundleIdentifier ?? "com.claudespot.app"
+    private static let service: String = Bundle.main.bundleIdentifier ?? "com.jh.Lumen"
 
     static func read(_ account: String) -> String? {
         let query: [String: Any] = [

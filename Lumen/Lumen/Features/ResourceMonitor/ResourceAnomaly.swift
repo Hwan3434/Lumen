@@ -28,7 +28,7 @@ struct ResourceAnomaly: Identifiable, Codable {
         }
     }
 
-    enum Severity { case info, warning, alert }
+    enum Severity { case warning, alert }
 }
 
 // MARK: - Store (디스크 영속)
@@ -40,7 +40,7 @@ final class ResourceAnomalyStore {
     private(set) var anomalies: [ResourceAnomaly] = []
 
     private let savePath: URL = LumenStorage.url(for: .resourceAnomalies)
-    private let diskQueue = DispatchQueue(label: "com.claudespot.anomaly.disk", qos: .utility)
+    private let diskQueue = DispatchQueue(label: "com.lumen.anomaly.disk", qos: .utility)
     private let maxStored = 200
 
     private init() {

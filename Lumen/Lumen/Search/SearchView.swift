@@ -224,7 +224,7 @@ struct SearchView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer(minLength: 8)
-                LumenBadge(kind: .app)
+                AppBadge()
             }
 
         case .calculation(let expr, let result):
@@ -288,49 +288,21 @@ struct SearchView: View {
 
 // MARK: - Badge
 
-private struct LumenBadge: View {
-    enum Kind { case app, calc, action, web, snippet }
-    let kind: Kind
-
+/// 검색 결과 행 우측의 "APP" 배지. 현재 Search는 앱 항목만 배지를 다는데,
+/// 다른 종류(snippet/web 등) 결과 타입이 늘어나면 multi-tone Badge 컴포넌트로
+/// 확장하면 된다.
+private struct AppBadge: View {
     var body: some View {
-        Text(label)
+        Text("APP")
             .font(.system(size: 9.5, weight: .medium))
             .tracking(0.4)
-            .foregroundStyle(fg)
+            .foregroundStyle(LumenTokens.Accent.violetSoft)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-                RoundedRectangle(cornerRadius: 4).fill(bg)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(LumenTokens.Accent.violet.opacity(0.10))
             )
     }
-
-    private var label: String {
-        switch kind {
-        case .app:     return "APP"
-        case .calc:    return "CALC"
-        case .action:  return "ACTION"
-        case .web:     return "WEB"
-        case .snippet: return "SNIPPET"
-        }
-    }
-    private var bg: Color {
-        switch kind {
-        case .app, .web: return LumenTokens.Accent.violet.opacity(0.10)
-        case .calc:      return LumenTokens.Accent.amber.opacity(0.10)
-        case .action, .snippet: return Color.white.opacity(0.05)
-        }
-    }
-    private var fg: Color {
-        switch kind {
-        case .app, .web: return LumenTokens.Accent.violetSoft
-        case .calc:      return LumenTokens.Accent.amber
-        case .action, .snippet: return LumenTokens.TextColor.secondary
-        }
-    }
 }
 
-extension Collection {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
-}

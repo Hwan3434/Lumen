@@ -5,8 +5,6 @@ enum LumenTokens {
         static let window       = Color(red: 0x16/255, green: 0x12/255, blue: 0x2A/255).opacity(0.72)
         static let windowSolid  = Color(red: 0x16/255, green: 0x12/255, blue: 0x2A/255)
         static let card         = Color.white.opacity(0.04)
-        static let cardHover    = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255).opacity(0.10)
-        static let rowHover     = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255).opacity(0.06)
         static let rowActive    = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.10)
         static let sidePanel    = Color.white.opacity(0.02)
         static let footer       = Color.black.opacity(0.18)

@@ -213,7 +213,7 @@ final class ClaudeUsageService {
 
     private var cacheBundle = JSONLCacheBundle()
     private var cacheLoaded = false
-    private let cacheDiskQueue = DispatchQueue(label: "com.claudespot.jsonl_cache.disk", qos: .utility)
+    private let cacheDiskQueue = DispatchQueue(label: "com.lumen.jsonl_cache.disk", qos: .utility)
 
     private func loadCacheIfNeeded() {
         guard !cacheLoaded else { return }

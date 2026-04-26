@@ -7,7 +7,6 @@ struct JiraIssue: Identifiable {
     let key: String
     let summary: String
     let status: String
-    let statusCategoryKey: String
     let priority: String
     let startDate: Date?
     let dueDate: Date?
@@ -18,7 +17,6 @@ struct JiraIssue: Identifiable {
 
     var isDone: Bool { status == "완료" || status == "취소" }
     var isCancelled: Bool { status == "취소" }
-    var isIncomplete: Bool { !isDone }
 }
 
 struct JiraStatusCounts {
@@ -28,8 +26,6 @@ struct JiraStatusCounts {
     var waiting: Int = 0     // 대기
     var completed: Int = 0   // 완료
     var cancelled: Int = 0   // 취소
-    var total: Int { todo + inProgress + onHold + waiting + completed + cancelled }
-    var completionRate: Double { total > 0 ? Double(completed) / Double(total) : 0 }
 
     mutating func add(_ status: String) {
         switch status {
@@ -47,8 +43,6 @@ struct ProjectWeekStats: Identifiable {
     var id: String { key }
     let key: String
     let counts: JiraStatusCounts
-    var total: Int { counts.total }
-    var completionRate: Double { counts.completionRate }
 }
 
 struct SprintInfo: Identifiable {
@@ -266,7 +260,6 @@ final class JiraService {
         else { return nil }
 
         let statusName    = (fields["status"] as? [String: Any])?["name"] as? String ?? ""
-        let statusCatKey  = ((fields["status"] as? [String: Any])?["statusCategory"] as? [String: Any])?["key"] as? String ?? "new"
         let priorityName  = (fields["priority"] as? [String: Any])?["name"] as? String ?? "Medium"
         let issueTypeName = (fields["issuetype"] as? [String: Any])?["name"] as? String ?? ""
         let projectKey    = (fields["project"] as? [String: Any])?["key"] as? String ?? ""
@@ -293,7 +286,7 @@ final class JiraService {
 
         return JiraIssue(
             id: key, key: key, summary: summary,
-            status: statusName, statusCategoryKey: statusCatKey,
+            status: statusName,
             priority: priorityName, startDate: startDate, dueDate: dueDate,
             resolutionDate: resolutionDate, created: created,
             issueType: issueTypeName, projectKey: projectKey

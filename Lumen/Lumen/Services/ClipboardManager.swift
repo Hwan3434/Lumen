@@ -88,7 +88,7 @@ final class ClipboardManager {
     private let imagesDir: URL = LumenStorage.url(for: .clipboardImagesDir)
 
     // 디스크 I/O 전용 직렬 큐 — 메인 스레드 블로킹 방지
-    private let diskQueue = DispatchQueue(label: "com.claudespot.clipboard.disk", qos: .utility)
+    private let diskQueue = DispatchQueue(label: "com.lumen.clipboard.disk", qos: .utility)
     private var saveWorkItem: DispatchWorkItem?
 
     private init() {}

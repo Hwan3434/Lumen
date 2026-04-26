@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updaterDelegate: nil,
         userDriverDelegate: nil
     )
+    private var keyWindowObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppResourceMonitor.resetTrace()
@@ -98,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로,
         // non-panel 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다.
         // Cmd+, 의 기본 시스템 경로는 그대로 두고 여기서만 후처리.
-        NotificationCenter.default.addObserver(
+        keyWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
@@ -113,6 +114,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let observer = keyWindowObserver {
+            NotificationCenter.default.removeObserver(observer)
+            keyWindowObserver = nil
+        }
         hotkeyManager.stop()
         FeatureRegistry.shared.teardownAll()
         ClipboardManager.shared.flushPendingSave()

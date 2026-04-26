@@ -5,6 +5,7 @@ import Carbon.HIToolbox
 final class HotkeyManager {
     private var bindings: [UInt32: () -> Void] = [:]
     private var hotkeyRefs: [EventHotKeyRef?] = []
+    private var eventHandlerRef: EventHandlerRef?
     private var nextID: UInt32 = 1
 
     func register(keyCode: UInt16, modifiers: UInt32, action: @escaping () -> Void) {
@@ -73,7 +74,7 @@ final class HotkeyManager {
             1,
             &eventType,
             Unmanaged.passUnretained(box).toOpaque(),
-            nil
+            &eventHandlerRef
         )
     }
 
@@ -85,6 +86,11 @@ final class HotkeyManager {
         }
         hotkeyRefs.removeAll()
         bindings.removeAll()
+        if let handler = eventHandlerRef {
+            RemoveEventHandler(handler)
+            eventHandlerRef = nil
+        }
+        HotkeyManagerBox.shared.bindings.removeAll()
     }
 }
 

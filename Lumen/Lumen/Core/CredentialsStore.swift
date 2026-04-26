@@ -14,6 +14,7 @@ final class CredentialsStore {
     private let defaults = UserDefaults.standard
 
     private enum KCAccount {
+        /// slug로부터 자동 resolve된 cloudId가 캐싱되는 슬롯. 사용자가 직접 입력하지 않는다.
         static let jiraCloudId       = "jiraCloudId"
         static let jiraWorkspaceSlug = "jiraWorkspaceSlug"
         static let jiraEmail         = "jiraEmail"
@@ -80,11 +81,22 @@ final class CredentialsStore {
 
     // MARK: - Write (Settings UI)
 
-    func setJira(cloudId: String, workspaceSlug: String, email: String, token: String) {
-        Keychain.write(sanitize(cloudId),       for: KCAccount.jiraCloudId)
-        Keychain.write(sanitize(workspaceSlug), for: KCAccount.jiraWorkspaceSlug)
-        Keychain.write(sanitize(email),         for: KCAccount.jiraEmail)
-        Keychain.write(sanitize(token),         for: KCAccount.jiraApiToken)
+    /// slug가 바뀌면 다른 워크스페이스를 가리킬 수 있으므로 기존 cloudId 캐시는 비운다.
+    /// 다음 fetch 시점에 새 slug로 resolve된 cloudId가 다시 채워진다.
+    func setJira(workspaceSlug: String, email: String, token: String) {
+        let cleanSlug = sanitize(workspaceSlug)
+        if cleanSlug != Keychain.read(KCAccount.jiraWorkspaceSlug) {
+            Keychain.delete(KCAccount.jiraCloudId)
+        }
+        Keychain.write(cleanSlug,        for: KCAccount.jiraWorkspaceSlug)
+        Keychain.write(sanitize(email),  for: KCAccount.jiraEmail)
+        Keychain.write(sanitize(token),  for: KCAccount.jiraApiToken)
+    }
+
+    /// JiraService가 resolve된 cloudId를 캐싱할 때 호출. 사용자 입력 경로가 아니므로
+    /// 일반적인 setJira와 분리해둔다.
+    func cacheJiraCloudId(_ cloudId: String) {
+        Keychain.write(sanitize(cloudId), for: KCAccount.jiraCloudId)
     }
 
     /// 대소문자/공백 정규화 후 중복을 제거한 상태로 저장한다.
@@ -156,9 +168,9 @@ final class CredentialsStore {
 
     // MARK: - Convenience
 
+    /// cloudId는 slug에서 자동 resolve되므로 사용자 입력 기준에서 제외. slug + 자격증명만 있으면 "준비됨".
     var isJiraConfigured: Bool {
-        !jiraCloudId.isEmpty
-            && !jiraWorkspaceSlug.isEmpty
+        !jiraWorkspaceSlug.isEmpty
             && !jiraEmail.isEmpty
             && !jiraApiToken.isEmpty
     }

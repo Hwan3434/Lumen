@@ -102,18 +102,49 @@ final class JiraService {
     var errorMessage: String?
 
     private let authHeader: String
-    private let cloudId: String
+    private let workspaceSlug: String
+    /// 첫 fetch 시점에 slug로부터 resolve된 후 캐싱된다. resolve 전에는 nil.
+    private var resolvedCloudId: String?
     private var projects: [String] { Constants.jiraProjects.map(\.key) }
 
-    private var baseURL: String {
+    private func baseURL(_ cloudId: String) -> String {
         "https://api.atlassian.com/ex/jira/\(cloudId)/rest/api/3"
+    }
+
+    private func agileBaseURL(_ cloudId: String) -> String {
+        "https://api.atlassian.com/ex/jira/\(cloudId)/rest/agile/1.0"
     }
 
     private init() {
         let store = CredentialsStore.shared
-        self.cloudId = store.jiraCloudId
+        self.workspaceSlug = store.jiraWorkspaceSlug
+        self.resolvedCloudId = {
+            let cached = store.jiraCloudId
+            return cached.isEmpty ? nil : cached
+        }()
         let cred = "\(store.jiraEmail):\(store.jiraApiToken)"
         self.authHeader = "Basic \(Data(cred.utf8).base64EncodedString())"
+    }
+
+    /// Keychain에 캐싱된 cloudId를 우선 사용, 없으면 `_edge/tenant_info`로 한 번 조회 후 캐싱.
+    /// 동일 인스턴스 내에서는 메모리에도 캐시돼 매 호출마다 네트워크가 발생하지 않는다.
+    private func ensureCloudId() async throws -> String {
+        if let cached = resolvedCloudId, !cached.isEmpty { return cached }
+        guard !workspaceSlug.isEmpty,
+              let url = URL(string: "https://\(workspaceSlug).atlassian.net/_edge/tenant_info") else {
+            throw NSError(domain: "JiraAPI", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "워크스페이스 URL이 설정되지 않았습니다."])
+        }
+        let (data, resp) = try await URLSession.shared.data(from: url)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let cloudId = json["cloudId"] as? String, !cloudId.isEmpty else {
+            throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
+                          userInfo: [NSLocalizedDescriptionKey: "워크스페이스 정보를 불러올 수 없습니다 (slug: \(workspaceSlug))."])
+        }
+        resolvedCloudId = cloudId
+        CredentialsStore.shared.cacheJiraCloudId(cloudId)
+        return cloudId
     }
 
     private func makeRequest(url: URL) -> URLRequest {
@@ -136,6 +167,17 @@ final class JiraService {
         }
 
         await MainActor.run { isLoading = true; errorMessage = nil }
+
+        let cloudId: String
+        do {
+            cloudId = try await ensureCloudId()
+        } catch {
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
+            }
+            return
+        }
 
         let base = "project in (\(projects.joined(separator: ", "))) AND assignee = currentUser()"
         let today = isoDateString(Date())
@@ -161,7 +203,7 @@ final class JiraService {
                 for (key, jql) in queries {
                     group.addTask { [weak self] in
                         guard let self else { return (key, []) }
-                        let issues = try await self.searchIssues(jql: jql, maxResults: 100)
+                        let issues = try await self.searchIssues(cloudId: cloudId, jql: jql, maxResults: 100)
                         return (key, issues)
                     }
                 }
@@ -195,8 +237,8 @@ final class JiraService {
                 return Calendar.current.isDateInToday(due)
             }
 
-            async let sprintsFetch = fetchSprintInfos()
-            async let epicsFetch   = fetchEpics()
+            async let sprintsFetch = fetchSprintInfos(cloudId: cloudId)
+            async let epicsFetch   = fetchEpics(cloudId: cloudId)
 
             var backlogCountByProject = Dictionary(grouping: backlog, by: \.projectKey).mapValues(\.count)
 
@@ -233,8 +275,8 @@ final class JiraService {
 
     // MARK: - API
 
-    private func searchIssues(jql: String, maxResults: Int) async throws -> [JiraIssue] {
-        var comps = URLComponents(string: "\(baseURL)/search/jql")!
+    private func searchIssues(cloudId: String, jql: String, maxResults: Int) async throws -> [JiraIssue] {
+        var comps = URLComponents(string: "\(baseURL(cloudId))/search/jql")!
         comps.queryItems = [
             URLQueryItem(name: "jql", value: jql),
             URLQueryItem(name: "maxResults", value: "\(maxResults)"),
@@ -300,17 +342,13 @@ final class JiraService {
 
     // MARK: - Agile API
 
-    private var agileBaseURL: String {
-        "https://api.atlassian.com/ex/jira/\(cloudId)/rest/agile/1.0"
-    }
-
-    private func fetchSprintInfos() async -> [SprintInfo] {
+    private func fetchSprintInfos(cloudId: String) async -> [SprintInfo] {
         await withTaskGroup(of: SprintInfo?.self) { group in
             for projKey in projects {
                 group.addTask { [weak self] in
                     guard let self,
-                          let boardId = try? await self.fetchBoardId(projKey),
-                          let sprint  = try? await self.fetchActiveSprint(boardId: boardId, projKey: projKey)
+                          let boardId = try? await self.fetchBoardId(cloudId: cloudId, projectKey: projKey),
+                          let sprint  = try? await self.fetchActiveSprint(cloudId: cloudId, boardId: boardId, projKey: projKey)
                     else { return nil }
                     return sprint
                 }
@@ -323,8 +361,8 @@ final class JiraService {
         }
     }
 
-    private func fetchBoardId(_ projectKey: String) async throws -> Int? {
-        var comps = URLComponents(string: "\(agileBaseURL)/board")!
+    private func fetchBoardId(cloudId: String, projectKey: String) async throws -> Int? {
+        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/board")!
         comps.queryItems = [
             URLQueryItem(name: "projectKeyOrId", value: projectKey),
             URLQueryItem(name: "maxResults", value: "1"),
@@ -339,8 +377,8 @@ final class JiraService {
         return boardId
     }
 
-    private func fetchActiveSprint(boardId: Int, projKey: String) async throws -> SprintInfo? {
-        var comps = URLComponents(string: "\(agileBaseURL)/board/\(boardId)/sprint")!
+    private func fetchActiveSprint(cloudId: String, boardId: Int, projKey: String) async throws -> SprintInfo? {
+        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/board/\(boardId)/sprint")!
         comps.queryItems = [URLQueryItem(name: "state", value: "active")]
         guard let url = comps.url else { throw URLError(.badURL) }
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
@@ -355,13 +393,13 @@ final class JiraService {
         let startDate = (sprint["startDate"] as? String).flatMap { DateParsers.parseISO8601($0) }
         let endDate   = (sprint["endDate"]   as? String).flatMap { DateParsers.parseISO8601($0) }
 
-        let (total, completed) = (try? await fetchSprintIssueCounts(sprintId: id)) ?? (0, 0)
+        let (total, completed) = (try? await fetchSprintIssueCounts(cloudId: cloudId, sprintId: id)) ?? (0, 0)
         return SprintInfo(id: id, name: name, startDate: startDate, endDate: endDate,
                           projectKey: projKey, totalIssues: total, completedIssues: completed)
     }
 
-    private func fetchSprintIssueCounts(sprintId: Int) async throws -> (Int, Int) {
-        var comps = URLComponents(string: "\(agileBaseURL)/sprint/\(sprintId)/issue")!
+    private func fetchSprintIssueCounts(cloudId: String, sprintId: Int) async throws -> (Int, Int) {
+        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/sprint/\(sprintId)/issue")!
         comps.queryItems = [
             URLQueryItem(name: "fields", value: "status"),
             URLQueryItem(name: "maxResults", value: "200"),
@@ -380,9 +418,9 @@ final class JiraService {
         return (total, completed)
     }
 
-    private func fetchEpics() async -> [EpicInfo] {
+    private func fetchEpics(cloudId: String) async -> [EpicInfo] {
         let jql = "project in (\(projects.joined(separator: ", "))) AND issuetype in (Epic, 에픽) AND statusCategory != done AND duedate is not EMPTY ORDER BY project ASC, duedate ASC"
-        let issues = (try? await searchIssues(jql: jql, maxResults: 20)) ?? []
+        let issues = (try? await searchIssues(cloudId: cloudId, jql: jql, maxResults: 20)) ?? []
         return issues.map { EpicInfo(key: $0.key, summary: $0.summary, projectKey: $0.projectKey, status: $0.status, dueDate: $0.dueDate) }
     }
 

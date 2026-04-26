@@ -3,7 +3,7 @@ import SwiftUI
 import Carbon.HIToolbox
 
 final class NoteWindowController: PanelWindowController {
-    private static let panelSize = NSSize(width: 500, height: 450)
+    private static let panelSize = NSSize(width: 580, height: 680)
     private var viewModel: NoteViewModel?
     private var previewMonitor: Any?
 

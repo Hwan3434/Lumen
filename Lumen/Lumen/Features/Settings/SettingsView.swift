@@ -372,7 +372,9 @@ private struct JiraSettingsTab: View {
     @State private var initialSnapshot: String = ""
 
     var body: some View {
-        ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+            // 토글은 스크롤과 무관하게 항상 상단에 고정 — 자격증명/프로젝트 폼이
+            // 길어져 ScrollView가 활성화돼도 사용자가 토글 위치를 잃지 않도록.
             VStack(alignment: .leading, spacing: 22) {
                 SettingsSection(title: "Jira") {
                     SwitchRow(
@@ -384,78 +386,86 @@ private struct JiraSettingsTab: View {
                         CredentialsStore.shared.setJiraEnabled(newValue)
                     }
                 }
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 20)
+            .padding(.bottom, enabled ? 22 : 20)
 
-                if enabled {
-                    SettingsSection(title: "Jira 자격증명") {
-                        SettingsField(label: "Cloud ID") {
-                            LumenTextField(text: $cloudId, placeholder: "bankx-playplanet", monospaced: true)
+            if enabled {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        SettingsSection(title: "Jira 자격증명") {
+                            SettingsField(label: "Cloud ID") {
+                                LumenTextField(text: $cloudId, placeholder: "bankx-playplanet", monospaced: true)
+                            }
+                            SettingsField(label: "Email") {
+                                LumenTextField(text: $email, placeholder: "you@example.com")
+                            }
+                            SettingsField(label: "API Token",
+                                          hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
+                                LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
+                            }
                         }
-                        SettingsField(label: "Email") {
-                            LumenTextField(text: $email, placeholder: "you@example.com")
-                        }
-                        SettingsField(label: "API Token",
-                                      hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
-                            LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
-                        }
-                    }
 
-                SettingsSection(title: "대시보드 조회 프로젝트") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach($projects) { $entry in
-                            HStack(spacing: 8) {
-                                LumenTextField(text: $entry.key, placeholder: "예: PPDEV1", monospaced: true)
-                                    .frame(width: 130)
-                                LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
+                        SettingsSection(title: "대시보드 조회 프로젝트") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach($projects) { $entry in
+                                    HStack(spacing: 8) {
+                                        LumenTextField(text: $entry.key, placeholder: "예: PPDEV1", monospaced: true)
+                                            .frame(width: 130)
+                                        LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
+                                        Button {
+                                            projects.removeAll { $0.id == entry.id }
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 12))
+                                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                                .frame(width: 28, height: 28)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
                                 Button {
-                                    projects.removeAll { $0.id == entry.id }
+                                    projects.append(JiraProjectEntry(key: "", name: ""))
                                 } label: {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(LumenTokens.TextColor.muted)
-                                        .frame(width: 28, height: 28)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                        )
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 11, weight: .semibold))
+                                        Text("프로젝트 추가")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Spacer()
+                                    }
+                                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+                                    .padding(.horizontal, 10)
+                                    .frame(height: 32)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+                                            .foregroundStyle(LumenTokens.stroke)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.015))
+                                            )
+                                    )
                                 }
                                 .buttonStyle(.plain)
                             }
+                            Text("Key는 대문자 식별자(예: PPDEV1) — API 호출용. 별칭은 비워두면 Key가 그대로 표시됩니다. 프로젝트를 모두 비우면 기본값(\(Constants.defaultJiraProjectKeys.joined(separator: ", ")))으로 복원됩니다.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .lineSpacing(3)
                         }
-                        Button {
-                            projects.append(JiraProjectEntry(key: "", name: ""))
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text("프로젝트 추가")
-                                    .font(.system(size: 12, weight: .medium))
-                                Spacer()
-                            }
-                            .foregroundStyle(LumenTokens.Accent.violetSoft)
-                            .padding(.horizontal, 10)
-                            .frame(height: 32)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
-                                    .foregroundStyle(LumenTokens.stroke)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.015))
-                                    )
-                            )
-                        }
-                        .buttonStyle(.plain)
                     }
-                    Text("Key는 대문자 식별자(예: PPDEV1) — API 호출용. 별칭은 비워두면 Key가 그대로 표시됩니다. 프로젝트를 모두 비우면 기본값(\(Constants.defaultJiraProjectKeys.joined(separator: ", ")))으로 복원됩니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .lineSpacing(3)
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 20)
                 }
-                }
+                .scrollIndicators(.hidden)
             }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
         }
-        .scrollIndicators(.hidden)
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             loadFromStore()
             wireActionVM()
@@ -522,7 +532,8 @@ private struct OpenAISettingsTab: View {
     @State private var initialSnapshot: String = ""
 
     var body: some View {
-        ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+            // 토글은 항상 상단 고정. Jira 탭과 같은 정책.
             VStack(alignment: .leading, spacing: 22) {
                 SettingsSection(title: "OpenAI") {
                     SwitchRow(
@@ -534,42 +545,50 @@ private struct OpenAISettingsTab: View {
                         CredentialsStore.shared.setOpenAIEnabled(newValue)
                     }
                 }
-
-                if enabled {
-                    SettingsSection(title: "OpenAI 자격증명") {
-                        SettingsField(label: "API Key",
-                                      hint: "번역 패널에서 사용합니다. platform.openai.com → API keys에서 발급.") {
-                            LumenTextField(text: $apiKey, placeholder: "sk-proj-…", secure: true)
-                        }
-                    }
-
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 13))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .padding(.top, 1)
-                        Text("키는 macOS 키체인에 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다.")
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .lineSpacing(3)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.white.opacity(0.02))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                            )
-                    )
-                }
             }
             .padding(.horizontal, 22)
-            .padding(.vertical, 20)
+            .padding(.top, 20)
+            .padding(.bottom, enabled ? 22 : 20)
+
+            if enabled {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        SettingsSection(title: "OpenAI 자격증명") {
+                            SettingsField(label: "API Key",
+                                          hint: "번역 패널에서 사용합니다. platform.openai.com → API keys에서 발급.") {
+                                LumenTextField(text: $apiKey, placeholder: "sk-proj-…", secure: true)
+                            }
+                        }
+
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 13))
+                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .padding(.top, 1)
+                            Text("키는 macOS 키체인에 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다.")
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .lineSpacing(3)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.white.opacity(0.02))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                                )
+                        )
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 20)
+                }
+                .scrollIndicators(.hidden)
+            }
         }
-        .scrollIndicators(.hidden)
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             loadFromStore()
             wireActionVM()

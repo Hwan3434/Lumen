@@ -99,13 +99,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로,
         // non-panel 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다.
         // Cmd+, 의 기본 시스템 경로는 그대로 두고 여기서만 후처리.
+        //
+        // window.isVisible 가드가 중요: 첫 ⌘Space에 NSApp.activate()가 처음
+        // 호출되는 순간 macOS가 보이지 않는 placeholder NSWindow(AppKit 내부
+        // helper / Sparkle background updater 등)를 잠깐 key로 만드는 케이스가
+        // 있어, 그 알림에 우리 옵저버가 막 떠올린 search panel을 도로 닫아버리는
+        // race가 있었다. visible한 NSWindow가 key를 가져갔을 때만 우리 패널을 내린다.
         keyWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
         ) { notification in
             guard let window = notification.object as? NSWindow,
-                  !(window is KeyablePanel) else { return }
+                  !(window is KeyablePanel),
+                  window.isVisible
+            else { return }
             for case let panel as KeyablePanel in NSApp.windows where panel.isVisible {
                 panel.activatePreviousAppOnClose = false
                 panel.orderOut(nil)

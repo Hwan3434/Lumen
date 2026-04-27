@@ -201,6 +201,7 @@ private struct SidebarRow: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 5)
                     .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)

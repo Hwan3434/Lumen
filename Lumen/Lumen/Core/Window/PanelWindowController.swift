@@ -8,6 +8,23 @@ class PanelWindowController: NSObject {
     /// 모든 인스턴스가 init 시 자동 등록된다. focusTopVisible()이 이 목록을 순회한다.
     private static let registry = NSHashTable<PanelWindowController>.weakObjects()
 
+    /// 모든 인스턴스가 공유하는 단일 "앱 활성화" 옵저버.
+    /// 패널이 열려 있는 동안 사용자가 다른 앱으로 전환하면 그 앱을 새 복귀 대상으로 갱신.
+    /// Lumen 자신은 제외해야 패널 활성화가 자기 자신을 previousApp으로 덮어쓰지 않는다.
+    private static let appActivateObserver: Any = {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app != NSRunningApplication.current else { return }
+            for controller in registry.allObjects where controller.isVisible {
+                controller.panel?.previousApp = app
+            }
+        }
+    }()
+
     var panel: KeyablePanel?
 
     /// 단일 패널 정책: true면 show 시 다른 exclusive 패널을 모두 닫고,
@@ -23,6 +40,7 @@ class PanelWindowController: NSObject {
     override init() {
         super.init()
         Self.registry.add(self)
+        _ = Self.appActivateObserver
         spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil,

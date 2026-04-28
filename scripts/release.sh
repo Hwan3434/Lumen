@@ -51,6 +51,7 @@ xcodebuild \
   -destination 'generic/platform=macOS' \
   -archivePath "$ARCHIVE" \
   MARKETING_VERSION="$VERSION" \
+  CURRENT_PROJECT_VERSION="$VERSION" \
   CODE_SIGN_IDENTITY="Lumen Self-Signed" \
   CODE_SIGN_STYLE=Manual \
   DEVELOPMENT_TEAM="" \

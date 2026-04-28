@@ -91,7 +91,8 @@ final class NotesViewModel {
         activeText = notes.first { $0.id == id }?.text ?? ""
         isPreview = false
         saveStatus = .resting
-        caretRestoreLocation = caretByNoteID[id] ?? 0
+        // 기억된 위치 없으면 텍스트 끝(Int.max는 LumenTextArea가 length로 clamp).
+        caretRestoreLocation = caretByNoteID[id] ?? .max
         caretRestoreToken &+= 1
     }
 
@@ -129,6 +130,8 @@ final class NotesViewModel {
             activeText = ""
             isPreview = false
             saveStatus = .resting
+            caretRestoreLocation = 0
+            caretRestoreToken &+= 1
         }
     }
 

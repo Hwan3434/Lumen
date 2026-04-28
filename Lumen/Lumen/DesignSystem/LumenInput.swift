@@ -43,6 +43,12 @@ struct LumenTextArea: View {
     /// 호출 사례: preview→edit 토글 시 캐럿이 다시 잡혀야 하는데, 패널이 이미 key라
     /// KeyablePanel.becomeKey의 자동 포커스 경로가 다시 호출되지 않는다.
     var focusToken: Int = 0
+    /// caretRestoreToken이 바뀌는 시점에 caretRestoreLocation으로 캐럿을 1회 옮긴다.
+    /// 0은 "no-op" 시작값. 호출자는 단조 증가 카운터를 넘기면 된다.
+    var caretRestoreToken: Int = 0
+    var caretRestoreLocation: Int = 0
+    /// 사용자가 selection을 바꿀 때마다 호출(location만). 노트별 캐럿 위치 기억용.
+    var onCaretChange: ((Int) -> Void)? = nil
 
     var body: some View {
         TextAreaRepresentable(
@@ -50,7 +56,10 @@ struct LumenTextArea: View {
             placeholder: placeholder,
             fontSize: fontSize,
             monospaced: monospaced,
-            focusToken: focusToken
+            focusToken: focusToken,
+            caretRestoreToken: caretRestoreToken,
+            caretRestoreLocation: caretRestoreLocation,
+            onCaretChange: onCaretChange
         )
     }
 }
@@ -61,6 +70,9 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     let fontSize: CGFloat
     let monospaced: Bool
     let focusToken: Int
+    let caretRestoreToken: Int
+    let caretRestoreLocation: Int
+    let onCaretChange: ((Int) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -109,6 +121,13 @@ private struct TextAreaRepresentable: NSViewRepresentable {
             textView.string = text
         }
         applyAttributes(to: textView, coordinator: context.coordinator)
+        if caretRestoreToken != 0 && caretRestoreToken != context.coordinator.lastCaretRestoreToken {
+            context.coordinator.lastCaretRestoreToken = caretRestoreToken
+            // 텍스트 길이를 넘어가면 끝으로 clamp.
+            let clamped = min(max(caretRestoreLocation, 0), (textView.string as NSString).length)
+            textView.setSelectedRange(NSRange(location: clamped, length: 0))
+            textView.scrollRangeToVisible(NSRange(location: clamped, length: 0))
+        }
         if focusToken != 0 && focusToken != context.coordinator.lastFocusToken {
             context.coordinator.lastFocusToken = focusToken
             DispatchQueue.main.async { [weak textView] in
@@ -137,6 +156,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         var parent: TextAreaRepresentable?
         var lastAttrKey: AttrKey?
         var lastFocusToken: Int = 0
+        var lastCaretRestoreToken: Int = 0
 
         func bind(parent: TextAreaRepresentable) {
             self.parent = parent
@@ -145,6 +165,11 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent?.text = textView.string
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            parent?.onCaretChange?(textView.selectedRange().location)
         }
     }
 

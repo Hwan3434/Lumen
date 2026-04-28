@@ -46,6 +46,13 @@ final class NotesViewModel {
     /// 노트 전환·외부 commit 시점에 동기화된다.
     var activeText: String = ""
 
+    /// 노트별 마지막 캐럿 위치(메모리 only — 앱 재시작 시 리셋). 노트 전환 시 복원해
+    /// 사용자가 ⌘1↔⌘2를 슥슥 오갈 때 매번 텍스트 끝으로 튕기지 않게 한다.
+    private var caretByNoteID: [String: Int] = [:]
+    /// 노트 전환마다 +1 — LumenTextArea가 토큰 변화 감지 시 caretRestoreLocation을 1회 적용.
+    var caretRestoreToken: Int = 0
+    var caretRestoreLocation: Int = 0
+
     /// 현재 선택된 노트 인덱스 — 키 핸들러가 ⌘1~9 매핑할 때 사용.
     var selectedIndex: Int? {
         guard let selectedID else { return nil }
@@ -84,6 +91,14 @@ final class NotesViewModel {
         activeText = notes.first { $0.id == id }?.text ?? ""
         isPreview = false
         saveStatus = .resting
+        caretRestoreLocation = caretByNoteID[id] ?? 0
+        caretRestoreToken &+= 1
+    }
+
+    /// LumenTextArea가 사용자 selection 변경마다 호출 — 다음 전환 시 복원하기 위해 기억.
+    func recordCaret(_ location: Int) {
+        guard let selectedID else { return }
+        caretByNoteID[selectedID] = location
     }
 
     func selectIndex(_ index: Int) {

@@ -96,7 +96,10 @@ struct NoteView: View {
             placeholder: "여기에 메모… 마크다운 지원",
             fontSize: 13,
             monospaced: true,
-            focusToken: viewModel.isPreview ? 0 : viewModel.editFocusToken
+            focusToken: viewModel.isPreview ? 0 : viewModel.editFocusToken,
+            caretRestoreToken: viewModel.caretRestoreToken,
+            caretRestoreLocation: viewModel.caretRestoreLocation,
+            onCaretChange: { viewModel.recordCaret($0) }
         )
         .id(viewModel.selectedID ?? "")
         .padding(.horizontal, 22)

@@ -9,7 +9,6 @@ final class NoteWindowController: PanelWindowController {
 
     private static let panelSize = NSSize(width: 720, height: 680)
     private var viewModel: NotesViewModel?
-    private var keyMonitor: Any?
 
     override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(
@@ -37,10 +36,9 @@ final class NoteWindowController: PanelWindowController {
             return false
         }
 
-        // 로컬 키 모니터 — modifier가 들어간 단축키만 잡고, 단순 키는 KeyablePanel.onKeyEvent로.
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
-            guard let panel, panel.isKeyWindow else { return event }
-            return self?.handleKey(event) ?? event
+        // ⌘ 단축키는 sendEvent 단에서 가로채야 NSTextView로 새어 들어가 beep이 울리는 걸 막을 수 있다.
+        panel.onCommandKey = { [weak self] event in
+            self?.handleKey(event) == nil
         }
 
         panel.contentView = NSHostingView(rootView: NoteView(viewModel: vm))
@@ -111,9 +109,4 @@ final class NoteWindowController: PanelWindowController {
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
     }
 
-    deinit {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-    }
 }

@@ -10,6 +10,11 @@ class KeyablePanel: NSPanel {
     /// 키 이벤트 가로채기 — true 반환 시 super.sendEvent를 건너뛴다.
     var onKeyEvent: ((Int) -> Bool)?
 
+    /// modifier 포함 키 이벤트 가로채기 — true 반환 시 super.sendEvent를 건너뛴다.
+    /// NSEvent local monitor가 nil 리턴해도 NSTextView가 first responder인 케이스에서
+    /// 일부 ⌘ 키가 텍스트뷰로 직접 도달해 beep을 울리는 걸 막기 위해 sendEvent 단에서 한 번 더 가로챈다.
+    var onCommandKey: ((NSEvent) -> Bool)?
+
     /// hide 후에 이전 앱으로 포커스 복귀시킬지 여부. PanelWindowController가
     /// space 전환을 감지해 false로 내릴 수 있다.
     var activatePreviousAppOnClose = true
@@ -39,6 +44,10 @@ class KeyablePanel: NSPanel {
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown {
+            if event.modifierFlags.contains(.command),
+               let cmdHandler = onCommandKey, cmdHandler(event) {
+                return
+            }
             if let handler = onKeyEvent, handler(Int(event.keyCode)) {
                 return
             }

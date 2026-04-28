@@ -38,13 +38,18 @@ struct LumenTextArea: View {
     let placeholder: String
     var fontSize: CGFloat = 17
     var monospaced: Bool = false
+    /// 뷰가 등장하는 즉시 NSTextView를 first responder로 만들지 여부.
+    /// 패널이 이미 key인 상태에서 모드 전환 등으로 새로 mount되는 경우, KeyablePanel.becomeKey
+    /// 의 자동 포커스 경로가 다시 호출되지 않으므로 호출자가 명시적으로 켜야 한다.
+    var autoFocus: Bool = false
 
     var body: some View {
         TextAreaRepresentable(
             text: $text,
             placeholder: placeholder,
             fontSize: fontSize,
-            monospaced: monospaced
+            monospaced: monospaced,
+            autoFocus: autoFocus
         )
     }
 }
@@ -54,6 +59,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     let placeholder: String
     let fontSize: CGFloat
     let monospaced: Bool
+    let autoFocus: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -92,6 +98,12 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         context.coordinator.bind(parent: self)
         applyAttributes(to: textView, coordinator: context.coordinator)
         scroll.documentView = textView
+        if autoFocus {
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView, let window = textView.window else { return }
+                window.makeFirstResponder(textView)
+            }
+        }
         return scroll
     }
 

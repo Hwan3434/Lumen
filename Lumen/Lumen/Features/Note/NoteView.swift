@@ -92,7 +92,8 @@ struct NoteView: View {
             ),
             placeholder: "여기에 메모… 마크다운 지원",
             fontSize: 13,
-            monospaced: true
+            monospaced: true,
+            autoFocus: true
         )
         .id(viewModel.selectedID ?? "")
         .padding(.horizontal, 22)

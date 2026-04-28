@@ -129,8 +129,7 @@ struct UsagePanelView: View {
             let maxCalls = heavy.projects.first?.calls ?? 1
             VStack(alignment: .leading, spacing: 7) {
                 ForEach(heavy.projects) { proj in
-                    barRow(label: proj.name, value: proj.calls, max: maxCalls,
-                           color: LumenTokens.Accent.violet.opacity(0.7))
+                    barRow(label: proj.name, value: proj.calls, max: maxCalls)
                 }
             }
         }
@@ -154,10 +153,7 @@ struct UsagePanelView: View {
                         label: model.name,
                         value: model.calls,
                         sub: formatCost(model.cost),
-                        max: maxCalls,
-                        color: model.name.contains("Opus")
-                            ? LumenTokens.Accent.violet.opacity(0.85)
-                            : LumenTokens.Accent.violetSoft.opacity(0.6)
+                        max: maxCalls
                     )
                 }
             }
@@ -171,7 +167,7 @@ struct UsagePanelView: View {
         return String(format: "$%.3f", cost)
     }
 
-    private func barRow(label: String, value: Int, sub: String? = nil, max: Int, color: Color) -> some View {
+    private func barRow(label: String, value: Int, sub: String? = nil, max: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text(label)
@@ -192,13 +188,25 @@ struct UsagePanelView: View {
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.06))
+                    let ratio = CGFloat(value) / CGFloat(max)
                     Capsule()
-                        .fill(color)
-                        .frame(width: geo.size.width * CGFloat(value) / CGFloat(max))
+                        .fill(barFill(ratio: ratio))
+                        .frame(width: geo.size.width * ratio)
                 }
             }
             .frame(height: 4)
         }
+    }
+
+    /// 짧은 bar는 그라데이션이 묻혀 보이므로 15% 미만일 땐 단색(violet)으로 둔다.
+    private func barFill(ratio: CGFloat) -> AnyShapeStyle {
+        if ratio < 0.15 {
+            return AnyShapeStyle(LumenTokens.Accent.violet)
+        }
+        return AnyShapeStyle(LinearGradient(
+            colors: [LumenTokens.Accent.violet, LumenTokens.Accent.amber],
+            startPoint: .leading, endPoint: .trailing
+        ))
     }
 
     // MARK: - Gauge (Claude Max 잔여)
@@ -224,7 +232,7 @@ struct UsagePanelView: View {
                     Capsule()
                         .fill(Color.white.opacity(0.08))
                     Capsule()
-                        .fill(gaugeColor(pct))
+                        .fill(barFill(ratio: CGFloat(pct) / 100))
                         .frame(width: geo.size.width * CGFloat(pct) / 100)
                         .shadow(color: pct >= 80 ? LumenTokens.Accent.amberDim : .clear, radius: 4)
                 }
@@ -237,13 +245,6 @@ struct UsagePanelView: View {
         }
     }
 
-    /// 80%↑ amber (한도 임박, 검색창의 amber 액센트와 같은 시각언어로 "주의").
-    /// 50%↑ violet-soft (중간), 그 이하 violet (안전).
-    private func gaugeColor(_ pct: Int) -> Color {
-        if pct >= 80 { return LumenTokens.Accent.amber }
-        if pct >= 50 { return LumenTokens.Accent.violetSoft }
-        return LumenTokens.Accent.violet.opacity(0.85)
-    }
 }
 
 // MARK: - Sparkline
@@ -286,23 +287,32 @@ struct SparklineView: View {
                     startPoint: .top, endPoint: .bottom
                 ))
 
-                // The line itself.
+                // The line itself — left-to-right gradient (deep violet → soft violet).
                 Path { path in
                     guard count > 1 else { return }
                     let pts = points(size: size, range: range)
                     path.move(to: pts[0])
                     pts.dropFirst().forEach { path.addLine(to: $0) }
                 }
-                .stroke(LumenTokens.Accent.violetSoft.opacity(0.9),
-                        style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            LumenTokens.Accent.violet,
+                            LumenTokens.Accent.amber,
+                        ],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+                )
+                .shadow(color: LumenTokens.Accent.violet.opacity(0.5), radius: 3)
 
-                // Endpoint dot — pulses subtly through the violet halo.
+                // Endpoint dot — matches the line's terminal hue (amber).
                 if count > 0 {
                     let last = points(size: size, range: range).last!
                     Circle()
-                        .fill(LumenTokens.Accent.violetSoft)
+                        .fill(LumenTokens.Accent.amber)
                         .frame(width: 5, height: 5)
-                        .shadow(color: LumenTokens.Accent.violet.opacity(0.6), radius: 4)
+                        .shadow(color: LumenTokens.Accent.amberDim, radius: 4)
                         .position(last)
                 }
             }

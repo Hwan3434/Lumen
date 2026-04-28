@@ -60,7 +60,12 @@ struct NoteView: View {
     }
 
     private var bodyContent: some View {
+        // editor를 미리보기에서도 mount된 채로 둬서 토글 후에도 NSTextView의 selection/스크롤
+        // 위치가 살아있게 한다. 미리보기일 때는 위에 마크다운 ScrollView를 덮고 hit test만 끈다.
         ZStack(alignment: .topLeading) {
+            editor
+                .opacity(viewModel.isPreview ? 0 : 1)
+                .allowsHitTesting(!viewModel.isPreview)
             if viewModel.isPreview {
                 ScrollView(.vertical) {
                     Markdown(viewModel.activeText)
@@ -75,8 +80,6 @@ struct NoteView: View {
                         .padding(.vertical, 20)
                 }
                 .scrollIndicators(.hidden)
-            } else {
-                editor
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,7 +96,7 @@ struct NoteView: View {
             placeholder: "여기에 메모… 마크다운 지원",
             fontSize: 13,
             monospaced: true,
-            autoFocus: true
+            focusToken: viewModel.isPreview ? 0 : viewModel.editFocusToken
         )
         .id(viewModel.selectedID ?? "")
         .padding(.horizontal, 22)

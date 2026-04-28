@@ -36,6 +36,9 @@ final class NotesViewModel {
     private(set) var notes: [NoteItem] = []
     var selectedID: String?
     var isPreview = false
+    /// 편집 모드 진입 시마다 증가 — LumenTextArea가 이 값 변화를 감지해 NSTextView를
+    /// first responder로 다시 잡는다 (preview→edit 토글 후 마우스 클릭 없이 바로 입력 가능하게).
+    var editFocusToken: Int = 0
     var saveStatus: SaveStatus = .resting
 
     /// 키 입력은 이 드래프트만 갱신하고, 디바운스 만료 시점에만 `notes`로 commit한다.
@@ -132,6 +135,7 @@ final class NotesViewModel {
         // 미리보기로 전환할 때는 draft를 commit해서 미리보기가 stale하지 않게.
         if !isPreview { commitDraftNow() }
         isPreview.toggle()
+        if !isPreview { editFocusToken &+= 1 }
     }
 
     /// keystroke 디바운스: 1초 후 draft를 notes 배열에 반영하고 디스크에 쓴다.

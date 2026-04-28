@@ -38,10 +38,11 @@ struct LumenTextArea: View {
     let placeholder: String
     var fontSize: CGFloat = 17
     var monospaced: Bool = false
-    /// 뷰가 등장하는 즉시 NSTextView를 first responder로 만들지 여부.
-    /// 패널이 이미 key인 상태에서 모드 전환 등으로 새로 mount되는 경우, KeyablePanel.becomeKey
-    /// 의 자동 포커스 경로가 다시 호출되지 않으므로 호출자가 명시적으로 켜야 한다.
-    var autoFocus: Bool = false
+    /// 변화가 감지될 때마다 NSTextView를 first responder로 만든다. 0은 "no-op".
+    /// 호출자는 단조 증가 카운터를 넘기면 된다 — 같은 값으로 머무르면 포커스 변화 없음.
+    /// 호출 사례: preview→edit 토글 시 캐럿이 다시 잡혀야 하는데, 패널이 이미 key라
+    /// KeyablePanel.becomeKey의 자동 포커스 경로가 다시 호출되지 않는다.
+    var focusToken: Int = 0
 
     var body: some View {
         TextAreaRepresentable(
@@ -49,7 +50,7 @@ struct LumenTextArea: View {
             placeholder: placeholder,
             fontSize: fontSize,
             monospaced: monospaced,
-            autoFocus: autoFocus
+            focusToken: focusToken
         )
     }
 }
@@ -59,7 +60,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     let placeholder: String
     let fontSize: CGFloat
     let monospaced: Bool
-    let autoFocus: Bool
+    let focusToken: Int
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -98,12 +99,6 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         context.coordinator.bind(parent: self)
         applyAttributes(to: textView, coordinator: context.coordinator)
         scroll.documentView = textView
-        if autoFocus {
-            DispatchQueue.main.async { [weak textView] in
-                guard let textView, let window = textView.window else { return }
-                window.makeFirstResponder(textView)
-            }
-        }
         return scroll
     }
 
@@ -114,6 +109,13 @@ private struct TextAreaRepresentable: NSViewRepresentable {
             textView.string = text
         }
         applyAttributes(to: textView, coordinator: context.coordinator)
+        if focusToken != 0 && focusToken != context.coordinator.lastFocusToken {
+            context.coordinator.lastFocusToken = focusToken
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView, let window = textView.window else { return }
+                window.makeFirstResponder(textView)
+            }
+        }
     }
 
     private func applyAttributes(to textView: PlaceholderTextView, coordinator: Coordinator) {
@@ -134,6 +136,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: TextAreaRepresentable?
         var lastAttrKey: AttrKey?
+        var lastFocusToken: Int = 0
 
         func bind(parent: TextAreaRepresentable) {
             self.parent = parent

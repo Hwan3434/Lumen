@@ -4,10 +4,7 @@ import Observation
 @Observable
 final class ClipboardViewModel {
     var query = "" {
-        didSet {
-            selectedIndex = 0
-            updateFilteredItems()
-        }
+        didSet { selectedIndex = 0 }
     }
     var selectedIndex = 0 {
         didSet { loadPreview() }
@@ -26,21 +23,15 @@ final class ClipboardViewModel {
         return fmt
     }()
 
-    var filteredItems: [ClipboardItem] = []
-
-    init() {
-        updateFilteredItems()
-    }
-
-    private func updateFilteredItems() {
+    /// manager.history를 직접 derive — @Observable이 history 변경을 추적해 패널이 자동 갱신된다.
+    var filteredItems: [ClipboardItem] {
         let items = manager.history
-        if query.isEmpty {
-            filteredItems = items
-        } else {
-            let q = query.lowercased()
-            filteredItems = items.filter { $0.displayText.lowercased().contains(q) }
-        }
+        guard !query.isEmpty else { return items }
+        let q = query.lowercased()
+        return items.filter { $0.displayText.lowercased().contains(q) }
     }
+
+    init() {}
 
     var hasPreviewContent: Bool {
         previewText != nil || previewImage != nil || previewMeta != nil
@@ -66,7 +57,6 @@ final class ClipboardViewModel {
         previewMeta = nil
         previewAppIcon = nil
         isLoadingPreview = true
-        updateFilteredItems()
 
         guard let item = filteredItems[safe: selectedIndex] else {
             isLoadingPreview = false

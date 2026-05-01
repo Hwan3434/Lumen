@@ -50,4 +50,8 @@ final class ClipboardWindowController: PanelWindowController {
         let y = frame.midY - size.height / 2
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
     }
+
+    override func willHide() {
+        clipboardViewModel?.query = ""
+    }
 }

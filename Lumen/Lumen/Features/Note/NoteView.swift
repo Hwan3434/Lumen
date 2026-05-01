@@ -131,8 +131,24 @@ private struct NotesSidebar: View {
                             note: note,
                             index: index,
                             isSelected: viewModel.selectedID == note.id,
-                            onSelect: { viewModel.selectNote(id: note.id) }
+                            canDelete: viewModel.notes.count > 1,
+                            onSelect: { viewModel.selectNote(id: note.id) },
+                            onDelete: { viewModel.delete(id: note.id) }
                         )
+                        .draggable(note.id) {
+                            // 드래그 프리뷰 — 작은 라벨.
+                            Text(note.displayTitle)
+                                .font(.system(size: 11))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                        }
+                        .dropDestination(for: String.self) { droppedIDs, _ in
+                            guard let sourceID = droppedIDs.first,
+                                  let from = viewModel.notes.firstIndex(where: { $0.id == sourceID }) else { return false }
+                            viewModel.move(from: from, to: index)
+                            return true
+                        }
                     }
                 }
                 .padding(.horizontal, 6)
@@ -175,7 +191,11 @@ private struct SidebarRow: View {
     let note: NoteItem
     let index: Int
     let isSelected: Bool
+    let canDelete: Bool
     let onSelect: () -> Void
+    let onDelete: () -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: onSelect) {
@@ -186,7 +206,8 @@ private struct SidebarRow: View {
                         .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if index < 9 {
+                    // hover 시 같은 자리에 trash 버튼이 덮어 그려진다.
+                    if !isHovering, index < 9 {
                         Text("⌘\(index + 1)")
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(LumenTokens.TextColor.muted)
@@ -196,6 +217,16 @@ private struct SidebarRow: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
                             )
+                    }
+                    if isHovering, canDelete {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .frame(width: 18, height: 13)
+                        }
+                        .buttonStyle(.plain)
+                        .help("노트 삭제")
                     }
                 }
                 if !note.preview.isEmpty {
@@ -209,6 +240,7 @@ private struct SidebarRow: View {
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
             .background(
                 RoundedRectangle(cornerRadius: 5)
                     .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)

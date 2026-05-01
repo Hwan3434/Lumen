@@ -29,6 +29,13 @@ struct NoteItem: Identifiable, Equatable {
     }
 }
 
+/// 노트별 UI 상태 — 메모리 only (앱 재시작 시 리셋). 새 상태가 늘어나도 한 군데서 관리.
+struct NoteUIState {
+    /// nil이면 텍스트 끝으로 복원(LumenTextArea가 length로 clamp).
+    var caret: Int?
+    var isPreview: Bool = false
+}
+
 @Observable
 final class NotesViewModel {
     enum SaveStatus { case resting, editing, saved }
@@ -46,9 +53,7 @@ final class NotesViewModel {
     /// 노트 전환·외부 commit 시점에 동기화된다.
     var activeText: String = ""
 
-    /// 노트별 마지막 캐럿 위치(메모리 only — 앱 재시작 시 리셋). 노트 전환 시 복원해
-    /// 사용자가 ⌘1↔⌘2를 슥슥 오갈 때 매번 텍스트 끝으로 튕기지 않게 한다.
-    private var caretByNoteID: [String: Int] = [:]
+    private var stateByNoteID: [String: NoteUIState] = [:]
     /// 노트 전환마다 +1 — LumenTextArea가 토큰 변화 감지 시 caretRestoreLocation을 1회 적용.
     var caretRestoreToken: Int = 0
     var caretRestoreLocation: Int = 0
@@ -87,19 +92,24 @@ final class NotesViewModel {
         guard notes.contains(where: { $0.id == id }) else { return }
         // 노트 전환 전, 펜딩 변경분이 있으면 즉시 commit해서 잃지 않도록 한다.
         commitDraftNow()
+        // 떠나는 노트의 현재 모드 기억.
+        if let prev = selectedID {
+            stateByNoteID[prev, default: NoteUIState()].isPreview = isPreview
+        }
         selectedID = id
         activeText = notes.first { $0.id == id }?.text ?? ""
-        isPreview = false
+        let next = stateByNoteID[id] ?? NoteUIState()
+        isPreview = next.isPreview
         saveStatus = .resting
-        // 기억된 위치 없으면 텍스트 끝(Int.max는 LumenTextArea가 length로 clamp).
-        caretRestoreLocation = caretByNoteID[id] ?? .max
+        // nil이면 텍스트 끝(Int.max는 LumenTextArea가 length로 clamp).
+        caretRestoreLocation = next.caret ?? .max
         caretRestoreToken &+= 1
     }
 
     /// LumenTextArea가 사용자 selection 변경마다 호출 — 다음 전환 시 복원하기 위해 기억.
     func recordCaret(_ location: Int) {
         guard let selectedID else { return }
-        caretByNoteID[selectedID] = location
+        stateByNoteID[selectedID, default: NoteUIState()].caret = location
     }
 
     func selectIndex(_ index: Int) {
@@ -125,6 +135,7 @@ final class NotesViewModel {
         let item = NoteItem(id: id, text: "")
         notes.append(item)
         writeToDisk(item)
+        writeOrder()
         if activate {
             selectedID = id
             activeText = ""
@@ -137,14 +148,38 @@ final class NotesViewModel {
 
     /// 마지막 한 개는 지울 수 없음 — 항상 빈 노트라도 하나는 남겨둔다.
     func deleteCurrent() {
-        guard notes.count > 1, let idx = selectedIndex else { return }
-        // 삭제 대상의 펜딩 commit은 의미 없으니 cancel.
-        saveWorkItem?.cancel()
-        let id = notes[idx].id
+        guard let idx = selectedIndex else { return }
+        delete(id: notes[idx].id)
+    }
+
+    func delete(id: String) {
+        guard notes.count > 1, let idx = notes.firstIndex(where: { $0.id == id }) else { return }
+        let wasSelected = (selectedID == id)
+        // 펜딩 commit이 있다면 — 삭제 대상의 것이면 의미 없으니 cancel, 아니면 잃지 않게 즉시 commit.
+        if wasSelected {
+            saveWorkItem?.cancel()
+        } else {
+            commitDraftNow()
+        }
         notes.remove(at: idx)
         try? FileManager.default.removeItem(at: fileURL(for: id))
-        let nextIdx = min(idx, notes.count - 1)
-        selectNote(id: notes[nextIdx].id)
+        stateByNoteID.removeValue(forKey: id)
+        writeOrder()
+        if wasSelected {
+            let nextIdx = min(idx, notes.count - 1)
+            selectNote(id: notes[nextIdx].id)
+        }
+    }
+
+    /// 사이드바 드래그 드랍으로 호출 — source 노트를 destination row 자리에 끼워넣는다.
+    func move(from source: Int, to destination: Int) {
+        guard source != destination, notes.indices.contains(source) else { return }
+        var reordered = notes
+        let item = reordered.remove(at: source)
+        let clamped = min(max(destination, 0), reordered.count)
+        reordered.insert(item, at: clamped)
+        notes = reordered
+        writeOrder()
     }
 
     // MARK: - Editing
@@ -153,6 +188,9 @@ final class NotesViewModel {
         // 미리보기로 전환할 때는 draft를 commit해서 미리보기가 stale하지 않게.
         if !isPreview { commitDraftNow() }
         isPreview.toggle()
+        if let id = selectedID {
+            stateByNoteID[id, default: NoteUIState()].isPreview = isPreview
+        }
         if !isPreview { editFocusToken &+= 1 }
     }
 
@@ -199,17 +237,41 @@ final class NotesViewModel {
         try? note.text.write(to: fileURL(for: note.id), atomically: true, encoding: .utf8)
     }
 
+    /// 노트 순서는 .order.json에 id 배열로 저장. 새 노트(메타에 없는 파일)는 timestamp 순으로 끝에 추가.
+    private var orderFileURL: URL { notesDir.appendingPathComponent(".order.json") }
+
+    private func writeOrder() {
+        let ids = notes.map { $0.id }
+        guard let data = try? JSONEncoder().encode(ids) else { return }
+        try? data.write(to: orderFileURL, options: .atomic)
+    }
+
     private func loadFromDisk() {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(at: notesDir, includingPropertiesForKeys: nil) else { return }
         let mdFiles = urls.filter { $0.pathExtension == "md" }
-        // 파일명(id)이 timestamp이므로 사전순 == 생성순.
-        let sorted = mdFiles.sorted { $0.lastPathComponent < $1.lastPathComponent }
-        notes = sorted.map { url in
+        var byID: [String: NoteItem] = [:]
+        for url in mdFiles {
             let id = url.deletingPathExtension().lastPathComponent
             let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-            return NoteItem(id: id, text: text)
+            byID[id] = NoteItem(id: id, text: text)
         }
+        let savedOrder: [String] = (try? Data(contentsOf: orderFileURL))
+            .flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
+        var ordered: [NoteItem] = []
+        var seen = Set<String>()
+        for id in savedOrder {
+            if let n = byID[id] { ordered.append(n); seen.insert(id) }
+        }
+        // 메타에 없는 새 파일은 timestamp 순(파일명 사전순)으로 끝에.
+        let leftovers = mdFiles
+            .map { $0.deletingPathExtension().lastPathComponent }
+            .filter { !seen.contains($0) }
+            .sorted()
+        for id in leftovers {
+            if let n = byID[id] { ordered.append(n) }
+        }
+        notes = ordered
     }
 
     /// 0.x의 단일 note.md가 있고 notes/ 디렉터리가 비어 있으면 첫 노트로 옮기고 원본 삭제.

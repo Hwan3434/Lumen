@@ -1,5 +1,6 @@
 import SwiftUI
 import MarkdownUI
+import UniformTypeIdentifiers
 
 struct NoteView: View {
     @State var viewModel = NotesViewModel()
@@ -31,26 +32,31 @@ struct NoteView: View {
     }
 
     private var header: some View {
-        HStack {
-            HStack(spacing: 12) {
-                Image(systemName: "note.text")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
-                Text(activeTitle)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                    .lineLimit(1)
-                Rectangle()
-                    .fill(LumenTokens.divider)
-                    .frame(width: 1, height: 12)
-                SaveStatusView(state: viewModel.saveStatus)
+        ZStack {
+            // 평상시 헤더 빈 공간 드래그로 윈도우 이동. 콘텐츠는 위에 겹쳐 hit-test 우선권 잡게.
+            WindowDragArea()
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "note.text")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                    Text(activeTitle)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(LumenTokens.TextColor.primary)
+                        .lineLimit(1)
+                    Rectangle()
+                        .fill(LumenTokens.divider)
+                        .frame(width: 1, height: 12)
+                    SaveStatusView(state: viewModel.saveStatus)
+                }
+                .allowsHitTesting(false)
+                Spacer()
+                ModeToggle(isPreview: viewModel.isPreview) {
+                    viewModel.togglePreview()
+                }
             }
-            Spacer()
-            ModeToggle(isPreview: viewModel.isPreview) {
-                viewModel.togglePreview()
-            }
+            .padding(.horizontal, 14)
         }
-        .padding(.horizontal, 14)
         .frame(height: 44)
     }
 
@@ -119,71 +125,169 @@ struct NoteView: View {
 
 private struct NotesSidebar: View {
     @Bindable var viewModel: NotesViewModel
+    /// drag 중인 source note id — DropDelegate가 hover 위치 감지하면 즉시 reorder.
+    @State private var draggingID: String?
 
     var body: some View {
         VStack(spacing: 0) {
             sidebarHeader
             LumenHairline()
             ScrollView {
-                LazyVStack(spacing: 1) {
+                VStack(spacing: 1) {
                     ForEach(Array(viewModel.notes.enumerated()), id: \.element.id) { index, note in
-                        SidebarRow(
+                        DraggableSidebarRow(
                             note: note,
                             index: index,
-                            isSelected: viewModel.selectedID == note.id,
-                            canDelete: viewModel.notes.count > 1,
-                            onSelect: { viewModel.selectNote(id: note.id) },
-                            onDelete: { viewModel.delete(id: note.id) }
+                            viewModel: viewModel,
+                            draggingID: $draggingID
                         )
-                        .draggable(note.id) {
-                            // 드래그 프리뷰 — 작은 라벨.
-                            Text(note.displayTitle)
-                                .font(.system(size: 11))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                        }
-                        .dropDestination(for: String.self) { droppedIDs, _ in
-                            guard let sourceID = droppedIDs.first,
-                                  let from = viewModel.notes.firstIndex(where: { $0.id == sourceID }) else { return false }
-                            viewModel.move(from: from, to: index)
-                            return true
-                        }
                     }
+                    // 마지막 row 아래 빈 공간 — 드랍하면 리스트 끝에 끼워넣음.
+                    TrailingDropZone(viewModel: viewModel, draggingID: $draggingID)
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .scrollIndicators(.hidden)
+            .frame(maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity)
         .background(LumenTokens.BG.sidePanel)
     }
 
     private var sidebarHeader: some View {
-        HStack(spacing: 8) {
-            Text("노트")
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.4)
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            Spacer()
-            Button {
-                viewModel.createNewNote(activate: true)
-            } label: {
-                Image(systemName: "plus")
+        ZStack {
+            WindowDragArea()
+            HStack(spacing: 8) {
+                Text("노트")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    .frame(width: 22, height: 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
+                    .tracking(0.4)
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .allowsHitTesting(false)
+                Spacer(minLength: 0)
+                Button {
+                    viewModel.createNewNote(activate: true)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        .frame(width: 22, height: 22)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                        )
+                }
+                .buttonStyle(.plain)
+                .help("새 노트 (⌘N)")
             }
-            .buttonStyle(.plain)
-            .help("새 노트 (⌘N)")
+            .padding(.horizontal, 12)
         }
-        .padding(.horizontal, 12)
         .frame(height: 44)
+    }
+}
+
+/// SidebarRow + NSItemProvider/DropDelegate 기반 reorder.
+/// `.dropDestination(for: String.self)`는 macOS에서 row hit-area가 작을 때 flaky라 DropDelegate로 처리.
+private struct DraggableSidebarRow: View {
+    let note: NoteItem
+    let index: Int
+    @Bindable var viewModel: NotesViewModel
+    @Binding var draggingID: String?
+
+    var body: some View {
+        SidebarRow(
+            note: note,
+            index: index,
+            isSelected: viewModel.selectedID == note.id,
+            canDelete: viewModel.notes.count > 1,
+            onSelect: { viewModel.selectNote(id: note.id) },
+            onDelete: { viewModel.delete(id: note.id) }
+        )
+        .opacity(draggingID == note.id ? 0.4 : 1)
+        .onDrag {
+            draggingID = note.id
+            return NSItemProvider(object: note.id as NSString)
+        } preview: {
+            SidebarRow(
+                note: note,
+                index: index,
+                isSelected: true,
+                canDelete: false,
+                onSelect: {},
+                onDelete: {}
+            )
+            .frame(width: 188)
+            .opacity(0.85)
+        }
+        .onDrop(of: [.text], delegate: NoteReorderDelegate(
+            target: note,
+            viewModel: viewModel,
+            draggingID: $draggingID
+        ))
+    }
+}
+
+private struct NoteReorderDelegate: DropDelegate {
+    let target: NoteItem
+    let viewModel: NotesViewModel
+    @Binding var draggingID: String?
+
+    func dropEntered(info: DropInfo) {
+        guard let sourceID = draggingID, sourceID != target.id,
+              let from = viewModel.notes.firstIndex(where: { $0.id == sourceID }),
+              let to = viewModel.notes.firstIndex(where: { $0.id == target.id }) else { return }
+        if from != to {
+            viewModel.move(from: from, to: to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingID = nil
+        return true
+    }
+}
+
+/// 마지막 row 아래 빈 공간 drop zone — drag가 여기로 들어오면 즉시 끝으로 이동.
+private struct TrailingDropZone: View {
+    @Bindable var viewModel: NotesViewModel
+    @Binding var draggingID: String?
+
+    var body: some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minHeight: 40)
+            .onDrop(of: [.text], delegate: TrailingDropDelegate(
+                viewModel: viewModel,
+                draggingID: $draggingID
+            ))
+    }
+}
+
+private struct TrailingDropDelegate: DropDelegate {
+    let viewModel: NotesViewModel
+    @Binding var draggingID: String?
+
+    func dropEntered(info: DropInfo) {
+        guard let sourceID = draggingID,
+              let from = viewModel.notes.firstIndex(where: { $0.id == sourceID }) else { return }
+        let lastIndex = viewModel.notes.count - 1
+        if from != lastIndex {
+            viewModel.move(from: from, to: viewModel.notes.count)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingID = nil
+        return true
     }
 }
 

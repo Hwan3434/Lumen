@@ -21,7 +21,8 @@ final class NoteWindowController: PanelWindowController {
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.collectionBehavior = .canJoinAllSpaces
-        panel.isMovableByWindowBackground = true
+        // 사이드바 .draggable과 충돌해서 끔. 윈도우 이동은 ⌘+드래그로 별도 핸들링.
+        panel.isMovableByWindowBackground = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.isOpaque = false

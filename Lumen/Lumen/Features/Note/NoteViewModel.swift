@@ -172,11 +172,13 @@ final class NotesViewModel {
     }
 
     /// 사이드바 드래그 드랍으로 호출 — source 노트를 destination row 자리에 끼워넣는다.
+    /// destination은 "remove 전" 인덱스 기준이라, source가 앞에 있을 땐 remove로 한 칸 당겨지는 걸 보정한다.
     func move(from source: Int, to destination: Int) {
         guard source != destination, notes.indices.contains(source) else { return }
         var reordered = notes
         let item = reordered.remove(at: source)
-        let clamped = min(max(destination, 0), reordered.count)
+        let adjusted = source < destination ? destination - 1 : destination
+        let clamped = min(max(adjusted, 0), reordered.count)
         reordered.insert(item, at: clamped)
         notes = reordered
         writeOrder()

@@ -1,4 +1,25 @@
 import SwiftUI
+import AppKit
+
+// MARK: - Window drag handle
+//
+// `.nonactivatingPanel` 스타일의 NSPanel은 `isMovableByWindowBackground = true`로도 안 움직여
+// (`kCGSPreventsActivationTagBit` 이슈), `mouseDown(with:)`이 자기에게 직접 와서 `performDrag`를
+// 불러야 AppKit drag tracking이 시작된다. 헤더 같은 특정 영역에만 깔아 그 영역에서만 윈도우 이동.
+// SwiftUI `.overlay`로 깔고, 자식 hit-test가 우선해야 하는 인터랙티브 요소(버튼 등)는 ZStack 위에 둔다.
+
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+
+        override var mouseDownCanMoveWindow: Bool { true }
+    }
+}
 
 // MARK: - Relative time formatting (한국어 단축 표기)
 

@@ -30,40 +30,37 @@ struct ClipboardView: View {
     // MARK: - Title strip
 
     private var titleStrip: some View {
-        ZStack {
-            WindowDragArea()
-            HStack {
-                HStack(spacing: 10) {
-                    Image(systemName: "doc.on.clipboard.fill")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    Text("클립보드")
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(LumenTokens.TextColor.primary)
-                    Rectangle()
-                        .fill(LumenTokens.divider)
-                        .frame(width: 1, height: 12)
-                    Text(countLabel)
-                        .font(.system(size: 11, design: .monospaced))
+        HStack {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.on.clipboard.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+                Text("클립보드")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(LumenTokens.TextColor.primary)
+                Rectangle()
+                    .fill(LumenTokens.divider)
+                    .frame(width: 1, height: 12)
+                Text(countLabel)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+                if viewModel.query.isEmpty == false {
+                    Text("(검색)")
+                        .font(.system(size: 10.5))
+                        .tracking(0.4)
                         .foregroundStyle(LumenTokens.TextColor.muted)
-                    if viewModel.query.isEmpty == false {
-                        Text("(검색)")
-                            .font(.system(size: 10.5))
-                            .tracking(0.4)
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                    }
-                }
-                Spacer()
-                HStack(spacing: 8) {
-                    Text("패널")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    LumenKbd(label: "⌘⇧V")
                 }
             }
-            .padding(.horizontal, 14)
-            .allowsHitTesting(false)
+            Spacer()
+            HStack(spacing: 8) {
+                Text("패널")
+                    .font(.system(size: 11))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+                LumenKbd(label: "⌘⇧V")
+            }
         }
+        .padding(.horizontal, 14)
+        .draggableWindowHeader()
         .frame(height: 38)
     }
 

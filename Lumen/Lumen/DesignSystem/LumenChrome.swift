@@ -21,6 +21,20 @@ struct WindowDragArea: NSViewRepresentable {
     }
 }
 
+/// 헤더 빈 공간으로 윈도우 이동을 가능케 하는 표준 래퍼.
+/// 콘텐츠는 hit-test에서 빠지고, 그 아래 깔린 `WindowDragArea`가 mouseDown을 받는다.
+/// 헤더 안에 인터랙티브 요소(버튼 등)가 있어야 하면 이 모디파이어를 쓰지 말고
+/// `ZStack { WindowDragArea(); HStack { ... non-interactive .allowsHitTesting(false); interactive } }`
+/// 형태로 직접 구성한다 (Note 헤더가 그 예).
+extension View {
+    func draggableWindowHeader() -> some View {
+        ZStack {
+            WindowDragArea()
+            self.allowsHitTesting(false)
+        }
+    }
+}
+
 // MARK: - Relative time formatting (한국어 단축 표기)
 
 enum LumenTime {

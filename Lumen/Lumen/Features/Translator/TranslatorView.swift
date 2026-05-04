@@ -27,29 +27,33 @@ struct TranslatorView: View {
     // MARK: - Title strip
 
     private var titleStrip: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Image(systemName: "character.bubble")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
-                Text("번역")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 10, weight: .semibold))
+        ZStack {
+            WindowDragArea()
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "character.bubble")
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    Text("자동 감지")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    Text("번역")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(LumenTokens.TextColor.primary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        Text("자동 감지")
+                            .font(.system(size: 11))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                    }
                 }
+                Spacer()
+                Text("⌘⇧C")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
             }
-            Spacer()
-            Text("⌘⇧C")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+            .padding(.horizontal, 16)
+            .allowsHitTesting(false)
         }
-        .padding(.horizontal, 16)
         .frame(height: 40)
     }
 

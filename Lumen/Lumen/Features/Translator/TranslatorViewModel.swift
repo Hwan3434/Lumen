@@ -47,6 +47,10 @@ final class TranslatorViewModel {
 
         isLoading = true
         errorMessage = nil
+        // 이전 결과를 즉시 클리어해야 새 요청 도는 동안 stale 값이 화면에 남지 않는다.
+        translatedText = ""
+        pronunciationText = nil
+        inputPronunciationText = nil
 
         let needsPronunciation = text.count <= 200
 

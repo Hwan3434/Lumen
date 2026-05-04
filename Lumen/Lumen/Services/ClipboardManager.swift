@@ -82,7 +82,7 @@ final class ClipboardManager {
     var history: [ClipboardItem] = []
     private var lastChangeCount: Int = 0
     private var timer: Timer?
-    private let maxItems = 500
+    private let maxItems = 100
 
     private let savePath: URL = LumenStorage.url(for: .clipboardHistory)
     private let imagesDir: URL = LumenStorage.url(for: .clipboardImagesDir)

@@ -42,5 +42,7 @@ final class ColorPickerFeature: BuiltInFeature {
 
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(hex, forType: .string)
+
+        LumenToast.show(text: "\(hex) 복사됨", swatch: rgb)
     }
 }

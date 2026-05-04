@@ -67,6 +67,11 @@ final class NotesViewModel {
     private var saveWorkItem: DispatchWorkItem?
     private var savedFlashWorkItem: DispatchWorkItem?
 
+    // 드래그 중 dropEntered가 row 간 hover마다 호출돼 reorder가 100ms 단위로 쏟아진다.
+    // 매번 동기 write를 메인에서 돌리면 drop 시점에 UI가 멈칫. 디바운스 + 백그라운드 큐로 흘려보낸다.
+    private let diskQueue = DispatchQueue(label: "com.lumen.note.disk", qos: .utility)
+    private var orderSaveWorkItem: DispatchWorkItem?
+
     private let notesDir: URL = LumenStorage.url(for: .notesDir)
 
     init() {
@@ -244,8 +249,14 @@ final class NotesViewModel {
 
     private func writeOrder() {
         let ids = notes.map { $0.id }
-        guard let data = try? JSONEncoder().encode(ids) else { return }
-        try? data.write(to: orderFileURL, options: .atomic)
+        let url = orderFileURL
+        orderSaveWorkItem?.cancel()
+        let work = DispatchWorkItem {
+            guard let data = try? JSONEncoder().encode(ids) else { return }
+            try? data.write(to: url, options: .atomic)
+        }
+        orderSaveWorkItem = work
+        diskQueue.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     private func loadFromDisk() {

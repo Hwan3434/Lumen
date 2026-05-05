@@ -217,43 +217,75 @@ extension Calendar {
 
 // MARK: - Scroll wheel modifier
 //
-// SwiftUI는 스크롤휠을 직접 노출하지 않는다. NSViewRepresentable로 한 겹 깔고
-// scrollWheel(with:)에서 deltaY를 받아 클로저로 흘려보낸다.
+// SwiftUI는 스크롤휠을 직접 노출하지 않는다. 자식 위에 투명 NSView를 깔되
+// hitTest를 자식에게 양보하면 wheel 이벤트가 우리 view에 안 닿는다. 대신
+// 부모로 깔고 자식을 그 안의 SwiftUI에 두면 이벤트 체인 상 부모가 먼저 받음.
+//
+// 여기선 .overlay 형태가 아니라 NSHostingView를 감싸는 컨테이너로 만든다.
 
 extension View {
     func onScrollWheel(_ handler: @escaping (CGFloat) -> Void) -> some View {
-        self.background(ScrollWheelCatcher(handler: handler))
+        ScrollWheelHost(handler: handler) { self }
     }
 }
 
-private struct ScrollWheelCatcher: NSViewRepresentable {
+private struct ScrollWheelHost<Content: View>: NSViewRepresentable {
     let handler: (CGFloat) -> Void
+    @ViewBuilder let content: () -> Content
 
     func makeNSView(context: Context) -> NSView {
-        let view = WheelView()
-        view.handler = handler
-        return view
+        let container = WheelContainer()
+        container.handler = handler
+        let host = NSHostingView(rootView: content())
+        host.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(host)
+        NSLayoutConstraint.activate([
+            host.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            host.topAnchor.constraint(equalTo: container.topAnchor),
+            host.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        container.host = host
+        return container
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? WheelView)?.handler = handler
+        guard let container = nsView as? WheelContainer else { return }
+        container.handler = handler
+        container.host?.rootView = content()
     }
 
-    private final class WheelView: NSView {
+    private final class WheelContainer: NSView {
         var handler: ((CGFloat) -> Void)?
-        // 디바운스 — 트랙패드 한 번 휙 하면 deltaY가 여러 번 들어와 월이 한꺼번에 여러 칸 넘어간다.
-        private var lastFireAt: TimeInterval = 0
+        var host: NSHostingView<Content>?
 
-        override var acceptsFirstResponder: Bool { false }
-        override func hitTest(_ point: NSPoint) -> NSView? { nil } // 자식 hit-test 양보
+        // 트랙패드는 deltaY가 0~3 정도로 매끄럽게 흘러서 작은 값을 버리면 입력이 사라진다.
+        // 누적해서 임계치(±30) 넘으면 한 번 fire — momentum 단계까지 같이 잡혀서 한 스와이프가
+        // 여러 칸으로 번지지 않도록, fire 후 잠깐 cooldown을 둔다.
+        private var accumulated: CGFloat = 0
+        private var cooldownUntil: TimeInterval = 0
 
         override func scrollWheel(with event: NSEvent) {
-            let dy = event.scrollingDeltaY
-            guard abs(dy) > 1 else { return }
+            // 가로 스와이프가 더 강한 입력은 자식 horizontal ScrollView에 양보 —
+            // 위/아래 입력만 우리가 처리하고 좌우는 super로 흘려 보낸다.
+            if abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY) {
+                super.scrollWheel(with: event)
+                return
+            }
             let now = Date().timeIntervalSince1970
-            guard now - lastFireAt > 0.25 else { return }
-            lastFireAt = now
-            handler?(dy)
+            if now < cooldownUntil { return }
+
+            accumulated += event.scrollingDeltaY
+            let threshold: CGFloat = 30
+            if accumulated > threshold {
+                handler?(1)        // dy>0 의미만 유지
+                accumulated = 0
+                cooldownUntil = now + 0.20
+            } else if accumulated < -threshold {
+                handler?(-1)
+                accumulated = 0
+                cooldownUntil = now + 0.20
+            }
         }
     }
 }

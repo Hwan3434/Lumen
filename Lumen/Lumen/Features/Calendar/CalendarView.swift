@@ -157,8 +157,7 @@ struct CalendarView: View {
         } else if let msg = service.errorMessage, service.data == nil {
             placeholder("오류: \(msg)")
         } else if let data = service.data {
-            let baseURL = jiraBaseURL()
-            let allItems = CalendarAdapter.buildItems(from: data, baseURL: baseURL)
+            let allItems = CalendarAdapter.buildItems(from: data)
             let visible = allItems.filter { filter.passes($0) }
             switch mode {
             case .month:
@@ -169,12 +168,6 @@ struct CalendarView: View {
         } else {
             placeholder("데이터 없음")
         }
-    }
-
-    private func jiraBaseURL() -> String? {
-        let slug = CredentialsStore.shared.jiraWorkspaceSlug
-        guard !slug.isEmpty else { return nil }
-        return "https://\(slug).atlassian.net"
     }
 
     private func placeholder(_ text: String) -> some View {

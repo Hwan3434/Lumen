@@ -58,7 +58,7 @@ enum CalendarAdapter {
     /// - 스프린트: startDate~endDate (둘 다 있어야)
     /// - 에픽: dueDate만 (단일 시점)
     /// - 태스크(이슈): startDate→dueDate 또는 둘 중 하나만 있어도 표시
-    static func buildItems(from data: JiraDashboardData, baseURL: String?) -> [CalendarItem] {
+    static func buildItems(from data: JiraDashboardData) -> [CalendarItem] {
         var items: [CalendarItem] = []
 
         for sprint in data.sprintInfos {
@@ -82,7 +82,7 @@ enum CalendarAdapter {
                 title: "\(epic.key) · \(epic.summary)",
                 start: due,
                 end: nil,
-                openURL: issueURL(key: epic.key, baseURL: baseURL),
+                openURL: issueURL(key: epic.key),
                 isDone: false
             ))
         }
@@ -102,7 +102,7 @@ enum CalendarAdapter {
                 title: "\(issue.key) · \(issue.summary)",
                 start: start,
                 end: end,
-                openURL: issueURL(key: issue.key, baseURL: baseURL),
+                openURL: issueURL(key: issue.key),
                 isDone: issue.isDone
             ))
         }
@@ -116,10 +116,11 @@ enum CalendarAdapter {
             + data.completedLast30 + data.createdLast30
     }
 
-    private static func issueURL(key: String, baseURL: String?) -> URL? {
-        guard let baseURL else { return nil }
-        let trimmed = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
-        return URL(string: "\(trimmed)/browse/\(key)")
+    /// 정식 헬퍼 사용 — slug trim까지 처리됨. 미설정 시 prefix가 빈 문자열이라 URL 생성 실패 → nil.
+    private static func issueURL(key: String) -> URL? {
+        let prefix = Constants.jiraBrowseURL  // "https://{slug}.atlassian.net/browse/"
+        guard !prefix.isEmpty else { return nil }
+        return URL(string: prefix + key)
     }
 }
 

@@ -1,15 +1,23 @@
 import SwiftUI
 
 /// 통합 Jira 패널 메인 뷰 — 1160×840pt 글래스 패널, 56pt 통합 헤더 + 탭 컨텐츠.
-/// 탭: 대시보드 / 월간 / 타임라인. 모두 같은 JiraService.shared 데이터 위에서 다른 렌더링.
+/// 탭: 대시보드 / 캘린더(월간·주간 토글). 모두 같은 JiraService.shared 데이터 위에서.
+///
+/// 단축키: ⌘1 = 대시보드, ⌘2 = 캘린더(월간), ⌘3 = 캘린더(주간).
+/// ⌘2/⌘3는 같은 캘린더 탭으로 진입하되 모드만 다르게 — 사용자가 잘 쓰던 ⌘1/⌘2/⌘3을 보존.
 struct JiraDashboardView: View {
     private var service: JiraService { JiraService.shared }
     @State private var activeTab: JiraTab = .dashboard
+    @State private var calendarMode: CalendarMode = .month
     @State private var selectedProject: String = PresentColumn.allKey
     @State private var filter = CalendarFilter()
     @State private var anchorDate: Date = Date()
     /// LocalEventStore 변경(추가/편집/삭제)을 감지해 캘린더 막대도 즉시 재렌더 되게.
     @State private var localStore = LocalEventStore.shared
+    /// 캘린더 탭 진입/모드 전환 시 increment — 자식 view가 onChange로 받아 오늘로 점프.
+    /// ZStack+opacity로 항상 mount된 채라 onAppear가 첫 한 번만 호출되는 부작용을 보완.
+    @State private var monthResetToken: Int = 0
+    @State private var weekResetToken: Int = 0
 
     var body: some View {
         ZStack {
@@ -31,9 +39,37 @@ struct JiraDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
         .onAppear { Task { await service.fetch() } }
         .onReceive(NotificationCenter.default.publisher(for: .jiraSwitchTab)) { note in
-            guard let idx = note.object as? Int,
-                  JiraTab.allCases.indices.contains(idx) else { return }
-            activeTab = JiraTab.allCases[idx]
+            // post(object: 0/1/2) — ⌘1/⌘2/⌘3.
+            //   0 → 대시보드
+            //   1 → 캘린더(월간 모드로 진입)
+            //   2 → 캘린더(주간 모드로 진입)
+            guard let idx = note.object as? Int else { return }
+            switch idx {
+            case 0:
+                activeTab = .dashboard
+            case 1:
+                activeTab = .calendar
+                calendarMode = .month
+            case 2:
+                activeTab = .calendar
+                calendarMode = .week
+            default:
+                break
+            }
+        }
+        .onChange(of: activeTab) { _, newTab in
+            // 캘린더 탭 진입 시 현재 모드의 view를 오늘로 리셋.
+            if newTab == .calendar { fireReset() }
+        }
+        .onChange(of: calendarMode) { _, _ in
+            if activeTab == .calendar { fireReset() }
+        }
+    }
+
+    private func fireReset() {
+        switch calendarMode {
+        case .month: monthResetToken &+= 1
+        case .week:  weekResetToken &+= 1
         }
     }
 
@@ -58,36 +94,38 @@ struct JiraDashboardView: View {
         case .dashboard:
             LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
             LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
-        case .month, .timeline:
+        case .calendar:
+            CalendarModeToggle(mode: $calendarMode)
             FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,        isOn: $filter.showEpic)
             FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,         isOn: $filter.showSprint)
             FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,   isOn: $filter.showTask)
         }
     }
 
-    /// 세 탭의 컨텐츠를 모두 mount된 채로 두고 active만 보여 준다 — 탭 전환 시 첫 mount 비용
-    /// (예: 월간의 onAppear scroll-to-today)이 매번 발생하면서 화면이 휙 움직이는 깜빡임을 없앤다.
+    /// 세 view를 모두 mount된 채로 두고 active만 보여 준다 — 모드 전환 시 onAppear 재호출에 의한
+    /// scroll 깜빡임을 없앰. resetToTodayToken으로 명시적 리셋만.
     @ViewBuilder
     private func tabBody(_ data: JiraDashboardData) -> some View {
-        // 월간/타임라인 모두 로컬 이벤트 포함 — 두 탭 데이터 동기화.
         let calendarItems = visibleCalendarItems(data, includeLocal: true)
+        let monthVisible = (activeTab == .calendar && calendarMode == .month)
+        let weekVisible  = (activeTab == .calendar && calendarMode == .week)
 
         ZStack {
             DashboardContent(data: data, selectedProject: $selectedProject)
                 .opacity(activeTab == .dashboard ? 1 : 0)
                 .allowsHitTesting(activeTab == .dashboard)
 
-            MonthGridView(items: calendarItems)
+            MonthGridView(items: calendarItems, resetToTodayToken: monthResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
-                .opacity(activeTab == .month ? 1 : 0)
-                .allowsHitTesting(activeTab == .month)
+                .opacity(monthVisible ? 1 : 0)
+                .allowsHitTesting(monthVisible)
 
-            TimelineView(items: calendarItems, anchorDate: $anchorDate)
+            TimelineView(items: calendarItems, anchorDate: $anchorDate, resetToTodayToken: weekResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
-                .opacity(activeTab == .timeline ? 1 : 0)
-                .allowsHitTesting(activeTab == .timeline)
+                .opacity(weekVisible ? 1 : 0)
+                .allowsHitTesting(weekVisible)
         }
     }
 
@@ -96,10 +134,55 @@ struct JiraDashboardView: View {
     }
 }
 
-// MARK: - FilterChip
+// MARK: - CalendarModeToggle
 //
-// 캘린더 탭의 헤더-우측에 들어가는 종류 토글. 색 점 + 라벨 + 외곽선.
-// 활성: 색 진하게 + secondary text, 비활성: dim color + muted text.
+// 캘린더 탭에서 월간/주간 전환. 헤더 우측, 필터칩 옆.
+
+struct CalendarModeToggle: View {
+    @Binding var mode: CalendarMode
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(CalendarMode.allCases) { m in
+                button(for: m)
+            }
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                )
+        )
+    }
+
+    private func button(for m: CalendarMode) -> some View {
+        let isActive = (mode == m)
+        return Button {
+            mode = m
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: m.iconName)
+                    .font(.system(size: 9, weight: .medium))
+                Text(m.label)
+                    .font(.system(size: 11, weight: isActive ? .semibold : .regular))
+            }
+            .foregroundStyle(isActive ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(isActive ? LumenTokens.Accent.violet.opacity(0.22) : .clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - FilterChip
+
 struct FilterChip: View {
     let label: String
     let color: Color

@@ -43,6 +43,12 @@ enum LumenTokens {
         static let border = Color(red: 1.0, green: 110/255, blue: 110/255).opacity(0.18)
     }
 
+    /// 캘린더의 일요일/공휴일 색 — 두 톤이 비슷하지만 공휴일은 더 진하게.
+    enum CalendarTone {
+        static let sunday  = Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255)
+        static let holiday = Color(red: 0xE8/255, green: 0x6E/255, blue: 0x6E/255)
+    }
+
     /// Jira 대시보드 전용 status 색 매핑. Atlassian 표준 statusCategory 3분류
     /// (`new`/`indeterminate`/`done`) 기준 — 진행중=violet, 완료=green.
     enum JiraStatusTone {

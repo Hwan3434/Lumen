@@ -24,8 +24,17 @@ final class JiraDashboardWindowController: PanelWindowController {
         panel.minSize = NSSize(width: 400, height: 400)
         panel.autoFocusTextField = false
 
-        panel.onKeyEvent = { [weak self] keyCode in
-            if keyCode == KeyCode.escape { self?.hide(); return true }
+        panel.onKeyEvent = { [weak self, weak panel] keyCode in
+            if keyCode == KeyCode.escape {
+                // popover가 떠 있을 때는 ESC가 popover를 닫게 양보 — panel 자체는 그대로.
+                // SwiftUI popover는 _NSPopoverWindow 라는 별도 NSWindow로 뜨고 panel의
+                // childWindows에 들어간다. 그게 있으면 panel hide를 건너뛴다.
+                if let panel, panel.childWindows?.contains(where: { $0.isVisible }) == true {
+                    return false
+                }
+                self?.hide()
+                return true
+            }
             return false
         }
 

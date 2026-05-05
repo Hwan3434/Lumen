@@ -10,6 +10,9 @@ import AppKit
 
 struct MonthGridView: View {
     let items: [CalendarItem]
+    /// 외부에서 "오늘로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
+    /// ZStack+opacity로 view가 항상 mount된 채라 onAppear가 한 번만 호출됨 → 매번 트리거 필요.
+    var resetToTodayToken: Int = 0
 
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     private let weekRowHeight: CGFloat = 110
@@ -17,7 +20,7 @@ struct MonthGridView: View {
     private let maxLanesPerWeek: Int = 4
 
     /// 가시 중앙 주의 시작일 — onScrollGeometryChange로 갱신.
-    @State private var visibleAnchor: Date = startOfWeek(of: Date())
+    @State private var visibleAnchor: Date = CalendarDateUtils.startOfWeek(of: Date())
     @State private var weeks: [Date] = []
     /// 주 시작일 → 그 주에 그릴 막대 layout. items가 바뀔 때만 재계산.
     @State private var layoutByWeek: [Date: WeekLayout] = [:]
@@ -49,7 +52,7 @@ struct MonthGridView: View {
                 .contentTransition(.numericText())
 
             Button("오늘") {
-                let today = Self.startOfWeek(of: Date())
+                let today = CalendarDateUtils.startOfWeek(of: Date())
                 visibleAnchor = today
                 scrollTarget = today
             }
@@ -94,8 +97,9 @@ struct MonthGridView: View {
         .padding(.vertical, 6)
     }
 
+    /// weekdayRow는 날짜 없이 0~6 인덱스만 가지므로 idx 기반 분기를 그대로 둔다 (Date 기반 helper 부적합).
     private func weekdayColor(_ index: Int) -> Color {
-        if index == 0 { return Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255) }
+        if index == 0 { return LumenTokens.CalendarTone.sunday }
         if index == 6 { return LumenTokens.Accent.violetSoft }
         return LumenTokens.TextColor.muted
     }
@@ -131,7 +135,15 @@ struct MonthGridView: View {
             }
             .onAppear {
                 DispatchQueue.main.async {
-                    proxy.scrollTo(weekKey(Self.startOfWeek(of: Date())), anchor: .center)
+                    proxy.scrollTo(weekKey(CalendarDateUtils.startOfWeek(of: Date())), anchor: .center)
+                }
+            }
+            .onChange(of: resetToTodayToken) { _, _ in
+                // 부모가 token을 증가시키면 오늘로 부드럽게 점프.
+                let target = CalendarDateUtils.startOfWeek(of: Date())
+                visibleAnchor = target
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo(weekKey(target), anchor: .center)
                 }
             }
             .onChange(of: scrollTarget) { _, newTarget in
@@ -149,8 +161,8 @@ struct MonthGridView: View {
     private func buildWeeks() -> [Date] {
         let cal = Calendar.current
         let today = Date()
-        let firstWeek = Self.startOfWeek(of: cal.date(byAdding: .day, value: -90, to: today) ?? today)
-        let lastWeek = Self.startOfWeek(of: cal.date(byAdding: .day, value: +90, to: today) ?? today)
+        let firstWeek = CalendarDateUtils.startOfWeek(of: cal.date(byAdding: .day, value: -90, to: today) ?? today)
+        let lastWeek = CalendarDateUtils.startOfWeek(of: cal.date(byAdding: .day, value: +90, to: today) ?? today)
         var result: [Date] = []
         var cursor = firstWeek
         while cursor <= lastWeek {
@@ -169,115 +181,10 @@ struct MonthGridView: View {
     }
 
     private func weekKey(_ d: Date) -> String {
-        let cal = Calendar.current
-        let comp = cal.dateComponents([.year, .month, .day], from: d)
-        return "w-\(comp.year ?? 0)-\(comp.month ?? 0)-\(comp.day ?? 0)"
-    }
-
-    static func startOfWeek(of date: Date) -> Date {
-        var cal = Calendar.current
-        cal.firstWeekday = 1  // 일요일
-        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-        return cal.date(from: comps) ?? cal.startOfDay(for: date)
+        CalendarDateUtils.key(d, prefix: "w")
     }
 }
 
-// MARK: - Calendar utility
-
-extension Calendar {
-    func startOfMonth(for date: Date) -> Date {
-        let comps = dateComponents([.year, .month], from: date)
-        return self.date(from: comps) ?? date
-    }
-}
-
-// MARK: - Week layout (one row's worth of bars)
-
-struct LaidOutBar: Identifiable {
-    let item: CalendarItem
-    let startCol: Int  // 0...6
-    let span: Int      // 1...7
-    let lane: Int      // 0부터
-    var id: String { "\(item.id)|\(startCol)|\(span)" }
-}
-
-struct WeekLayout {
-    let weekStart: Date
-    let bars: [LaidOutBar]
-    /// 그 주의 col별로 maxLanes를 넘어 잘려나간 task 갯수.
-    let overflowByCol: [Int: Int]
-}
-
-/// 주어진 주에 걸쳐 있는 task들을 막대로 배치한다.
-/// 알고리즘:
-///   1. 주에 걸치는 item만 추출 → (start asc, span desc)로 정렬
-///   2. 각 item에 lane 부여 — 가장 위 lane부터 보며 그 구간(startCol..<startCol+span)이 비어있는 첫 lane
-///   3. lane >= maxLanes 면 overflow로 카운트 (해당 col별로)
-private func layoutWeek(weekStart: Date, items: [CalendarItem], maxLanes: Int) -> WeekLayout {
-    let cal = Calendar.current
-    let weekStartDay = cal.startOfDay(for: weekStart)
-    let weekEndDay = cal.date(byAdding: .day, value: 6, to: weekStartDay)!
-
-    // 후보 — 주에 걸쳐 있는 item만, start asc / span desc 로 정렬해 layout이 안정.
-    struct Candidate {
-        let item: CalendarItem
-        let startCol: Int
-        let span: Int
-    }
-    var candidates: [Candidate] = []
-    for item in items {
-        let s = cal.startOfDay(for: item.start)
-        let e = cal.startOfDay(for: item.end ?? item.start)
-        // 주와 안 겹치면 스킵
-        if e < weekStartDay || s > weekEndDay { continue }
-        // 주에 잘려서 들어오는 시작/끝
-        let clampedStart = max(s, weekStartDay)
-        let clampedEnd = min(e, weekEndDay)
-        let startCol = (cal.dateComponents([.day], from: weekStartDay, to: clampedStart).day ?? 0)
-        let endCol = (cal.dateComponents([.day], from: weekStartDay, to: clampedEnd).day ?? 0)
-        let span = max(1, endCol - startCol + 1)
-        candidates.append(Candidate(item: item, startCol: startCol, span: span))
-    }
-    candidates.sort { a, b in
-        if a.startCol != b.startCol { return a.startCol < b.startCol }
-        return a.span > b.span
-    }
-
-    // lanes[i][col] = 그 lane의 col이 사용 중인가
-    var lanes: [[Bool]] = []
-    var bars: [LaidOutBar] = []
-    var overflowByCol: [Int: Int] = [:]
-
-    for c in candidates {
-        // 들어갈 lane 찾기
-        var assigned: Int? = nil
-        for laneIdx in 0..<lanes.count {
-            var fits = true
-            for col in c.startCol..<(c.startCol + c.span) {
-                if lanes[laneIdx][col] { fits = false; break }
-            }
-            if fits { assigned = laneIdx; break }
-        }
-        let lane = assigned ?? lanes.count
-        if assigned == nil {
-            lanes.append(Array(repeating: false, count: 7))
-        }
-        for col in c.startCol..<(c.startCol + c.span) {
-            lanes[lane][col] = true
-        }
-
-        if lane < maxLanes {
-            bars.append(LaidOutBar(item: c.item, startCol: c.startCol, span: c.span, lane: lane))
-        } else {
-            // overflow — 막대가 걸친 모든 col에 +1 카운트
-            for col in c.startCol..<(c.startCol + c.span) {
-                overflowByCol[col, default: 0] += 1
-            }
-        }
-    }
-
-    return WeekLayout(weekStart: weekStart, bars: bars, overflowByCol: overflowByCol)
-}
 
 // MARK: - WeekRow
 
@@ -334,18 +241,25 @@ private struct WeekRow: View {
         let isToday = cal.isDateInToday(day)
         let dayNum = cal.component(.day, from: day)
         let isFirstOfMonth = (dayNum == 1)
+        let holidayName = KoreanHolidays.name(for: day)
 
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
                 if isFirstOfMonth {
                     Text(monthDayLabel(day))
                         .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        .foregroundStyle(holidayName != nil ? LumenTokens.CalendarTone.holiday : LumenTokens.Accent.violetSoft)
                 } else {
                     Text("\(dayNum)")
                         .font(.system(size: 11, weight: isToday ? .bold : .regular,
                                       design: .monospaced))
-                        .foregroundStyle(isToday ? LumenTokens.Accent.amber : LumenTokens.TextColor.primary)
+                        .foregroundStyle(dayNumberColor(day: day, isToday: isToday, holidayName: holidayName))
+                }
+                if let name = holidayName {
+                    Text(name)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(LumenTokens.CalendarTone.holiday)
+                        .lineLimit(1)
                 }
                 Spacer()
             }
@@ -457,5 +371,12 @@ private struct WeekRow: View {
         f.locale = Locale(identifier: "ko_KR")
         f.dateFormat = "M월 d일"
         return f.string(from: day)
+    }
+
+    /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본.
+    private func dayNumberColor(day: Date, isToday: Bool, holidayName: String?) -> Color {
+        if isToday { return LumenTokens.Accent.amber }
+        if holidayName != nil { return LumenTokens.CalendarTone.holiday }
+        return LumenTokens.TextColor.primary
     }
 }

@@ -138,6 +138,122 @@ enum CalendarAdapter {
     }
 }
 
+// MARK: - Week layout (월간/주간 공통)
+//
+// 한 주(7컬럼) 안에서 task들을 막대로 배치한다. 월간 그리드와 주간 뷰가 같은 알고리즘을 쓴다 —
+// 차이는 maxLanes만 (월간 = 셀 좁아서 4, 주간 = 행 더 많아도 OK라 12).
+
+struct LaidOutBar: Identifiable {
+    let item: CalendarItem
+    let startCol: Int   // 0...6
+    let span: Int       // 1...7
+    let lane: Int
+    /// id에 lane을 의도적으로 뺀다 — 항목 추가/필터로 lane이 재배치돼도 SwiftUI가 view identity를
+    /// 유지해 Y offset을 부드럽게 애니메이션하게 한다.
+    var id: String { "\(item.id)|\(startCol)|\(span)" }
+}
+
+struct WeekLayout {
+    let weekStart: Date
+    let bars: [LaidOutBar]
+    /// col별로 maxLanes를 넘어 잘려나간 task 갯수.
+    let overflowByCol: [Int: Int]
+}
+
+/// 우선순위:
+///   1) span desc — 긴 task가 위쪽 lane을 먼저 차지 ("오래가는 일이 위로")
+///   2) startCol asc — 같은 길이면 시작 빠른 게 먼저
+///   3) kind asc (이벤트 → 스프린트 → 에픽 → 태스크)
+///   4) title asc — 안정 정렬
+///
+/// 같은 lane 안에서 task끼리 겹치지 않도록 greedy로 가장 위 비어있는 lane에 배치.
+/// lane >= maxLanes면 그 col에 overflow 카운트.
+func layoutWeek(weekStart: Date, items: [CalendarItem], maxLanes: Int) -> WeekLayout {
+    let cal = Calendar.current
+    let weekStartDay = cal.startOfDay(for: weekStart)
+    let weekEndDay = cal.date(byAdding: .day, value: 6, to: weekStartDay)!
+
+    struct Candidate {
+        let item: CalendarItem
+        let startCol: Int
+        let span: Int
+    }
+    var candidates: [Candidate] = []
+    for item in items {
+        let s = cal.startOfDay(for: item.start)
+        let e = cal.startOfDay(for: item.end ?? item.start)
+        if e < weekStartDay || s > weekEndDay { continue }
+        let clampedStart = max(s, weekStartDay)
+        let clampedEnd = min(e, weekEndDay)
+        let startCol = (cal.dateComponents([.day], from: weekStartDay, to: clampedStart).day ?? 0)
+        let endCol = (cal.dateComponents([.day], from: weekStartDay, to: clampedEnd).day ?? 0)
+        let span = max(1, endCol - startCol + 1)
+        candidates.append(Candidate(item: item, startCol: startCol, span: span))
+    }
+    let kindOrder: [CalendarItemKind: Int] = [.local: 0, .sprint: 1, .epic: 2, .task: 3]
+    candidates.sort { a, b in
+        if a.span != b.span { return a.span > b.span }
+        if a.startCol != b.startCol { return a.startCol < b.startCol }
+        let oa = kindOrder[a.item.kind] ?? 99
+        let ob = kindOrder[b.item.kind] ?? 99
+        if oa != ob { return oa < ob }
+        return a.item.title < b.item.title
+    }
+
+    var lanes: [[Bool]] = []
+    var bars: [LaidOutBar] = []
+    var overflowByCol: [Int: Int] = [:]
+    for c in candidates {
+        var assigned: Int? = nil
+        for laneIdx in 0..<lanes.count {
+            var fits = true
+            for col in c.startCol..<(c.startCol + c.span) {
+                if lanes[laneIdx][col] { fits = false; break }
+            }
+            if fits { assigned = laneIdx; break }
+        }
+        let lane = assigned ?? lanes.count
+        if assigned == nil { lanes.append(Array(repeating: false, count: 7)) }
+        for col in c.startCol..<(c.startCol + c.span) {
+            lanes[lane][col] = true
+        }
+        if lane < maxLanes {
+            bars.append(LaidOutBar(item: c.item, startCol: c.startCol, span: c.span, lane: lane))
+        } else {
+            for col in c.startCol..<(c.startCol + c.span) {
+                overflowByCol[col, default: 0] += 1
+            }
+        }
+    }
+    return WeekLayout(weekStart: weekStart, bars: bars, overflowByCol: overflowByCol)
+}
+
+// MARK: - Shared date helpers (월간/주간 공통)
+
+enum CalendarDateUtils {
+    /// 일요일 시작 기준 주의 시작일(자정).
+    static func startOfWeek(of date: Date) -> Date {
+        var cal = Calendar.current
+        cal.firstWeekday = 1
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return cal.date(from: comps) ?? cal.startOfDay(for: date)
+    }
+
+    /// ScrollViewReader id용 키 — prefix로 호출자별 ID 공간 분리.
+    static func key(_ d: Date, prefix: String) -> String {
+        let comp = Calendar.current.dateComponents([.year, .month, .day], from: d)
+        return "\(prefix)-\(comp.year ?? 0)-\(comp.month ?? 0)-\(comp.day ?? 0)"
+    }
+
+    /// 요일별 색 — 일요일은 공휴일 톤보다 옅은 톤, 토요일은 violetSoft, 평일은 muted.
+    static func weekdayColor(for date: Date) -> Color {
+        let w = Calendar.current.component(.weekday, from: date)
+        if w == 1 { return LumenTokens.CalendarTone.sunday }
+        if w == 7 { return LumenTokens.Accent.violetSoft }
+        return LumenTokens.TextColor.muted
+    }
+}
+
 // MARK: - Filter
 
 struct CalendarFilter: Equatable {

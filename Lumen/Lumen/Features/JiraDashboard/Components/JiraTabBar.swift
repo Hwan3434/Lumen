@@ -10,24 +10,39 @@ extension Notification.Name {
 /// 활성 탭은 violet 배경 + primary text, 비활성은 muted text.
 enum JiraTab: String, CaseIterable, Identifiable {
     case dashboard
-    case month
-    case timeline
+    case calendar   // 월간/주간을 모두 포함 — 모드는 CalendarMode로 별도 관리.
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .dashboard: return "대시보드"
-        case .month:     return "월간"
-        case .timeline:  return "타임라인"
+        case .calendar:  return "캘린더"
         }
     }
 
     var iconName: String {
         switch self {
         case .dashboard: return "square.grid.2x2"
-        case .month:     return "calendar"
-        case .timeline:  return "chart.bar.xaxis"
+        case .calendar:  return "calendar"
+        }
+    }
+}
+
+/// 캘린더 탭 안의 두 모드. 헤더 우측 토글로 전환.
+enum CalendarMode: String, CaseIterable, Identifiable {
+    case month, week
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .month: return "월간"
+        case .week:  return "주간"
+        }
+    }
+    var iconName: String {
+        switch self {
+        case .month: return "calendar"
+        case .week:  return "calendar.day.timeline.left"
         }
     }
 }

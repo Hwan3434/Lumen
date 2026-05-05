@@ -43,6 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FeatureRegistry.shared.register(jiraDashboard)
         AppResourceMonitor.trace("feature_registered: JiraDashboard")
 
+        let calendarFeature = CalendarFeature()
+        FeatureRegistry.shared.register(calendarFeature)
+        AppResourceMonitor.trace("feature_registered: Calendar")
+
         let colorPicker = ColorPickerFeature()
         FeatureRegistry.shared.register(colorPicker)
         AppResourceMonitor.trace("feature_registered: ColorPicker")

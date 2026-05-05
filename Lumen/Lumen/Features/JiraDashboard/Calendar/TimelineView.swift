@@ -22,10 +22,18 @@ struct TimelineView: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollViewReader { scrollProxy in
+                // 가로 ScrollView가 외곽 — 시간축을 좌·우로 끌고, day axis와 콘텐츠가 같이 움직인다.
+                // 그 안의 vertical ScrollView가 항목 행이 화면을 넘칠 때 위·아래로 스크롤되게 한다.
                 ScrollView(.horizontal, showsIndicators: false) {
-                    timelineContent(visibleWidth: proxy.size.width)
+                    timelineContent(visibleWidth: proxy.size.width, visibleHeight: proxy.size.height)
                 }
-                .onAppear { scrollProxy.scrollTo(anchorID, anchor: .center) }
+                .onAppear {
+                    // 콘텐츠 layout이 끝난 직후 스크롤 — 즉시 부르면 ScrollView가 아직
+                    // 자식 사이즈를 모를 수 있어서 anchor가 동작 안 하는 경우가 있다.
+                    DispatchQueue.main.async {
+                        scrollProxy.scrollTo(anchorID, anchor: .center)
+                    }
+                }
                 .onChange(of: anchorDate) { _, _ in
                     withAnimation(.easeOut(duration: 0.18)) {
                         scrollProxy.scrollTo(anchorID, anchor: .center)
@@ -40,7 +48,7 @@ struct TimelineView: View {
     // MARK: - Content
 
     @ViewBuilder
-    private func timelineContent(visibleWidth: CGFloat) -> some View {
+    private func timelineContent(visibleWidth: CGFloat, visibleHeight: CGFloat) -> some View {
         let groups: [(CalendarItemKind, [CalendarItem])] = [
             (.epic,    items.filter { $0.kind == .epic    }.sorted { $0.start < $1.start }),
             (.sprint,  items.filter { $0.kind == .sprint  }.sorted { $0.start < $1.start }),
@@ -49,22 +57,32 @@ struct TimelineView: View {
         let nonEmpty = groups.filter { !$0.1.isEmpty }
         let dayRange = visibleDayRange()
 
-        VStack(alignment: .leading, spacing: groupSpacing) {
+        VStack(alignment: .leading, spacing: 0) {
+            // day axis는 vertical ScrollView 바깥에 둔다 — 위에 고정되고 가로 스크롤만 따라감.
             dayAxis(dayRange: dayRange)
-            ForEach(Array(nonEmpty.enumerated()), id: \.offset) { _, pair in
-                groupSection(kind: pair.0, items: pair.1, dayRange: dayRange)
-            }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
+
             if nonEmpty.isEmpty {
                 Text("표시할 항목이 없습니다")
                     .font(.system(size: 12))
                     .foregroundStyle(LumenTokens.TextColor.muted)
                     .padding(.vertical, 24)
                     .frame(maxWidth: .infinity)
+            } else {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: groupSpacing) {
+                        ForEach(Array(nonEmpty.enumerated()), id: \.offset) { _, pair in
+                            groupSection(kind: pair.0, items: pair.1, dayRange: dayRange)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(minWidth: visibleWidth, alignment: .topLeading)
+        .frame(minWidth: visibleWidth, minHeight: visibleHeight, alignment: .topLeading)
     }
 
     private func groupSection(kind: CalendarItemKind, items: [CalendarItem], dayRange: [Date]) -> some View {
@@ -101,6 +119,8 @@ struct TimelineView: View {
         let endOffset = (cal.dateComponents([.day], from: rangeStart, to: endDate).day ?? startOffset) + 1
         let leading = CGFloat(startOffset) * dayWidth
         let width = max(dayWidth, CGFloat(endOffset - startOffset) * dayWidth)
+        // 막대 배경 = 프로젝트 색, 테두리 = 종류 색. 한눈에 어떤 프로젝트의 어떤 종류인지 보임.
+        let projectColor = item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
 
         return ZStack(alignment: .leading) {
             // 행 자체의 배경 — 호버용. 일단 없음.
@@ -124,11 +144,11 @@ struct TimelineView: View {
                 .frame(width: width, height: rowHeight - 4, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(item.kind.color.opacity(0.18))
+                        .fill(projectColor.opacity(0.22))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(item.kind.color.opacity(0.45), lineWidth: 0.5)
+                        .stroke(item.kind.color.opacity(0.55), lineWidth: 0.5)
                 )
             }
             .buttonStyle(.plain)

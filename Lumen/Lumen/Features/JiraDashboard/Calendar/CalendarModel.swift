@@ -42,6 +42,9 @@ struct CalendarItem: Identifiable, Hashable {
     /// Jira에서 열기 위한 키 — 이슈 키 ("PROJ-123") 또는 스프린트 id ("sprint-42").
     let openURL: URL?
     let isDone: Bool
+    /// 프로젝트별 배경색을 위해 어댑터가 채워준다 — 스프린트는 SprintInfo.projectKey,
+    /// 에픽/태스크는 issueKey의 prefix("PROJ-123" → "PROJ")에서 추출.
+    let projectKey: String?
 
     /// 이 항목이 주어진 날짜에 걸쳐 있는가. start만 있으면 그 날짜만, end 있으면 [start, end] inclusive.
     func covers(_ day: Date) -> Bool {
@@ -70,7 +73,8 @@ enum CalendarAdapter {
                 start: s,
                 end: e,
                 openURL: nil,
-                isDone: false
+                isDone: false,
+                projectKey: sprint.projectKey
             ))
         }
 
@@ -83,13 +87,13 @@ enum CalendarAdapter {
                 start: due,
                 end: nil,
                 openURL: issueURL(key: epic.key),
-                isDone: false
+                isDone: false,
+                projectKey: epic.projectKey
             ))
         }
 
-        var seenIssueIDs = Set<String>()
-        for issue in allIssues(data) where !seenIssueIDs.contains(issue.id) {
-            seenIssueIDs.insert(issue.id)
+        // ±3개월 윈도우에 들어온 모든 이슈가 단일 소스. dedup 불필요(이미 unique).
+        for issue in data.allIssuesInWindow {
             let s = issue.startDate
             let d = issue.dueDate
             // 둘 다 없으면 캘린더에 띄울 근거 없음.
@@ -103,17 +107,12 @@ enum CalendarAdapter {
                 start: start,
                 end: end,
                 openURL: issueURL(key: issue.key),
-                isDone: issue.isDone
+                isDone: issue.isDone,
+                projectKey: issue.projectKey
             ))
         }
 
         return items
-    }
-
-    private static func allIssues(_ data: JiraDashboardData) -> [JiraIssue] {
-        data.todayIssues + data.thisWeekIssues + data.nextWeekIssues
-            + data.overdueIncomplete + data.highestIncomplete
-            + data.completedLast30 + data.createdLast30
     }
 
     /// 정식 헬퍼 사용 — slug trim까지 처리됨. 미설정 시 prefix가 빈 문자열이라 URL 생성 실패 → nil.

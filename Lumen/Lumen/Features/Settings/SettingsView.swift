@@ -423,8 +423,8 @@ private struct JiraSettingsTab: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         SettingsSection(title: "Jira 자격증명") {
-                            SettingsField(label: "워크스페이스 URL",
-                                          hint: "브라우저 주소의 서브도메인. https://{여기}.atlassian.net") {
+                            SettingsField(label: "워크스페이스 도메인",
+                                          hint: "https://{여기}.atlassian.net 의 서브도메인 부분만 — 예: your-workspace") {
                                 LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
                             }
                             SettingsField(label: "Email") {

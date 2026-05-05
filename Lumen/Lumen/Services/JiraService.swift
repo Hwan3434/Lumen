@@ -88,6 +88,9 @@ struct JiraDashboardData {
     let backlogCountByProject: [String: Int]
     let sprintInfos: [SprintInfo]
     let epicInfos: [EpicInfo]
+    /// ±3개월 윈도우에 걸친 자기 담당 이슈 전체. 캘린더(월간/타임라인)의 단일 데이터 소스이며,
+    /// 위쪽 필드들(thisWeek/highest/overdue/...)은 이걸 클라이언트 필터링해서 만든다.
+    let allIssuesInWindow: [JiraIssue]
     let lastUpdated: Date
 }
 
@@ -195,14 +198,18 @@ final class JiraService {
         let nextWeekStart = isoDateString(startOfWeek(offset: 1))
         let nextWeekEnd = isoDateString(endOfWeek(offset: 1))
 
+        // ±3개월 윈도우 — 모든 탭(대시보드/월간/타임라인)이 공유하는 단일 데이터 소스.
+        // span overlap: start/due가 윈도우 안에 있거나, 윈도우를 가로지르는 긴 이슈 모두 포함.
+        let windowStart = isoDateString(daysOffset(-90))
+        let windowEnd   = isoDateString(daysOffset(+90))
+        let windowJQL   = weekOverlapJQL(windowStart, windowEnd)
+
+        // 두 개의 쿼리만 남는다:
+        //   primary:  ±3M 윈도우에 걸친, 자기 담당 모든 이슈 (대시보드 분류 + 캘린더의 baseline)
+        //   created:  3개월 안에 자기가 만든 이슈 (대시보드의 "내가 만든" 트렌드 — 담당자 무관)
         let queries: [(String, String)] = [
-            ("thisWeek",    "\(base) AND (\(weekOverlapJQL(weekStart, weekEnd))) ORDER BY duedate ASC, priority ASC"),
-            ("nextWeek",    "\(base) AND (\(weekOverlapJQL(nextWeekStart, nextWeekEnd))) ORDER BY duedate ASC"),
-            ("highest",     "\(base) AND priority = Highest AND statusCategory != done ORDER BY duedate ASC"),
-            ("overdue",     "\(base) AND duedate < \"\(today)\" AND statusCategory != done ORDER BY duedate ASC"),
-            ("completed30", "\(base) AND statusCategory = done AND resolutiondate >= -30d ORDER BY resolutiondate DESC"),
-            ("backlog",     "\(base) AND statusCategory != done AND (duedate is EMPTY OR duedate > \"\(nextWeekEnd)\") ORDER BY priority ASC, updated DESC"),
-            ("created30",   "project in (\(projects.joined(separator: ", "))) AND reporter = currentUser() AND created >= -30d ORDER BY created DESC"),
+            ("primary",  "\(base) AND (\(windowJQL)) ORDER BY duedate ASC"),
+            ("created",  "project in (\(projects.joined(separator: ", "))) AND reporter = currentUser() AND created >= -90d ORDER BY created DESC"),
         ]
 
         do {
@@ -211,7 +218,8 @@ final class JiraService {
                 for (key, jql) in queries {
                     group.addTask { [weak self] in
                         guard let self else { return (key, []) }
-                        let issues = try await self.searchIssues(cloudId: cloudId, jql: jql, maxResults: 100)
+                        // ±3M 윈도우라 한 번에 더 들어올 수 있어서 제한을 넉넉히.
+                        let issues = try await self.searchIssues(cloudId: cloudId, jql: jql, maxResults: 200)
                         return (key, issues)
                     }
                 }
@@ -220,17 +228,44 @@ final class JiraService {
                 }
             }
 
-            let thisWeek    = results["thisWeek"]    ?? []
-            let nextWeek    = results["nextWeek"]    ?? []
-            let highest     = results["highest"]     ?? []
-            let overdue     = results["overdue"]     ?? []
-            let completed30 = results["completed30"] ?? []
-            let backlog     = results["backlog"]     ?? []
-            let created30   = results["created30"]   ?? []
+            let primary = results["primary"] ?? []
+            let created = results["created"] ?? []
+
+            // --- 대시보드용 분류 (클라이언트 필터링) ---
+            let cal = Calendar.current
+            let now = Date()
+            let weekStartDate = startOfWeek(offset: 0)
+            let weekEndDate   = endOfWeek(offset: 0)
+            let nextWeekStartDate = startOfWeek(offset: 1)
+            let nextWeekEndDate   = endOfWeek(offset: 1)
+
+            func overlaps(_ issue: JiraIssue, _ s: Date, _ e: Date) -> Bool {
+                // weekOverlapJQL과 같은 의미: due 또는 start가 [s,e]에 있거나 span이 그 구간을 가로지름.
+                if let due = issue.dueDate, due >= s && due <= e { return true }
+                if let st  = issue.startDate, st >= s && st <= e { return true }
+                if let st = issue.startDate, let due = issue.dueDate, st < s && due > e { return true }
+                return false
+            }
+
+            let thisWeek = primary.filter { overlaps($0, weekStartDate, weekEndDate) }
+            let nextWeek = primary.filter { overlaps($0, nextWeekStartDate, nextWeekEndDate) }
+            let highest  = primary.filter { $0.priority == "Highest" && !$0.isDone }
+            let overdue  = primary.filter {
+                guard let due = $0.dueDate else { return false }
+                return due < cal.startOfDay(for: now) && !$0.isDone
+            }
+            let completed30 = primary.filter {
+                guard $0.isDone, let res = $0.resolutionDate else { return false }
+                return now.timeIntervalSince(res) <= 30 * 24 * 3600
+            }
+            let created30 = created.filter {
+                guard let c = $0.created else { return false }
+                return now.timeIntervalSince(c) <= 30 * 24 * 3600
+            }
+            let backlog = primary.filter { !$0.isDone && ($0.dueDate == nil || $0.dueDate! > nextWeekEndDate) }
 
             var weekCounts = JiraStatusCounts()
             var byProjectCounts: [String: JiraStatusCounts] = [:]
-
             for issue in thisWeek {
                 weekCounts.add(issue.statusCategory)
                 byProjectCounts[issue.projectKey, default: JiraStatusCounts()].add(issue.statusCategory)
@@ -242,7 +277,7 @@ final class JiraService {
 
             let todayIssues = thisWeek.filter { issue in
                 guard let due = issue.dueDate else { return false }
-                return Calendar.current.isDateInToday(due)
+                return cal.isDateInToday(due)
             }
 
             async let sprintsFetch = fetchSprintInfos(cloudId: cloudId)
@@ -265,8 +300,13 @@ final class JiraService {
                 backlogCountByProject: backlogCountByProject,
                 sprintInfos: sprints,
                 epicInfos: epics,
+                allIssuesInWindow: primary,
                 lastUpdated: Date()
             )
+
+            // weekStart/weekEnd/today/nextWeek 변수가 더 이상 JQL에 안 쓰이지만,
+            // 의도적으로 지우지 않은 게 아니라 — 위에서 weekStartDate 등으로 옮겨갔다.
+            _ = today; _ = weekStart; _ = weekEnd; _ = nextWeekStart; _ = nextWeekEnd
 
             await MainActor.run {
                 self.data = dashData
@@ -278,6 +318,11 @@ final class JiraService {
                 self.isLoading = false
             }
         }
+    }
+
+    /// 오늘 기준 ±N일 (자정 기준).
+    private func daysOffset(_ days: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? Date()
     }
 
     // MARK: - API

@@ -7,7 +7,6 @@ struct JiraDashboardView: View {
     @State private var activeTab: JiraTab = .dashboard
     @State private var selectedProject: String = PresentColumn.allKey
     @State private var filter = CalendarFilter()
-    @State private var anchorMonth: Date = Calendar.current.startOfMonth(for: Date())
     @State private var anchorDate: Date = Date()
 
     var body: some View {
@@ -65,7 +64,7 @@ struct JiraDashboardView: View {
         case .dashboard:
             DashboardContent(data: data, selectedProject: $selectedProject)
         case .month:
-            MonthGridView(items: visibleCalendarItems(data), anchorMonth: $anchorMonth)
+            MonthGridView(items: visibleCalendarItems(data))
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
         case .timeline:

@@ -2,9 +2,11 @@ import SwiftUI
 import AppKit
 
 // 타임라인: 가로축 = 날짜 (하루 = 일정 픽셀), 세로축 = 항목 행.
+// 시간축이 가로이므로 시간 이동도 가로 스크롤이 정상 — 트랙패드 좌·우 스와이프 또는
+// 마우스 ⇧+휠이 가로 ScrollView로 그대로 들어간다. 위/아래 입력은 항목이 많아 화면을
+// 넘칠 때 vertical scroll에 쓰일 여지를 위해 비워둔다 (현재는 한 화면에 다 들어옴).
+//
 // 항목은 kind별 영역(에픽 → 스프린트 → 태스크)으로 구분되고, 각 영역 안에서는 start 오름차순.
-// 위/아래 휠 또는 드래그로 시간축을 좌우 스크롤하는 게 아니라, 사용자가 "위/아래 = 시간축 이동"이라
-// 한 게 월간 그리드와 일관되게 가야 한다 — 즉 위/아래로 휠 굴리면 시간축이 좌우로 미끄러진다.
 
 struct TimelineView: View {
     let items: [CalendarItem]
@@ -30,18 +32,6 @@ struct TimelineView: View {
                     }
                 }
             }
-            .onScrollWheel { dy in
-                // 위로 굴리면 과거로(-), 아래로 굴리면 미래로(+).
-                let dayDelta: Int = dy > 0 ? -7 : 7
-                shiftDay(dayDelta)
-            }
-            .gesture(
-                DragGesture(minimumDistance: 30)
-                    .onEnded { value in
-                        if value.translation.height > 30 { shiftDay(-7) }
-                        else if value.translation.height < -30 { shiftDay(7) }
-                    }
-            )
         }
     }
 
@@ -207,12 +197,6 @@ struct TimelineView: View {
         let cal = Calendar.current
         let start = cal.date(byAdding: .day, value: -halfRangeDays, to: cal.startOfDay(for: anchorDate))!
         return (0..<(halfRangeDays * 2)).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
-    }
-
-    private func shiftDay(_ delta: Int) {
-        if let next = Calendar.current.date(byAdding: .day, value: delta, to: anchorDate) {
-            anchorDate = next
-        }
     }
 
     private func dayKey(_ d: Date) -> String {

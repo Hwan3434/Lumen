@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// Jira 대시보드 메인 뷰. 1160×840pt 글래스 패널.
-///
-/// 레이아웃: 56pt 헤더 → 3-column body (past 280 / present 480 / future 320)
-///         → 102pt 하단 trend 차트.
-///
-/// 시간 축(과거 / 현재 / 미래)을 공간에 그대로 매핑해 사용자가 클릭 없이
-/// 시선만 옮겨 정보를 스캔할 수 있게 한다.
+/// 통합 Jira 패널 메인 뷰 — 1160×840pt 글래스 패널, 56pt 통합 헤더 + 탭 컨텐츠.
+/// 탭: 대시보드 / 월간 / 타임라인. 모두 같은 JiraService.shared 데이터 위에서 다른 렌더링.
 struct JiraDashboardView: View {
     private var service: JiraService { JiraService.shared }
+    @State private var activeTab: JiraTab = .dashboard
     @State private var selectedProject: String = PresentColumn.allKey
+    @State private var filter = CalendarFilter()
+    @State private var anchorMonth: Date = Calendar.current.startOfMonth(for: Date())
+    @State private var anchorDate: Date = Date()
 
     var body: some View {
         ZStack {
@@ -38,21 +37,79 @@ struct JiraDashboardView: View {
             JiraHeader(
                 lastUpdated: data.lastUpdated,
                 refreshing: service.isLoading,
-                onRefresh: { Task { await service.fetch(force: true) } }
+                onRefresh: { Task { await service.fetch(force: true) } },
+                center: { JiraTabBar(active: $activeTab) },
+                trailingControls: { trailingControls }
             )
             LumenHairline()
-            HStack(spacing: 0) {
-                PastColumn(data: data)
-                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
-                PresentColumn(data: data, selectedProject: $selectedProject)
-                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
-                FutureColumn(data: data)
+            tabBody(data)
+        }
+    }
+
+    @ViewBuilder
+    private var trailingControls: some View {
+        switch activeTab {
+        case .dashboard:
+            LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
+            LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
+        case .month, .timeline:
+            FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,        isOn: $filter.showEpic)
+            FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,         isOn: $filter.showSprint)
+            FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,   isOn: $filter.showTask)
+        }
+    }
+
+    @ViewBuilder
+    private func tabBody(_ data: JiraDashboardData) -> some View {
+        switch activeTab {
+        case .dashboard:
+            DashboardContent(data: data, selectedProject: $selectedProject)
+        case .month:
+            MonthGridView(items: visibleCalendarItems(data), anchorMonth: $anchorMonth)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+        case .timeline:
+            TimelineView(items: visibleCalendarItems(data), anchorDate: $anchorDate)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+        }
+    }
+
+    private func visibleCalendarItems(_ data: JiraDashboardData) -> [CalendarItem] {
+        CalendarAdapter.buildItems(from: data).filter { filter.passes($0) }
+    }
+}
+
+// MARK: - FilterChip
+//
+// 캘린더 탭의 헤더-우측에 들어가는 종류 토글. 색 점 + 라벨 + 외곽선.
+// 활성: 색 진하게 + secondary text, 비활성: dim color + muted text.
+struct FilterChip: View {
+    let label: String
+    let color: Color
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(isOn ? color : color.opacity(0.25))
+                    .frame(width: 7, height: 7)
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isOn
+                                     ? LumenTokens.TextColor.secondary
+                                     : LumenTokens.TextColor.muted)
             }
-            .frame(maxHeight: .infinity)
-            TrendChart(
-                created: data.createdLast30,
-                completed: data.completedLast30
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(isOn ? color.opacity(0.35) : LumenTokens.divider, lineWidth: 0.5)
             )
         }
+        .buttonStyle(.plain)
     }
 }

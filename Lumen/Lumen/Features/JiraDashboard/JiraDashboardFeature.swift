@@ -14,9 +14,9 @@ final class JiraDashboardFeature: BuiltInFeature {
     var hotkeys: [HotkeySpec] {
         [
             HotkeySpec(
-                keyCode: UInt16(kVK_ANSI_J),
+                keyCode: UInt16(kVK_ANSI_G),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+J",
+                description: "Cmd+Shift+G",
                 action: { [weak self] in self?.activate() }
             )
         ]

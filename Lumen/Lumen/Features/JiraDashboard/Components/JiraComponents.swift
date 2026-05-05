@@ -275,10 +275,15 @@ struct JiraFullPanelEmpty: View {
 
 // MARK: - Header
 
-struct JiraHeader: View {
+/// 통합 Jira 패널의 56pt 헤더. 좌측(타이틀+프로젝트), 가운데(탭/임의), 우측(controls + refresh)
+/// 세 영역을 가진다. 가운데와 우측-controls는 호출자가 ViewBuilder로 채운다 — 탭별로 다른
+/// 컨트롤(범례 / 필터 칩 등)을 노출하기 위함.
+struct JiraHeader<Center: View, TrailingControls: View>: View {
     let lastUpdated: Date
     let refreshing: Bool
     var onRefresh: () -> Void
+    @ViewBuilder var center: () -> Center
+    @ViewBuilder var trailingControls: () -> TrailingControls
 
     var body: some View {
         HStack(spacing: 0) {
@@ -308,10 +313,11 @@ struct JiraHeader: View {
             }
 
             Spacer()
+            center()
+            Spacer()
 
             HStack(spacing: 12) {
-                LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
-                LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
+                trailingControls()
             }
             .padding(.trailing, 18)
 

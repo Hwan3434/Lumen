@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Carbon.HIToolbox
 
 final class JiraDashboardWindowController: PanelWindowController {
     private static let panelSize = NSSize(width: 1160, height: 840)
@@ -26,6 +27,23 @@ final class JiraDashboardWindowController: PanelWindowController {
         panel.onKeyEvent = { [weak self] keyCode in
             if keyCode == KeyCode.escape { self?.hide(); return true }
             return false
+        }
+
+        // ⌘1 / ⌘2 / ⌘3 — 대시보드 / 월간 / 타임라인 탭 이동.
+        // panel과 SwiftUI view 사이 통신은 NotificationCenter로 — view의 @State를
+        // 외부로 끌어내지 않고 깔끔하게 격리.
+        panel.onCommandKey = { event in
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard flags == .command else { return false }
+            let tabIndex: Int
+            switch Int(event.keyCode) {
+            case kVK_ANSI_1: tabIndex = 0
+            case kVK_ANSI_2: tabIndex = 1
+            case kVK_ANSI_3: tabIndex = 2
+            default: return false
+            }
+            NotificationCenter.default.post(name: .jiraSwitchTab, object: tabIndex)
+            return true
         }
 
         panel.contentView = NSHostingView(rootView: JiraDashboardView())

@@ -5,12 +5,15 @@ import SwiftUI
 // Jira 데이터 모델을 그대로 노출하면 뷰가 분기 가득해지므로 어댑터로 평탄화.
 enum CalendarItemKind {
     case sprint, epic, task
+    /// 사용자가 좌측 사이드바에서 직접 추가한 로컬 이벤트. 월간에서만 노출.
+    case local
 
     var label: String {
         switch self {
         case .sprint: return "스프린트"
         case .epic:   return "에픽"
         case .task:   return "태스크"
+        case .local:  return "이벤트"
         }
     }
 
@@ -20,6 +23,7 @@ enum CalendarItemKind {
         case .sprint: return LumenTokens.Accent.amber
         case .epic:   return LumenTokens.Accent.violet
         case .task:   return LumenTokens.TextColor.secondary
+        case .local:  return LumenTokens.TextColor.muted
         }
     }
 
@@ -28,6 +32,7 @@ enum CalendarItemKind {
         case .sprint: return "flag.fill"
         case .epic:   return "rectangle.stack.fill"
         case .task:   return "checkmark.circle"
+        case .local:  return "calendar.badge.plus"
         }
     }
 }
@@ -39,8 +44,9 @@ struct CalendarItem: Identifiable, Hashable {
     /// span의 시작·종료. 종료가 nil이면 단일 시점(start만 표시).
     let start: Date
     let end: Date?
-    /// Jira에서 열기 위한 키 — 이슈 키 ("PROJ-123") 또는 스프린트 id ("sprint-42").
-    let openURL: URL?
+    /// Jira 이슈 키 ("PROJ-123"). 클릭 시 openJira(_:)로 전달 — 거기서 URL 빌드 + 패널 닫기까지 처리.
+    /// 스프린트는 클릭 동작 없음(nil).
+    let issueKey: String?
     let isDone: Bool
     /// 프로젝트별 배경색을 위해 어댑터가 채워준다 — 스프린트는 SprintInfo.projectKey,
     /// 에픽/태스크는 issueKey의 prefix("PROJ-123" → "PROJ")에서 추출.
@@ -61,7 +67,8 @@ enum CalendarAdapter {
     /// - 스프린트: startDate~endDate (둘 다 있어야)
     /// - 에픽: dueDate만 (단일 시점)
     /// - 태스크(이슈): startDate→dueDate 또는 둘 중 하나만 있어도 표시
-    static func buildItems(from data: JiraDashboardData) -> [CalendarItem] {
+    /// - 로컬 이벤트: includeLocal일 때만 (월간 탭 한정)
+    static func buildItems(from data: JiraDashboardData, includeLocal: Bool = false) -> [CalendarItem] {
         var items: [CalendarItem] = []
 
         for sprint in data.sprintInfos {
@@ -72,7 +79,7 @@ enum CalendarAdapter {
                 title: sprint.name,
                 start: s,
                 end: e,
-                openURL: nil,
+                issueKey: nil,
                 isDone: false,
                 projectKey: sprint.projectKey
             ))
@@ -83,13 +90,28 @@ enum CalendarAdapter {
             items.append(CalendarItem(
                 id: "epic-\(epic.key)",
                 kind: .epic,
-                title: "\(epic.key) · \(epic.summary)",
+                title: epic.summary,
                 start: due,
                 end: nil,
-                openURL: issueURL(key: epic.key),
+                issueKey: epic.key,
                 isDone: false,
                 projectKey: epic.projectKey
             ))
+        }
+
+        if includeLocal {
+            for ev in LocalEventStore.shared.events {
+                items.append(CalendarItem(
+                    id: "local-\(ev.id.uuidString)",
+                    kind: .local,
+                    title: ev.title,
+                    start: ev.start,
+                    end: ev.end,
+                    issueKey: nil,
+                    isDone: false,
+                    projectKey: nil
+                ))
+            }
         }
 
         // ±3개월 윈도우에 들어온 모든 이슈가 단일 소스. dedup 불필요(이미 unique).
@@ -103,23 +125,16 @@ enum CalendarAdapter {
             items.append(CalendarItem(
                 id: "task-\(issue.id)",
                 kind: .task,
-                title: "\(issue.key) · \(issue.summary)",
+                title: issue.summary,
                 start: start,
                 end: end,
-                openURL: issueURL(key: issue.key),
+                issueKey: issue.key,
                 isDone: issue.isDone,
                 projectKey: issue.projectKey
             ))
         }
 
         return items
-    }
-
-    /// 정식 헬퍼 사용 — slug trim까지 처리됨. 미설정 시 prefix가 빈 문자열이라 URL 생성 실패 → nil.
-    private static func issueURL(key: String) -> URL? {
-        let prefix = Constants.jiraBrowseURL  // "https://{slug}.atlassian.net/browse/"
-        guard !prefix.isEmpty else { return nil }
-        return URL(string: prefix + key)
     }
 }
 
@@ -135,6 +150,7 @@ struct CalendarFilter: Equatable {
         case .sprint: return showSprint
         case .epic:   return showEpic
         case .task:   return showTask
+        case .local:  return true   // 로컬 이벤트는 사이드바로 따로 관리되니 필터에서 빼지 않는다.
         }
     }
 }

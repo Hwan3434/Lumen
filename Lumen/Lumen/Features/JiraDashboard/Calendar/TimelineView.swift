@@ -1,234 +1,272 @@
 import SwiftUI
 import AppKit
 
-// 타임라인: 가로축 = 날짜 (하루 = 일정 픽셀), 세로축 = 항목 행.
-// 시간축이 가로이므로 시간 이동도 가로 스크롤이 정상 — 트랙패드 좌·우 스와이프 또는
-// 마우스 ⇧+휠이 가로 ScrollView로 그대로 들어간다. 위/아래 입력은 항목이 많아 화면을
-// 넘칠 때 vertical scroll에 쓰일 여지를 위해 비워둔다 (현재는 한 화면에 다 들어옴).
+// 타임라인 = agenda 뷰. Gantt 막대(row당 task 1개)에서 "날짜 헤더 + 그날의 항목 리스트"로 전환.
 //
-// 항목은 kind별 영역(에픽 → 스프린트 → 태스크)으로 구분되고, 각 영역 안에서는 start 오름차순.
+// 정책:
+//  - 다일 task는 매 날짜에 등장. 시작일이 아닌 날의 행은 톤 다운(이미 진행 중 시그널).
+//  - 빈 날짜는 생략 (정보 밀도).
+//  - 한 날짜 안 정렬: 로컬 → 에픽 → 스프린트 → 태스크. 같은 종류 안에선 시작일 → 제목.
+//  - 범위는 ±3개월(=fetch 윈도우와 동기화). 처음 진입 시 오늘에 anchor scroll.
+//  - 클릭 동작: Jira 항목 → 기존 미리보기 popover, 로컬 항목 → 편집 popover.
 
 struct TimelineView: View {
     let items: [CalendarItem]
     @Binding var anchorDate: Date
 
-    /// 하루의 가로 픽셀 폭. 4주를 한 화면에 보이게 하는 게 디폴트.
-    private let dayWidth: CGFloat = 36
-    private let rowHeight: CGFloat = 24
-    private let groupSpacing: CGFloat = 12
-    /// 가시 영역 좌·우로 충분히 그려서 스크롤 직후 빈 영역이 안 보이게.
-    private let halfRangeDays: Int = 60
+    /// Jira preview popover의 anchor — entry.id (즉 "{itemID}|{day}") 기준.
+    /// 같은 task가 여러 row에 펼쳐져 있을 때, 클릭한 그 row에 정확히 popover가 뜨게 한다.
+    @State private var previewingEntryID: String? = nil
+    @State private var editingEvent: LocalEvent? = nil
+
+    private static let cal = Calendar.current
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollViewReader { scrollProxy in
-                // 가로 ScrollView가 외곽 — 시간축을 좌·우로 끌고, day axis와 콘텐츠가 같이 움직인다.
-                // 그 안의 vertical ScrollView가 항목 행이 화면을 넘칠 때 위·아래로 스크롤되게 한다.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    timelineContent(visibleWidth: proxy.size.width, visibleHeight: proxy.size.height)
-                }
-                .onAppear {
-                    // 콘텐츠 layout이 끝난 직후 스크롤 — 즉시 부르면 ScrollView가 아직
-                    // 자식 사이즈를 모를 수 있어서 anchor가 동작 안 하는 경우가 있다.
-                    DispatchQueue.main.async {
-                        scrollProxy.scrollTo(anchorID, anchor: .center)
-                    }
-                }
-                .onChange(of: anchorDate) { _, _ in
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        scrollProxy.scrollTo(anchorID, anchor: .center)
-                    }
-                }
-            }
-        }
-    }
-
-    private var anchorID: String { dayKey(anchorDate) }
-
-    // MARK: - Content
-
-    @ViewBuilder
-    private func timelineContent(visibleWidth: CGFloat, visibleHeight: CGFloat) -> some View {
-        let groups: [(CalendarItemKind, [CalendarItem])] = [
-            (.epic,    items.filter { $0.kind == .epic    }.sorted { $0.start < $1.start }),
-            (.sprint,  items.filter { $0.kind == .sprint  }.sorted { $0.start < $1.start }),
-            (.task,    items.filter { $0.kind == .task    }.sorted { $0.start < $1.start }),
-        ]
-        let nonEmpty = groups.filter { !$0.1.isEmpty }
-        let dayRange = visibleDayRange()
-
-        VStack(alignment: .leading, spacing: 0) {
-            // day axis는 vertical ScrollView 바깥에 둔다 — 위에 고정되고 가로 스크롤만 따라감.
-            dayAxis(dayRange: dayRange)
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 6)
-
-            if nonEmpty.isEmpty {
-                Text("표시할 항목이 없습니다")
-                    .font(.system(size: 12))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .padding(.vertical, 24)
-                    .frame(maxWidth: .infinity)
-            } else {
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: groupSpacing) {
-                        ForEach(Array(nonEmpty.enumerated()), id: \.offset) { _, pair in
-                            groupSection(kind: pair.0, items: pair.1, dayRange: dayRange)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(alignment: .leading, spacing: 4, pinnedViews: [.sectionHeaders]) {
+                    ForEach(daySections, id: \.day) { section in
+                        Section(header: dayHeader(section.day, count: section.entries.count)) {
+                            ForEach(section.entries, id: \.id) { entry in
+                                row(entry)
+                                    .padding(.horizontal, 16)
+                            }
                         }
+                        .id(dayKey(section.day))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
                 }
+                .padding(.vertical, 8)
             }
-        }
-        .frame(minWidth: visibleWidth, minHeight: visibleHeight, alignment: .topLeading)
-    }
-
-    private func groupSection(kind: CalendarItemKind, items: [CalendarItem], dayRange: [Date]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: kind.iconName)
-                    .font(.system(size: 10, weight: .semibold))
-                Text(kind.label)
-                    .font(.system(size: 11, weight: .medium))
-                    .tracking(0.4)
-                Text("\(items.count)")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            .foregroundStyle(kind.color)
-            .padding(.bottom, 2)
-
-            ZStack(alignment: .topLeading) {
-                gridLines(dayRange: dayRange, rowCount: items.count)
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(items) { item in
-                        timelineRow(item: item, dayRange: dayRange)
-                    }
+            .onAppear {
+                DispatchQueue.main.async {
+                    proxy.scrollTo(dayKey(Self.cal.startOfDay(for: anchorDate)), anchor: .top)
                 }
             }
         }
     }
 
-    private func timelineRow(item: CalendarItem, dayRange: [Date]) -> some View {
-        let cal = Calendar.current
-        let rangeStart = dayRange.first!
-        let startOffset = max(0, cal.dateComponents([.day], from: rangeStart, to: item.start).day ?? 0)
-        let endDate = cal.startOfDay(for: item.end ?? item.start)
-        let endOffset = (cal.dateComponents([.day], from: rangeStart, to: endDate).day ?? startOffset) + 1
-        let leading = CGFloat(startOffset) * dayWidth
-        let width = max(dayWidth, CGFloat(endOffset - startOffset) * dayWidth)
-        // 막대 배경 = 프로젝트 색, 테두리 = 종류 색. 한눈에 어떤 프로젝트의 어떤 종류인지 보임.
+    // MARK: - Section model
+
+    /// agenda의 한 줄 — 같은 task가 다일이면 여러 entry로 쪼개진다.
+    private struct Entry {
+        let id: String          // "{item.id}|{day yyyymmdd}" — ForEach 안정성
+        let item: CalendarItem
+        let day: Date
+        /// item.start가 아닌 날 = "이미 진행 중인 day".
+        var isContinuation: Bool { !Self.cal.isDate(day, inSameDayAs: item.start) }
+        private static let cal = Calendar.current
+    }
+
+    private struct DaySection {
+        let day: Date
+        let entries: [Entry]
+    }
+
+    private var daySections: [DaySection] {
+        // 1. item × covered-day 쌍 펼치기
+        var byDay: [Date: [Entry]] = [:]
+        for item in items {
+            let s = Self.cal.startOfDay(for: item.start)
+            let e = Self.cal.startOfDay(for: item.end ?? item.start)
+            // ±3개월 윈도우 클램핑 — 가시 범위 밖은 의미 없음.
+            let rangeStart = Self.cal.date(byAdding: .day, value: -90, to: Self.cal.startOfDay(for: Date()))!
+            let rangeEnd   = Self.cal.date(byAdding: .day, value: +90, to: Self.cal.startOfDay(for: Date()))!
+            let from = max(s, rangeStart)
+            let to   = min(e, rangeEnd)
+            guard from <= to else { continue }
+            var cursor = from
+            while cursor <= to {
+                let key = "\(item.id)|\(dayKey(cursor))"
+                byDay[cursor, default: []].append(Entry(id: key, item: item, day: cursor))
+                cursor = Self.cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
+            }
+        }
+
+        // 2. 날짜별 정렬: 미래가 위로 (날짜 desc). 같은 날짜 안은 종류 묶음 → (시작일, 제목)
+        let kindOrder: [CalendarItemKind: Int] = [.local: 0, .epic: 1, .sprint: 2, .task: 3]
+        return byDay.keys.sorted(by: >).map { day in
+            let entries = byDay[day]!.sorted { a, b in
+                let oa = kindOrder[a.item.kind] ?? 99
+                let ob = kindOrder[b.item.kind] ?? 99
+                if oa != ob { return oa < ob }
+                if a.item.start != b.item.start { return a.item.start < b.item.start }
+                return a.item.title < b.item.title
+            }
+            return DaySection(day: day, entries: entries)
+        }
+    }
+
+    // MARK: - Header / row views
+
+    private func dayHeader(_ day: Date, count: Int) -> some View {
+        let isToday = Self.cal.isDateInToday(day)
+        return HStack(spacing: 8) {
+            Text(dayLabel(day))
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(isToday ? LumenTokens.Accent.amber : LumenTokens.TextColor.primary)
+            Text(weekdayLabel(day))
+                .font(.system(size: 11))
+                .foregroundStyle(weekdayColor(day))
+            if isToday {
+                Text("오늘")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(LumenTokens.Accent.amber)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(LumenTokens.Accent.amber.opacity(0.45), lineWidth: 0.5)
+                    )
+            }
+            Spacer()
+            Text("\(count)")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(LumenTokens.TextColor.muted)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(LumenTokens.BG.sidePanel)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
+        }
+    }
+
+    private func row(_ entry: Entry) -> some View {
+        let item = entry.item
+        let isLocal = (item.kind == .local)
         let projectColor = item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
+        let isContinuation = entry.isContinuation
 
-        return ZStack(alignment: .leading) {
-            // 행 자체의 배경 — 호버용. 일단 없음.
-            HStack { Spacer() }
-                .frame(height: rowHeight)
-
-            Button {
-                if let url = item.openURL { NSWorkspace.shared.open(url) }
-            } label: {
-                HStack(spacing: 5) {
-                    Text(item.title)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(item.isDone
-                                         ? LumenTokens.TextColor.muted
-                                         : LumenTokens.TextColor.primary)
-                        .strikethrough(item.isDone, color: LumenTokens.TextColor.muted)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .padding(.horizontal, 6)
-                .frame(width: width, height: rowHeight - 4, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(projectColor.opacity(0.22))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(item.kind.color.opacity(0.55), lineWidth: 0.5)
-                )
+        return Button {
+            if isLocal, let ev = matchingLocalEvent(itemID: item.id) {
+                editingEvent = ev
+            } else if item.issueKey != nil {
+                previewingEntryID = entry.id
             }
-            .buttonStyle(.plain)
-            .help(item.title)
-            .padding(.leading, leading)
-        }
-        .frame(height: rowHeight, alignment: .leading)
-    }
+        } label: {
+            HStack(spacing: 8) {
+                // 좌측 색 바 — 종류 색
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(item.kind.color.opacity(isContinuation ? 0.35 : 0.85))
+                    .frame(width: 3, height: 16)
 
-    private func dayAxis(dayRange: [Date]) -> some View {
-        let cal = Calendar.current
-        return HStack(spacing: 0) {
-            ForEach(dayRange, id: \.self) { day in
-                let weekday = cal.component(.weekday, from: day) // 1=일
-                let dayNum = cal.component(.day, from: day)
-                let isFirstOfMonth = cal.component(.day, from: day) == 1
-                let isToday = cal.isDateInToday(day)
-                VStack(spacing: 1) {
-                    if isFirstOfMonth {
-                        Text(monthShort(day))
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    } else {
-                        Text(" ").font(.system(size: 9))
-                    }
-                    Text("\(dayNum)")
-                        .font(.system(size: 10, weight: isToday ? .bold : .regular,
-                                      design: .monospaced))
-                        .foregroundStyle(isToday
-                                         ? LumenTokens.Accent.amber
-                                         : (weekday == 1 || weekday == 7
-                                            ? LumenTokens.TextColor.muted
-                                            : LumenTokens.TextColor.secondary))
+                // 키 (Jira만)
+                if let key = item.issueKey {
+                    Text(key)
+                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(LumenTokens.Accent.violetSoft.opacity(isContinuation ? 0.5 : 1))
+                        .frame(minWidth: 70, alignment: .leading)
                 }
-                .frame(width: dayWidth, height: 28)
-                .id(dayKey(day))
+
+                // 제목
+                Text(item.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(item.isDone
+                                     ? LumenTokens.TextColor.muted
+                                     : (isContinuation ? LumenTokens.TextColor.muted : LumenTokens.TextColor.primary))
+                    .strikethrough(item.isDone, color: LumenTokens.TextColor.muted)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: 0)
+
+                // 진행중 표시 (다일 task의 두번째 이후 날)
+                if isContinuation {
+                    Text("진행 중")
+                        .font(.system(size: 10))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                } else if let end = item.end, !Self.cal.isDate(item.start, inSameDayAs: end) {
+                    Text(spanLabel(start: item.start, end: end))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                }
+
+                // 종류 (회색 chip)
+                Text(item.kind.label)
+                    .font(.system(size: 9.5, weight: .medium))
+                    .tracking(0.4)
+                    .foregroundStyle(item.kind.color.opacity(isContinuation ? 0.5 : 0.85))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(isLocal ? Color.white.opacity(0.04) : projectColor.opacity(0.10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .strokeBorder(
+                                        item.kind.color.opacity(0.35),
+                                        style: StrokeStyle(lineWidth: 0.5, dash: isLocal ? [3, 2] : [])
+                                    )
+                            )
+                    )
+            }
+            .padding(.vertical, 5)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(item.issueKey.map { "\($0) · \(item.title)" } ?? item.title)
+        // entry.id로 매칭 — 다일 task가 여러 row에 등장해도 정확히 클릭한 row에 popover.
+        .popover(isPresented: Binding(
+            get: { previewingEntryID == entry.id },
+            set: { if !$0 { previewingEntryID = nil } }
+        ), arrowEdge: .leading) {
+            if let key = item.issueKey {
+                IssuePreviewPopover(issueKey: key)
             }
         }
-    }
-
-    private func gridLines(dayRange: [Date], rowCount: Int) -> some View {
-        let cal = Calendar.current
-        let height = max(1, CGFloat(rowCount) * (rowHeight + 2))
-        return HStack(spacing: 0) {
-            ForEach(Array(dayRange.enumerated()), id: \.offset) { _, day in
-                let weekday = cal.component(.weekday, from: day)
-                let isWeekend = (weekday == 1 || weekday == 7)
-                let isToday = cal.isDateInToday(day)
-                Rectangle()
-                    .fill(isToday
-                          ? LumenTokens.Accent.amber.opacity(0.06)
-                          : (isWeekend ? Color.white.opacity(0.015) : Color.clear))
-                    .frame(width: dayWidth, height: height)
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(LumenTokens.divider)
-                            .frame(width: 0.5, height: height)
-                    }
+        .popover(isPresented: Binding(
+            get: { editingEvent != nil && editingEvent.flatMap { "local-\($0.id.uuidString)" } == item.id },
+            set: { if !$0 { editingEvent = nil } }
+        ), arrowEdge: .leading) {
+            if let ev = editingEvent {
+                LocalEventEditPopover(event: ev) { editingEvent = nil }
             }
         }
     }
 
     // MARK: - Helpers
 
-    private func visibleDayRange() -> [Date] {
-        let cal = Calendar.current
-        let start = cal.date(byAdding: .day, value: -halfRangeDays, to: cal.startOfDay(for: anchorDate))!
-        return (0..<(halfRangeDays * 2)).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
+    private func matchingLocalEvent(itemID: String) -> LocalEvent? {
+        guard itemID.hasPrefix("local-"),
+              let uuid = UUID(uuidString: String(itemID.dropFirst("local-".count))) else { return nil }
+        return LocalEventStore.shared.events.first { $0.id == uuid }
     }
 
     private func dayKey(_ d: Date) -> String {
-        let cal = Calendar.current
-        let comp = cal.dateComponents([.year, .month, .day], from: d)
-        return "\(comp.year ?? 0)-\(comp.month ?? 0)-\(comp.day ?? 0)"
+        let comp = Self.cal.dateComponents([.year, .month, .day], from: d)
+        return "d-\(comp.year ?? 0)-\(comp.month ?? 0)-\(comp.day ?? 0)"
     }
 
-    private func monthShort(_ d: Date) -> String {
+    private func dayLabel(_ d: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M월"
+        f.dateFormat = "M월 d일"
         return f.string(from: d)
+    }
+
+    private func weekdayLabel(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "EEEE"
+        return f.string(from: d)
+    }
+
+    private func weekdayColor(_ d: Date) -> Color {
+        let w = Self.cal.component(.weekday, from: d)
+        if w == 1 { return Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255) }
+        if w == 7 { return LumenTokens.Accent.violetSoft }
+        return LumenTokens.TextColor.muted
+    }
+
+    private func spanLabel(start: Date, end: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "M/d"
+        return "\(f.string(from: start)) → \(f.string(from: end))"
     }
 }

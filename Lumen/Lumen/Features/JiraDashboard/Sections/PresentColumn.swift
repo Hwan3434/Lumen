@@ -92,30 +92,19 @@ struct ProjectTabBar: View {
         return Button {
             selected = key
         } label: {
-            HStack(spacing: 6) {
-                Text(label)
-                    .font(.system(size: 11.5, weight: active ? .semibold : .medium))
-                    .lineLimit(1)
-                Text("⌘\(index)")
-                    .font(.system(size: 9, design: .monospaced))
-                    .padding(.horizontal, 3)
-                    .frame(minWidth: 13, minHeight: 13)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
-            }
-            .foregroundStyle(fg)
-            .padding(.horizontal, 10)
-            .frame(height: 22)
-            .background(
-                Capsule()
-                    .fill(bg)
-                    .overlay(Capsule().stroke(stroke, lineWidth: 0.5))
-            )
+            Text(label)
+                .font(.system(size: 11.5, weight: active ? .semibold : .medium))
+                .lineLimit(1)
+                .foregroundStyle(fg)
+                .padding(.horizontal, 12)
+                .frame(height: 22)
+                .background(
+                    Capsule()
+                        .fill(bg)
+                        .overlay(Capsule().stroke(stroke, lineWidth: 0.5))
+                )
         }
         .buttonStyle(.plain)
-        .keyboardShortcut(KeyEquivalent(Character("\(index)")), modifiers: .command)
     }
 }
 

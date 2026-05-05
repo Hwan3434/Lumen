@@ -1,5 +1,11 @@
 import SwiftUI
 
+extension Notification.Name {
+    /// PanelWindowController가 ⌘1/⌘2/⌘3을 받으면 이 알림을 0/1/2 인덱스로 post한다.
+    /// JiraDashboardView가 onReceive로 잡아 activeTab을 바꾼다.
+    static let jiraSwitchTab = Notification.Name("com.lumen.jira.switchTab")
+}
+
 /// 통합 Jira 패널의 상단 탭. 헤더 가운데 자리에 깔린다.
 /// 활성 탭은 violet 배경 + primary text, 비활성은 muted text.
 enum JiraTab: String, CaseIterable, Identifiable {

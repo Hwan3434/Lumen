@@ -8,6 +8,8 @@ struct JiraDashboardView: View {
     @State private var selectedProject: String = PresentColumn.allKey
     @State private var filter = CalendarFilter()
     @State private var anchorDate: Date = Date()
+    /// LocalEventStore 변경(추가/편집/삭제)을 감지해 캘린더 막대도 즉시 재렌더 되게.
+    @State private var localStore = LocalEventStore.shared
 
     var body: some View {
         ZStack {
@@ -28,6 +30,11 @@ struct JiraDashboardView: View {
         .frame(width: 1160, height: 840)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
         .onAppear { Task { await service.fetch() } }
+        .onReceive(NotificationCenter.default.publisher(for: .jiraSwitchTab)) { note in
+            guard let idx = note.object as? Int,
+                  JiraTab.allCases.indices.contains(idx) else { return }
+            activeTab = JiraTab.allCases[idx]
+        }
     }
 
     @ViewBuilder
@@ -58,24 +65,34 @@ struct JiraDashboardView: View {
         }
     }
 
+    /// 세 탭의 컨텐츠를 모두 mount된 채로 두고 active만 보여 준다 — 탭 전환 시 첫 mount 비용
+    /// (예: 월간의 onAppear scroll-to-today)이 매번 발생하면서 화면이 휙 움직이는 깜빡임을 없앤다.
     @ViewBuilder
     private func tabBody(_ data: JiraDashboardData) -> some View {
-        switch activeTab {
-        case .dashboard:
+        // 월간/타임라인 모두 로컬 이벤트 포함 — 두 탭 데이터 동기화.
+        let calendarItems = visibleCalendarItems(data, includeLocal: true)
+
+        ZStack {
             DashboardContent(data: data, selectedProject: $selectedProject)
-        case .month:
-            MonthGridView(items: visibleCalendarItems(data))
+                .opacity(activeTab == .dashboard ? 1 : 0)
+                .allowsHitTesting(activeTab == .dashboard)
+
+            MonthGridView(items: calendarItems)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
-        case .timeline:
-            TimelineView(items: visibleCalendarItems(data), anchorDate: $anchorDate)
+                .opacity(activeTab == .month ? 1 : 0)
+                .allowsHitTesting(activeTab == .month)
+
+            TimelineView(items: calendarItems, anchorDate: $anchorDate)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
+                .opacity(activeTab == .timeline ? 1 : 0)
+                .allowsHitTesting(activeTab == .timeline)
         }
     }
 
-    private func visibleCalendarItems(_ data: JiraDashboardData) -> [CalendarItem] {
-        CalendarAdapter.buildItems(from: data).filter { filter.passes($0) }
+    private func visibleCalendarItems(_ data: JiraDashboardData, includeLocal: Bool) -> [CalendarItem] {
+        CalendarAdapter.buildItems(from: data, includeLocal: includeLocal).filter { filter.passes($0) }
     }
 }
 

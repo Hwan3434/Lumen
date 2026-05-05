@@ -94,6 +94,16 @@ struct JiraDashboardData {
     let lastUpdated: Date
 }
 
+/// 단건 이슈 미리보기용 — 전체 이슈 fetch에 description/comments는 빠져 있어서
+/// 알약/막대 클릭 시점에 lazy로 받아 popover에 띄운다.
+struct IssueDetail {
+    let key: String
+    let summary: String
+    let status: String
+    let descriptionText: String   // ADF → plain text
+    let commentCount: Int
+}
+
 // MARK: - Service
 
 @Observable
@@ -218,8 +228,9 @@ final class JiraService {
                 for (key, jql) in queries {
                     group.addTask { [weak self] in
                         guard let self else { return (key, []) }
-                        // ±3M 윈도우라 한 번에 더 들어올 수 있어서 제한을 넉넉히.
-                        let issues = try await self.searchIssues(cloudId: cloudId, jql: jql, maxResults: 200)
+                        // searchIssues는 nextPageToken을 따라가며 누적 — 인자는 총 상한.
+                        // 1000은 ±3M 윈도우 + 본인 담당으로 사실상 도달 안 함.
+                        let issues = try await self.searchIssues(cloudId: cloudId, jql: jql, maxResults: 1000)
                         return (key, issues)
                     }
                 }
@@ -327,28 +338,110 @@ final class JiraService {
 
     // MARK: - API
 
-    private func searchIssues(cloudId: String, jql: String, maxResults: Int) async throws -> [JiraIssue] {
-        var comps = URLComponents(string: "\(baseURL(cloudId))/search/jql")!
-        comps.queryItems = [
-            URLQueryItem(name: "jql", value: jql),
-            URLQueryItem(name: "maxResults", value: "\(maxResults)"),
-            URLQueryItem(name: "fields", value: "summary,status,priority,\(Constants.jiraStartDateFieldId),duedate,resolutiondate,created,issuetype,project"),
-        ]
+    /// 단건 이슈 디테일 fetch — popover 미리보기에서 호출. 호출 시점마다 새로 받음(캐시 없음).
+    /// description은 ADF (Atlassian Document Format) 트리이므로 모든 text 노드를 합쳐 plain text로.
+    func fetchIssueDetail(key: String) async throws -> IssueDetail {
+        let cloudId = try await ensureCloudId()
+        var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)")!
+        comps.queryItems = [URLQueryItem(name: "fields", value: "summary,status,description,comment")]
         guard let url = comps.url else { throw URLError(.badURL) }
 
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
         guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
             throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                          userInfo: [NSLocalizedDescriptionKey: body])
+                          userInfo: [NSLocalizedDescriptionKey: String(data: data, encoding: .utf8) ?? ""])
         }
-
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let issueList = json["issues"] as? [[String: Any]]
-        else { return [] }
+            let fields = json["fields"] as? [String: Any]
+        else { throw URLError(.cannotParseResponse) }
 
-        return issueList.compactMap { parseIssue($0) }
+        let summary = (fields["summary"] as? String) ?? ""
+        let statusName = ((fields["status"] as? [String: Any])?["name"] as? String) ?? ""
+
+        var descText = ""
+        if let descNode = fields["description"] as? [String: Any] {
+            descText = Self.adfPlainText(node: descNode).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        var commentCount = 0
+        if let comment = fields["comment"] as? [String: Any] {
+            commentCount = (comment["total"] as? Int) ?? ((comment["comments"] as? [Any])?.count ?? 0)
+        }
+
+        return IssueDetail(key: key, summary: summary, status: statusName,
+                           descriptionText: descText, commentCount: commentCount)
+    }
+
+    /// ADF 노드 트리에서 모든 text 노드 추출. paragraph 사이엔 개행 두 번.
+    private static func adfPlainText(node: Any) -> String {
+        if let dict = node as? [String: Any] {
+            let type = dict["type"] as? String ?? ""
+            // text 노드는 자체적으로 text 들고 있음
+            if type == "text", let t = dict["text"] as? String { return t }
+            var inner = ""
+            if let content = dict["content"] as? [Any] {
+                for child in content {
+                    inner += adfPlainText(node: child)
+                }
+            }
+            // block-level 노드 뒤엔 개행
+            switch type {
+            case "paragraph", "heading", "bulletList", "orderedList", "listItem", "codeBlock", "blockquote":
+                inner += "\n"
+            default: break
+            }
+            return inner
+        } else if let arr = node as? [Any] {
+            return arr.map { adfPlainText(node: $0) }.joined()
+        }
+        return ""
+    }
+
+    /// /search/jql는 한 응답에 최대 100건만 담고 그 이상은 nextPageToken으로 받아야 한다.
+    /// `maxResults`는 페이지당 크기가 아니라 "한 번의 fetch에서 누적 받을 총 상한"으로 동작한다 —
+    /// 호출자가 100을 넘게 부르면 자동으로 페이지를 따라간다. 1000으로 cap을 두어 폭주 방지.
+    private func searchIssues(cloudId: String, jql: String, maxResults: Int) async throws -> [JiraIssue] {
+        let pageSize = 100
+        let totalCap = min(maxResults, 1000)
+        var collected: [JiraIssue] = []
+        var nextPageToken: String? = nil
+
+        while collected.count < totalCap {
+            var comps = URLComponents(string: "\(baseURL(cloudId))/search/jql")!
+            var items: [URLQueryItem] = [
+                URLQueryItem(name: "jql", value: jql),
+                URLQueryItem(name: "maxResults", value: "\(pageSize)"),
+                URLQueryItem(name: "fields", value: "summary,status,priority,\(Constants.jiraStartDateFieldId),duedate,resolutiondate,created,issuetype,project"),
+            ]
+            if let token = nextPageToken {
+                items.append(URLQueryItem(name: "nextPageToken", value: token))
+            }
+            comps.queryItems = items
+            guard let url = comps.url else { throw URLError(.badURL) }
+
+            let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
+            guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
+                              userInfo: [NSLocalizedDescriptionKey: body])
+            }
+
+            guard
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let issueList = json["issues"] as? [[String: Any]]
+            else { return collected }
+
+            collected.append(contentsOf: issueList.compactMap { parseIssue($0) })
+
+            // isLast가 true이거나 nextPageToken이 없으면 더 받을 게 없음.
+            let isLast = (json["isLast"] as? Bool) ?? false
+            if isLast { break }
+            guard let next = json["nextPageToken"] as? String, !next.isEmpty else { break }
+            nextPageToken = next
+        }
+
+        return collected
     }
 
     private func parseIssue(_ raw: [String: Any]) -> JiraIssue? {

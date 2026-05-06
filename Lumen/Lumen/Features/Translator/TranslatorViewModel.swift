@@ -30,7 +30,7 @@ final class TranslatorViewModel {
     var history: [TranslationHistoryItem] = []
     var selectedHistoryIndex: Int = -1
 
-    var inputExceedsLimit: Bool { inputText.count > 200 }
+    var inputExceedsLimit: Bool { inputText.count > 100 }
 
     private let service = OpenAIService()
     private let maxHistory = 30
@@ -52,7 +52,7 @@ final class TranslatorViewModel {
         pronunciationText = nil
         inputPronunciationText = nil
 
-        let needsPronunciation = text.count <= 200
+        let needsPronunciation = text.count <= 100
 
         currentTask?.cancel()
         currentTask = Task {

@@ -349,7 +349,7 @@ struct PronunRow: View {
                         .buttonStyle(.plain)
                     }
                 } else {
-                    Text("200자가 넘는 문자는 발음을 제공해주지 않습니다.")
+                    Text("100자가 넘는 문자는 발음을 제공해주지 않습니다.")
                         .font(.system(size: 12))
                         .foregroundStyle(LumenTokens.TextColor.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -374,12 +374,12 @@ struct PronunRow: View {
 struct CharThresholdMeter: View {
     let count: Int
 
-    private var over: Bool { count > 200 }
-    private var pct: Double { min(1.0, Double(count) / 200.0) }
+    private var over: Bool { count > 100 }
+    private var pct: Double { min(1.0, Double(count) / 100.0) }
 
     var body: some View {
         HStack(spacing: 8) {
-            Text("\(count) / 200")
+            Text("\(count) / 100")
                 .font(.system(size: 10.5, design: .monospaced))
                 .foregroundStyle(LumenTokens.TextColor.muted)
 

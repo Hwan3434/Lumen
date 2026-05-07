@@ -4,7 +4,7 @@ struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
 
     private let listColumnWidth: CGFloat = 320
-    private let totalCapacity = 100
+    private let totalCapacity = 500
 
     var body: some View {
         ZStack {

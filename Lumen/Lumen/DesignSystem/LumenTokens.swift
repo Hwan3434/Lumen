@@ -15,6 +15,7 @@ enum LumenTokens {
         static let amberDim    = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.55)
         static let violet      = Color(red: 0x7B/255, green: 0x6B/255, blue: 0xFF/255)
         static let violetSoft  = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255)
+        static let teal        = Color(red: 0x34/255, green: 0xC7/255, blue: 0xB8/255)
     }
 
     enum TextColor {

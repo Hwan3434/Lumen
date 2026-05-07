@@ -392,6 +392,7 @@ private struct JiraSettingsTab: View {
     let action: SettingsActionViewModel
 
     @State private var enabled: Bool = false
+    @State private var iCalEnabled: Bool = false
     @State private var workspaceSlug: String = ""
     @State private var email: String = ""
     @State private var token: String = ""
@@ -412,6 +413,18 @@ private struct JiraSettingsTab: View {
                     ) { newValue in
                         enabled = newValue
                         CredentialsStore.shared.setJiraEnabled(newValue)
+                    }
+                }
+
+                SettingsSection(title: "캘린더 연동") {
+                    SwitchRow(
+                        on: $iCalEnabled,
+                        title: "iCal 연동",
+                        description: "macOS Calendar.app에 연동된 캘린더 일정을 Jira 월간·주간 뷰에 표시합니다. Google Calendar는 macOS 설정 > 인터넷 계정에서 연결하세요."
+                    ) { newValue in
+                        iCalEnabled = newValue
+                        CredentialsStore.shared.setICalEnabled(newValue)
+                        Task { await EventKitService.shared.requestAccessAndFetch() }
                     }
                 }
             }
@@ -510,6 +523,7 @@ private struct JiraSettingsTab: View {
     private func loadFromStore() {
         let store = CredentialsStore.shared
         enabled       = store.isJiraEnabled
+        iCalEnabled   = store.isICalEnabled
         workspaceSlug = store.jiraWorkspaceSlug
         email         = store.jiraEmail
         token         = store.jiraApiToken

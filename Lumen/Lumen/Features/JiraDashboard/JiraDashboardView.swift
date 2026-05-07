@@ -12,8 +12,9 @@ struct JiraDashboardView: View {
     @State private var selectedProject: String = PresentColumn.allKey
     @State private var filter = CalendarFilter()
     @State private var anchorDate: Date = Date()
-    /// LocalEventStore 변경(추가/편집/삭제)을 감지해 캘린더 막대도 즉시 재렌더 되게.
+    /// LocalEventStore / EventKitService 변경을 감지해 캘린더 막대도 즉시 재렌더 되게.
     @State private var localStore = LocalEventStore.shared
+    @State private var eventKitService = EventKitService.shared
     /// 캘린더 탭 진입/모드 전환 시 increment — 자식 view가 onChange로 받아 오늘로 점프.
     /// ZStack+opacity로 항상 mount된 채라 onAppear가 첫 한 번만 호출되는 부작용을 보완.
     @State private var monthResetToken: Int = 0
@@ -37,7 +38,10 @@ struct JiraDashboardView: View {
         }
         .frame(width: 1160, height: 840)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
-        .onAppear { Task { await service.fetch() } }
+        .onAppear {
+            Task { await service.fetch() }
+            Task { await EventKitService.shared.requestAccessAndFetch() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .jiraSwitchTab)) { note in
             // post(object: 0/1/2) — ⌘1/⌘2/⌘3.
             //   0 → 대시보드
@@ -96,9 +100,10 @@ struct JiraDashboardView: View {
             LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
         case .calendar:
             CalendarModeToggle(mode: $calendarMode)
-            FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,        isOn: $filter.showEpic)
-            FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,         isOn: $filter.showSprint)
-            FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,   isOn: $filter.showTask)
+            FilterChip(label: "캘린더",  color: LumenTokens.Accent.teal,           isOn: $filter.showGoogleCalendar)
+            FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,          isOn: $filter.showEpic)
+            FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,          isOn: $filter.showSprint)
+            FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,    isOn: $filter.showTask)
         }
     }
 

@@ -1,3 +1,4 @@
+import EventKit
 import Foundation
 import SwiftUI
 
@@ -7,32 +8,37 @@ enum CalendarItemKind {
     case sprint, epic, task
     /// 사용자가 좌측 사이드바에서 직접 추가한 로컬 이벤트. 월간에서만 노출.
     case local
+    /// macOS Calendar.app에 연동된 Google Calendar 이벤트.
+    case googleCalendar
 
     var label: String {
         switch self {
-        case .sprint: return "스프린트"
-        case .epic:   return "에픽"
-        case .task:   return "태스크"
-        case .local:  return "이벤트"
+        case .sprint:          return "스프린트"
+        case .epic:            return "에픽"
+        case .task:            return "태스크"
+        case .local:           return "이벤트"
+        case .googleCalendar:  return "캘린더"
         }
     }
 
     /// 종류를 색으로 구분한다. 셀이 좁아 레인 분리는 답답하므로 색이 1차 시그널.
     var color: Color {
         switch self {
-        case .sprint: return LumenTokens.Accent.amber
-        case .epic:   return LumenTokens.Accent.violet
-        case .task:   return LumenTokens.TextColor.secondary
-        case .local:  return LumenTokens.TextColor.muted
+        case .sprint:          return LumenTokens.Accent.amber
+        case .epic:            return LumenTokens.Accent.violet
+        case .task:            return LumenTokens.TextColor.secondary
+        case .local:           return LumenTokens.TextColor.muted
+        case .googleCalendar:  return LumenTokens.Accent.teal
         }
     }
 
     var iconName: String {
         switch self {
-        case .sprint: return "flag.fill"
-        case .epic:   return "rectangle.stack.fill"
-        case .task:   return "checkmark.circle"
-        case .local:  return "calendar.badge.plus"
+        case .sprint:          return "flag.fill"
+        case .epic:            return "rectangle.stack.fill"
+        case .task:            return "checkmark.circle"
+        case .local:           return "calendar.badge.plus"
+        case .googleCalendar:  return "calendar"
         }
     }
 }
@@ -107,6 +113,21 @@ enum CalendarAdapter {
                     title: ev.title,
                     start: ev.start,
                     end: ev.end,
+                    issueKey: nil,
+                    isDone: false,
+                    projectKey: nil
+                ))
+            }
+
+            for ev in EventKitService.shared.events {
+                guard let start = ev.startDate, let end = ev.endDate else { continue }
+                let effectiveEnd = ev.isAllDay ? Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end : end
+                items.append(CalendarItem(
+                    id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)",
+                    kind: .googleCalendar,
+                    title: ev.title ?? "(제목 없음)",
+                    start: start,
+                    end: Calendar.current.isDate(start, inSameDayAs: effectiveEnd) ? nil : effectiveEnd,
                     issueKey: nil,
                     isDone: false,
                     projectKey: nil
@@ -260,13 +281,15 @@ struct CalendarFilter: Equatable {
     var showSprint = true
     var showEpic = true
     var showTask = true
+    var showGoogleCalendar = true
 
     func passes(_ item: CalendarItem) -> Bool {
         switch item.kind {
-        case .sprint: return showSprint
-        case .epic:   return showEpic
-        case .task:   return showTask
-        case .local:  return true   // 로컬 이벤트는 사이드바로 따로 관리되니 필터에서 빼지 않는다.
+        case .sprint:         return showSprint
+        case .epic:           return showEpic
+        case .task:           return showTask
+        case .local:          return true
+        case .googleCalendar: return showGoogleCalendar
         }
     }
 }

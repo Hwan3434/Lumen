@@ -29,6 +29,7 @@ final class CredentialsStore {
         static let claudeUsageEnabled  = "claudeUsageEnabled"
         static let jiraEnabled         = "jiraEnabled"
         static let openAIEnabled       = "openAIEnabled"
+        static let iCalEnabled         = "iCalEnabled"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
         static let didMigrateToFile    = "didMigrateKeychainToFileV1"
     }
@@ -79,6 +80,13 @@ final class CredentialsStore {
         defaults.object(forKey: UDKey.openAIEnabled) == nil
             ? false
             : defaults.bool(forKey: UDKey.openAIEnabled)
+    }
+
+    /// macOS Calendar(iCal) 연동 여부. ON이면 Jira 캘린더에 Google Calendar 일정이 표시된다.
+    var isICalEnabled: Bool {
+        defaults.object(forKey: UDKey.iCalEnabled) == nil
+            ? false
+            : defaults.bool(forKey: UDKey.iCalEnabled)
     }
 
     // MARK: - Write (Settings UI)
@@ -152,6 +160,10 @@ final class CredentialsStore {
 
     func setOpenAIEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: UDKey.openAIEnabled)
+    }
+
+    func setICalEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: UDKey.iCalEnabled)
     }
 
     /// Jira 자격증명 + 프로젝트 목록 + 별칭을 제거 — 다음 read부터 Constants 기본값 폴백.

@@ -42,5 +42,7 @@
 	<false/>
 	<key>SUEnableDownloaderService</key>
 	<false/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Jira 대시보드 캘린더에 Google Calendar 일정을 표시하기 위해 캘린더 접근이 필요합니다.</string>
 </dict>
 </plist>

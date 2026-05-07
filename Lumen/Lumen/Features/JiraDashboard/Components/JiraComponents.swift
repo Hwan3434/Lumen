@@ -278,22 +278,18 @@ struct JiraFullPanelEmpty: View {
 /// 통합 Jira 패널의 56pt 헤더. 좌측(타이틀+프로젝트), 가운데(탭/임의), 우측(controls + refresh)
 /// 세 영역을 가진다. 가운데와 우측-controls는 호출자가 ViewBuilder로 채운다 — 탭별로 다른
 /// 컨트롤(범례 / 필터 칩 등)을 노출하기 위함.
-struct JiraHeader<Center: View, TrailingControls: View>: View {
+struct JiraHeader<LeadingNav: View, TrailingControls: View>: View {
     let lastUpdated: Date
     let refreshing: Bool
     var onRefresh: () -> Void
-    @ViewBuilder var center: () -> Center
+    /// 좌측 타이틀 옆에 인라인으로 깔리는 네비게이션 영역 — 탭바 + (캘린더 모드일 때) 모드 토글.
+    @ViewBuilder var leadingNav: () -> LeadingNav
     @ViewBuilder var trailingControls: () -> TrailingControls
 
     var body: some View {
-        // 좌·중·우 셋을 ZStack으로 깔되 가운데 탭은 .center, 좌측 타이틀은 .leading,
-        // 우측 컨트롤+새로고침은 .trailing. 컨텐츠 폭이 달라져도 탭 위치는 절대 안 흔들린다.
-        ZStack {
-            // 가운데: 탭
-            center()
-
-            HStack(spacing: 0) {
-                // 좌측: 타이틀
+        HStack(spacing: 0) {
+            // 좌측: 타이틀 + 탭/모드 인라인
+            HStack(spacing: 14) {
                 HStack(spacing: 10) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 7)
@@ -319,44 +315,45 @@ struct JiraHeader<Center: View, TrailingControls: View>: View {
                     }
                 }
 
-                Spacer()
+                leadingNav()
+            }
 
-                // 우측: tab-specific controls + 새로고침
-                HStack(spacing: 12) {
-                    trailingControls()
-                }
-                .padding(.trailing, 18)
+            Spacer()
 
-                HStack(spacing: 10) {
-                    if refreshing {
-                        HStack(spacing: 6) {
-                            InlineSpinner()
-                            Text("새로고침 중…")
-                                .font(.system(size: 11.5, weight: .medium))
-                                .foregroundStyle(LumenTokens.Accent.violetSoft)
-                        }
-                    } else {
-                        Text("\(LumenTime.relative(lastUpdated)) 업데이트")
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
+            HStack(spacing: 12) {
+                trailingControls()
+            }
+            .padding(.trailing, 18)
+
+            HStack(spacing: 10) {
+                if refreshing {
+                    HStack(spacing: 6) {
+                        InlineSpinner()
+                        Text("새로고침 중…")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(LumenTokens.Accent.violetSoft)
                     }
-
-                    Button(action: onRefresh) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(LumenTokens.TextColor.secondary)
-                            .frame(width: 26, height: 26)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.white.opacity(0.02))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
+                } else {
+                    Text("\(LumenTime.relative(lastUpdated)) 업데이트")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
                 }
+
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LumenTokens.TextColor.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.white.opacity(0.02))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 18)

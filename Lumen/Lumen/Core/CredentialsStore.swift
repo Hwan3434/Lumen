@@ -30,6 +30,7 @@ final class CredentialsStore {
         static let jiraEnabled         = "jiraEnabled"
         static let openAIEnabled       = "openAIEnabled"
         static let iCalEnabled         = "iCalEnabled"
+        static let iCalDisabledCalIDs  = "iCalDisabledCalendarIDs"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
         static let didMigrateToFile    = "didMigrateKeychainToFileV1"
     }
@@ -87,6 +88,12 @@ final class CredentialsStore {
         defaults.object(forKey: UDKey.iCalEnabled) == nil
             ? false
             : defaults.bool(forKey: UDKey.iCalEnabled)
+    }
+
+    /// 사용자가 명시적으로 OFF한 캘린더의 EventKit calendarIdentifier 집합.
+    /// 블랙리스트 방식 — 새로 추가된 캘린더는 자동으로 ON 상태가 된다.
+    var iCalDisabledCalendarIDs: Set<String> {
+        Set(defaults.stringArray(forKey: UDKey.iCalDisabledCalIDs) ?? [])
     }
 
     // MARK: - Write (Settings UI)
@@ -164,6 +171,14 @@ final class CredentialsStore {
 
     func setICalEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: UDKey.iCalEnabled)
+    }
+
+    func setICalDisabledCalendarIDs(_ ids: Set<String>) {
+        if ids.isEmpty {
+            defaults.removeObject(forKey: UDKey.iCalDisabledCalIDs)
+        } else {
+            defaults.set(Array(ids), forKey: UDKey.iCalDisabledCalIDs)
+        }
     }
 
     /// Jira 자격증명 + 프로젝트 목록 + 별칭을 제거 — 다음 read부터 Constants 기본값 폴백.

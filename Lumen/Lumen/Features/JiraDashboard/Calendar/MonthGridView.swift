@@ -66,6 +66,8 @@ struct MonthGridView: View {
                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
             )
 
+            CalendarVisibilityButton()
+
             Spacer()
         }
         .padding(.horizontal, 16)

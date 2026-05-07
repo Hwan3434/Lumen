@@ -2,7 +2,8 @@ import EventKit
 import Foundation
 
 // macOS Calendar.app에 연동된 캘린더에서 이벤트를 가져온다.
-// 이름에 "휴일" / "holiday"가 포함된 캘린더는 제외한다 — 앱 내장 KoreanHolidays와 중복 방지.
+// 표시 여부는 사용자가 popover 토글로 직접 결정 (블랙리스트 방식 — disabled IDs).
+// 휴일 자동 제외는 하지 않는다 — 사용자가 KoreanHolidays와 중복되는 게 싫으면 직접 끈다.
 
 @Observable
 final class EventKitService {
@@ -49,16 +50,30 @@ final class EventKitService {
         let start = cal.date(byAdding: .day, value: -90, to: now) ?? now
         let end   = cal.date(byAdding: .day, value: +90, to: now) ?? now
 
-        let calendars = store.calendars(for: .event).filter { !isHolidayCalendar($0) }
+        let disabled = CredentialsStore.shared.iCalDisabledCalendarIDs
+        let calendars = store.calendars(for: .event).filter {
+            !disabled.contains($0.calendarIdentifier)
+        }
+        guard !calendars.isEmpty else {
+            events = []
+            return
+        }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendars)
         events = store.events(matching: predicate)
     }
 
-    // MARK: - Helpers
-
-    /// 공휴일 캘린더 판별 — 이름에 "휴일" / "holiday" 포함 여부로 판단.
-    private func isHolidayCalendar(_ calendar: EKCalendar) -> Bool {
-        let title = calendar.title.lowercased()
-        return title.contains("휴일") || title.contains("holiday")
+    /// 사용 가능 캘린더 목록. UI 토글 표시용 — 휴일 포함 모든 캘린더 노출, 사용자가 직접 OFF.
+    func availableCalendars() -> [EKCalendar] {
+        guard authorizationStatus == .fullAccess else { return [] }
+        return store.calendars(for: .event)
+            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
+
+    /// disabled ID 집합을 통째로 갱신하고 즉시 events를 재계산.
+    /// UI에서 토글 변경 시 호출 — @Observable이라 events 바인딩된 뷰는 자동 재렌더.
+    func setDisabledCalendarIDs(_ ids: Set<String>) {
+        CredentialsStore.shared.setICalDisabledCalendarIDs(ids)
+        fetch()
+    }
+
 }

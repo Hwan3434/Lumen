@@ -30,29 +30,77 @@ struct TimelineView: View {
     private let maxLanesVisible: Int = 12
 
     var body: some View {
-        GeometryReader { proxy in
-            let dayW = proxy.size.width / 7
-            ScrollViewReader { scrollProxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 0) {
-                        ForEach(weeks, id: \.self) { weekStart in
-                            weekUnit(weekStart: weekStart, dayWidth: dayW, viewportHeight: proxy.size.height)
-                                .id(weekKey(weekStart))
+        VStack(spacing: 0) {
+            weekHeader
+            GeometryReader { proxy in
+                let dayW = proxy.size.width / 7
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 0) {
+                            ForEach(weeks, id: \.self) { weekStart in
+                                weekUnit(weekStart: weekStart, dayWidth: dayW, viewportHeight: proxy.size.height)
+                                    .id(weekKey(weekStart))
+                            }
                         }
                     }
-                }
-                .onAppear {
-                    DispatchQueue.main.async {
-                        scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
+                        }
                     }
-                }
-                .onChange(of: resetToTodayToken) { _, _ in
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
+                    .onChange(of: resetToTodayToken) { _, _ in
+                        anchorDate = Date()
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
+                        }
+                    }
+                    .onChange(of: anchorDate) { _, _ in
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
+                        }
                     }
                 }
             }
         }
+    }
+
+    // MARK: - Header
+
+    private var weekHeader: some View {
+        HStack(spacing: 12) {
+            Text(weekLabel)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(LumenTokens.TextColor.primary)
+                .frame(minWidth: 110, alignment: .leading)
+
+            Button("오늘") {
+                anchorDate = Date()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(LumenTokens.Accent.violetSoft)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
+            )
+
+            CalendarVisibilityButton()
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var weekLabel: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "yyyy년 M월"
+        let weekStart = currentWeekStart()
+        let thursday = Self.cal.date(byAdding: .day, value: 3, to: weekStart) ?? weekStart
+        return f.string(from: thursday)
     }
 
     // MARK: - Week unit (한 주 = 헤더 + 막대 layer)

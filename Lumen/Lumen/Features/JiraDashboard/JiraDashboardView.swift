@@ -84,7 +84,14 @@ struct JiraDashboardView: View {
                 lastUpdated: data.lastUpdated,
                 refreshing: service.isLoading,
                 onRefresh: { Task { await service.fetch(force: true) } },
-                center: { JiraTabBar(active: $activeTab) },
+                leadingNav: {
+                    HStack(spacing: 8) {
+                        JiraTabBar(active: $activeTab)
+                        if activeTab == .calendar {
+                            CalendarModeToggle(mode: $calendarMode)
+                        }
+                    }
+                },
                 trailingControls: { trailingControls }
             )
             LumenHairline()
@@ -99,7 +106,6 @@ struct JiraDashboardView: View {
             LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
             LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
         case .calendar:
-            CalendarModeToggle(mode: $calendarMode)
             FilterChip(label: "캘린더",  color: LumenTokens.Accent.teal,           isOn: $filter.showGoogleCalendar)
             FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,          isOn: $filter.showEpic)
             FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,          isOn: $filter.showSprint)

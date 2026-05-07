@@ -420,7 +420,7 @@ private struct JiraSettingsTab: View {
                     SwitchRow(
                         on: $iCalEnabled,
                         title: "iCal 연동",
-                        description: "macOS Calendar.app에 연동된 캘린더 일정을 Jira 월간·주간 뷰에 표시합니다. Google Calendar는 macOS 설정 > 인터넷 계정에서 연결하세요."
+                        description: "macOS Calendar.app에 연동된 캘린더 일정을 Jira 월간·주간 뷰에 표시합니다. Google Calendar는 macOS 설정 > 인터넷 계정에서 연결하세요. 표시할 캘린더 선택은 Jira 패널에서 합니다."
                     ) { newValue in
                         iCalEnabled = newValue
                         CredentialsStore.shared.setICalEnabled(newValue)
@@ -761,3 +761,4 @@ private struct SwitchRow: View {
         )
     }
 }
+

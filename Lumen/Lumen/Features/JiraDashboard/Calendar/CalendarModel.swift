@@ -282,13 +282,14 @@ struct CalendarFilter: Equatable {
     var showEpic = true
     var showTask = true
     var showGoogleCalendar = true
+    var showLocal = true
 
     func passes(_ item: CalendarItem) -> Bool {
         switch item.kind {
         case .sprint:         return showSprint
         case .epic:           return showEpic
         case .task:           return showTask
-        case .local:          return true
+        case .local:          return showLocal
         case .googleCalendar: return showGoogleCalendar
         }
     }

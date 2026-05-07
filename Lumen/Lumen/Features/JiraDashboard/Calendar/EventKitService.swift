@@ -12,9 +12,12 @@ final class EventKitService {
     private let store = EKEventStore()
     private(set) var events: [EKEvent] = []
     private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
+    /// 여러 strip이 동일 인스턴스를 구독해 한 strip의 토글이 즉시 다른 strip에 반영되도록 @Observable로 노출.
+    private(set) var disabledCalendarIDs: Set<String> = []
 
     private init() {
         authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+        disabledCalendarIDs = CredentialsStore.shared.iCalDisabledCalendarIDs
     }
 
     // MARK: - Authorization & Fetch
@@ -50,9 +53,8 @@ final class EventKitService {
         let start = cal.date(byAdding: .day, value: -90, to: now) ?? now
         let end   = cal.date(byAdding: .day, value: +90, to: now) ?? now
 
-        let disabled = CredentialsStore.shared.iCalDisabledCalendarIDs
         let calendars = store.calendars(for: .event).filter {
-            !disabled.contains($0.calendarIdentifier)
+            !disabledCalendarIDs.contains($0.calendarIdentifier)
         }
         guard !calendars.isEmpty else {
             events = []
@@ -62,16 +64,16 @@ final class EventKitService {
         events = store.events(matching: predicate)
     }
 
-    /// 사용 가능 캘린더 목록. UI 토글 표시용 — 휴일 포함 모든 캘린더 노출, 사용자가 직접 OFF.
+    /// 휴일 캘린더도 포함 — 사용자가 KoreanHolidays와 중복되면 직접 OFF한다.
     func availableCalendars() -> [EKCalendar] {
         guard authorizationStatus == .fullAccess else { return [] }
         return store.calendars(for: .event)
             .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
 
-    /// disabled ID 집합을 통째로 갱신하고 즉시 events를 재계산.
-    /// UI에서 토글 변경 시 호출 — @Observable이라 events 바인딩된 뷰는 자동 재렌더.
     func setDisabledCalendarIDs(_ ids: Set<String>) {
+        guard ids != disabledCalendarIDs else { return }
+        disabledCalendarIDs = ids
         CredentialsStore.shared.setICalDisabledCalendarIDs(ids)
         fetch()
     }

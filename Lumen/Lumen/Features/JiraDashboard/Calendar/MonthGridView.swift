@@ -10,6 +10,7 @@ import AppKit
 
 struct MonthGridView: View {
     let items: [CalendarItem]
+    @Binding var showLocal: Bool
     /// 외부에서 "오늘로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
     /// ZStack+opacity로 view가 항상 mount된 채라 onAppear가 한 번만 호출됨 → 매번 트리거 필요.
     var resetToTodayToken: Int = 0
@@ -66,9 +67,7 @@ struct MonthGridView: View {
                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
             )
 
-            CalendarVisibilityButton()
-
-            Spacer()
+            CalendarVisibilityStrip(showLocal: $showLocal)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

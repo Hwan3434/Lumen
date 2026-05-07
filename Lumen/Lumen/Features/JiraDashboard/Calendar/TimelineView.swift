@@ -13,6 +13,7 @@ import AppKit
 struct TimelineView: View {
     let items: [CalendarItem]
     @Binding var anchorDate: Date
+    @Binding var showLocal: Bool
     /// 외부에서 "이번 주로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
     var resetToTodayToken: Int = 0
 
@@ -86,9 +87,7 @@ struct TimelineView: View {
                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
             )
 
-            CalendarVisibilityButton()
-
-            Spacer()
+            CalendarVisibilityStrip(showLocal: $showLocal)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

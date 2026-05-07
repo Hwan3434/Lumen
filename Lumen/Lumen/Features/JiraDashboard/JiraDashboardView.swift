@@ -126,13 +126,13 @@ struct JiraDashboardView: View {
                 .opacity(activeTab == .dashboard ? 1 : 0)
                 .allowsHitTesting(activeTab == .dashboard)
 
-            MonthGridView(items: calendarItems, resetToTodayToken: monthResetToken)
+            MonthGridView(items: calendarItems, showLocal: $filter.showLocal, resetToTodayToken: monthResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
                 .opacity(monthVisible ? 1 : 0)
                 .allowsHitTesting(monthVisible)
 
-            TimelineView(items: calendarItems, anchorDate: $anchorDate, resetToTodayToken: weekResetToken)
+            TimelineView(items: calendarItems, anchorDate: $anchorDate, showLocal: $filter.showLocal, resetToTodayToken: weekResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
                 .opacity(weekVisible ? 1 : 0)

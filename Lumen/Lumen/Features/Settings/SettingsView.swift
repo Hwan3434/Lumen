@@ -411,7 +411,6 @@ private struct JiraSettingsTab: View {
                         title: "사용",
                         description: "꺼져 있으면 Jira 대시보드 핫키와 메뉴 항목이 노출되지 않습니다. 자격증명은 꺼도 보존됩니다."
                     ) { newValue in
-                        enabled = newValue
                         CredentialsStore.shared.setJiraEnabled(newValue)
                     }
                 }
@@ -422,7 +421,6 @@ private struct JiraSettingsTab: View {
                         title: "iCal 연동",
                         description: "macOS Calendar.app에 연동된 캘린더 일정을 Jira 월간·주간 뷰에 표시합니다. Google Calendar는 macOS 설정 > 인터넷 계정에서 연결하세요. 표시할 캘린더 선택은 Jira 패널에서 합니다."
                     ) { newValue in
-                        iCalEnabled = newValue
                         CredentialsStore.shared.setICalEnabled(newValue)
                         Task { await EventKitService.shared.requestAccessAndFetch() }
                     }
@@ -592,7 +590,6 @@ private struct OpenAISettingsTab: View {
                         title: "사용",
                         description: "꺼져 있으면 번역 패널 핫키와 메뉴 항목이 노출되지 않습니다. API Key는 꺼도 보존됩니다."
                     ) { newValue in
-                        enabled = newValue
                         CredentialsStore.shared.setOpenAIEnabled(newValue)
                     }
                 }
@@ -698,7 +695,6 @@ private struct ClaudeSettingsTab: View {
                             CredentialsStore.shared.setClaudeUsageEnabled(false)
                             return
                         }
-                        enabled = newValue
                         CredentialsStore.shared.setClaudeUsageEnabled(newValue)
                     }
                 }
@@ -741,7 +737,10 @@ private struct SwitchRow: View {
             Spacer()
             Toggle("", isOn: Binding(
                 get: { on },
-                set: { onChange($0) }
+                set: { newValue in
+                    on = newValue
+                    onChange(newValue)
+                }
             ))
             .toggleStyle(.switch)
             .controlSize(.small)

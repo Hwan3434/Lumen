@@ -12,99 +12,66 @@ struct IssuePreviewPopover: View {
     @State private var isLoading = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            content
-            footer
+        Group {
+            if isLoading {
+                loadingView
+            } else if let msg = errorMessage {
+                errorView(msg)
+            } else if let d = detail {
+                CalendarPreviewLayout(
+                    accentColor: projectColor,
+                    accentLabel: d.key,
+                    badgeText: d.status,
+                    title: d.summary,
+                    bodyText: d.descriptionText,
+                    extraContent: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.right")
+                                .font(.system(size: 10, weight: .medium))
+                            Text("\(d.commentCount)")
+                                .font(.system(size: 11, design: .monospaced))
+                        }
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    },
+                    footer: { jiraOpenFooter }
+                )
+            } else {
+                Color.clear.frame(width: 340, height: 80)
+            }
         }
-        .frame(width: 340)
-        .frame(minHeight: 180)
         .task { await load() }
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if isLoading {
-            VStack(spacing: 10) {
-                ProgressView().controlSize(.small)
-                Text("불러오는 중…")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.vertical, 30)
-        } else if let msg = errorMessage {
-            VStack(alignment: .leading, spacing: 6) {
-                header
-                Text(msg)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(LumenTokens.ErrorTone.title)
-                    .lineLimit(3)
-            }
-            .padding(14)
-        } else if let d = detail {
-            VStack(alignment: .leading, spacing: 8) {
-                header(detail: d)
-                Text(d.summary)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !d.descriptionText.isEmpty {
-                    ScrollView {
-                        Text(d.descriptionText)
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(LumenTokens.TextColor.secondary)
-                            .lineSpacing(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                    }
-                    .frame(maxHeight: 220)
-                }
-
-                HStack(spacing: 10) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "bubble.right")
-                            .font(.system(size: 10, weight: .medium))
-                        Text("\(d.commentCount)")
-                            .font(.system(size: 11, design: .monospaced))
-                    }
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                }
-            }
-            .padding(14)
-        } else {
-            // 이론상 도달 안 함 — 안전장치.
-            Color.clear
+    private var loadingView: some View {
+        VStack(spacing: 10) {
+            ProgressView().controlSize(.small)
+            Text("불러오는 중…")
+                .font(.system(size: 11.5))
+                .foregroundStyle(LumenTokens.TextColor.muted)
         }
+        .frame(width: 340, height: 120)
     }
 
-    /// 데이터 미존재(에러/로딩 화면용) 헤더 — 키만.
-    @ViewBuilder
-    private var header: some View {
-        Text(issueKey)
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-            .foregroundStyle(LumenTokens.Accent.violetSoft)
-    }
-
-    private func header(detail: IssueDetail) -> some View {
-        HStack(spacing: 8) {
-            Text(detail.key)
+    private func errorView(_ msg: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(issueKey)
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text(detail.status)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .background(
-                    RoundedRectangle(cornerRadius: 3)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-            Spacer()
+            Text(msg)
+                .font(.system(size: 11.5))
+                .foregroundStyle(LumenTokens.ErrorTone.title)
+                .lineLimit(3)
         }
+        .padding(14)
+        .frame(width: 340, alignment: .leading)
     }
 
-    private var footer: some View {
+    private var projectColor: Color {
+        let prefix = issueKey.split(separator: "-").first.map(String.init) ?? issueKey
+        return jiraProjectColor(prefix)
+    }
+
+    private var jiraOpenFooter: some View {
         HStack {
             Spacer()
             Button {

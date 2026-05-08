@@ -1,73 +1,32 @@
 import EventKit
 import SwiftUI
 
-/// EKEvent 막대 클릭 시 뜨는 읽기 전용 미리보기 popover.
+/// EKEvent 막대 클릭 시 뜨는 읽기 전용 미리보기.
 /// 캘린더에서 가져온 이벤트라 편집은 캘린더.app에서 — 우리는 보기만.
 struct EKEventPreviewPopover: View {
     let event: EKEvent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            header
-            Text(event.title ?? "(제목 없음)")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-
-            timeRow
-
-            if let location = event.location, !location.isEmpty {
-                infoRow(icon: "mappin.and.ellipse", text: location)
-            }
-            if let url = event.url {
-                infoRow(icon: "link", text: url.absoluteString)
-            }
-            if let notes = event.notes, !notes.isEmpty {
-                ScrollView {
-                    Text(notes)
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                        .lineSpacing(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
-                .frame(maxHeight: 160)
-            }
-        }
-        .padding(14)
-        .frame(width: 320)
+        CalendarPreviewLayout(
+            accentColor: Color(cgColor: event.calendar.cgColor),
+            accentLabel: event.calendar.title,
+            badgeText: event.calendar.source?.title,
+            title: event.title ?? "(제목 없음)",
+            metaRows: metaRows,
+            bodyText: event.notes
+        )
     }
 
-    private var header: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color(cgColor: event.calendar.cgColor))
-                .frame(width: 9, height: 9)
-            Text(event.calendar.title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .lineLimit(1)
-            if let source = event.calendar.source?.title, !source.isEmpty {
-                Text(source)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .lineLimit(1)
-            }
-            Spacer()
+    private var metaRows: [CalendarPreviewLayout<EmptyView, EmptyView>.MetaRow] {
+        var rows: [CalendarPreviewLayout<EmptyView, EmptyView>.MetaRow] = []
+        rows.append(.init(icon: "clock", text: timeText))
+        if let location = event.location, !location.isEmpty {
+            rows.append(.init(icon: "mappin.and.ellipse", text: location))
         }
-    }
-
-    private var timeRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "clock")
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            Text(timeText)
-                .font(.system(size: 11.5))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .textSelection(.enabled)
+        if let url = event.url {
+            rows.append(.init(icon: "link", text: url.absoluteString))
         }
+        return rows
     }
 
     private var timeText: String {
@@ -95,21 +54,5 @@ struct EKEventPreviewPopover: View {
             return "\(dayF.string(from: start)) \(timeF.string(from: start)) – \(timeF.string(from: end))"
         }
         return "\(dayF.string(from: start)) \(timeF.string(from: start)) → \(dayF.string(from: end)) \(timeF.string(from: end))"
-    }
-
-    private func infoRow(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-                .padding(.top, 2)
-            Text(text)
-                .font(.system(size: 11.5))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .lineLimit(3)
-                .truncationMode(.tail)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }

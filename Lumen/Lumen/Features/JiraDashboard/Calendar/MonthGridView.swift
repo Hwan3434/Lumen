@@ -300,8 +300,6 @@ private struct WeekRow: View {
         let width = cellW * CGFloat(bar.span) - 4
         let topOffset = topPadding + CGFloat(bar.lane) * (laneHeight + laneSpacing)
         let isLocal = (bar.item.kind == .local)
-        let barColor = bar.item.customColor ?? bar.item.projectKey.map { jiraProjectColor($0) } ?? bar.item.kind.color
-        let hasDot = bar.item.customColor == nil
 
         return Button {
             // 로컬 → 편집 popover, Jira → 이슈 미리보기, EKEvent → 캘린더 이벤트 미리보기.
@@ -313,38 +311,14 @@ private struct WeekRow: View {
                 previewingKey = key
             }
         } label: {
-            HStack(spacing: 4) {
-                if hasDot {
-                    Circle()
-                        .fill(bar.item.kind.color)
-                        .frame(width: 5, height: 5)
-                }
-                Text(bar.item.title)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(bar.item.isDone
-                                     ? LumenTokens.TextColor.muted
-                                     : (isLocal ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.primary))
-                    .strikethrough(bar.item.isDone, color: LumenTokens.TextColor.muted)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 5)
-            .frame(width: width, height: laneHeight - 2, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(isLocal ? Color.white.opacity(0.04) : barColor.opacity(0.22))
+            CalendarBarView(
+                spec: bar.item.barSpec(),
+                cornerRadius: 3,
+                height: laneHeight - 2
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .strokeBorder(
-                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : barColor.opacity(0.45),
-                        style: StrokeStyle(lineWidth: 0.5, dash: isLocal ? [3, 2] : [])
-                    )
-            )
+            .frame(width: width)
         }
         .buttonStyle(.plain)
-        .help(bar.item.issueKey.map { "\($0) · \(bar.item.title)" } ?? bar.item.title)
         .popover(isPresented: Binding(
             get: { previewingKey != nil && previewingKey == bar.item.issueKey },
             set: { if !$0 { previewingKey = nil } }

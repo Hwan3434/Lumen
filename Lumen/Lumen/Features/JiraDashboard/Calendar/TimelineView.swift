@@ -222,8 +222,6 @@ struct TimelineView: View {
     private func barView(bar: LaidOutBar, dayWidth: CGFloat) -> some View {
         let item = bar.item
         let isLocal = (item.kind == .local)
-        let barColor = item.customColor ?? item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
-        let hasDot = item.customColor == nil
         let leading = CGFloat(bar.startCol) * dayWidth + 2
         let width = dayWidth * CGFloat(bar.span) - 4
         let topOffset = CGFloat(bar.lane) * (laneHeight + laneSpacing) + 6
@@ -237,38 +235,14 @@ struct TimelineView: View {
                 previewingKey = key
             }
         } label: {
-            HStack(spacing: 4) {
-                if hasDot {
-                    Circle()
-                        .fill(item.kind.color)
-                        .frame(width: 5, height: 5)
-                }
-                Text(item.title)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(item.isDone
-                                     ? LumenTokens.TextColor.muted
-                                     : (isLocal ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.primary))
-                    .strikethrough(item.isDone, color: LumenTokens.TextColor.muted)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 6)
-            .frame(width: width, height: laneHeight - 2, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(isLocal ? Color.white.opacity(0.04) : barColor.opacity(0.22))
+            CalendarBarView(
+                spec: item.barSpec(),
+                cornerRadius: 4,
+                height: laneHeight - 2
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .strokeBorder(
-                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : barColor.opacity(0.45),
-                        style: StrokeStyle(lineWidth: 0.5, dash: isLocal ? [3, 2] : [])
-                    )
-            )
+            .frame(width: width)
         }
         .buttonStyle(.plain)
-        .help(item.issueKey.map { "\($0) · \(item.title)" } ?? item.title)
         .popover(isPresented: Binding(
             get: { previewingKey != nil && previewingKey == item.issueKey },
             set: { if !$0 { previewingKey = nil } }

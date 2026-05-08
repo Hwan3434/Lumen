@@ -32,6 +32,7 @@ final class CredentialsStore {
         static let iCalEnabled         = "iCalEnabled"
         static let iCalDisabledCalIDs  = "iCalDisabledCalendarIDs"
         static let calDisabledProjects = "calendarDisabledProjectKeys"
+        static let menuBarAgendaEnabled = "menuBarAgendaEnabled"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
         static let didMigrateToFile    = "didMigrateKeychainToFileV1"
     }
@@ -100,6 +101,13 @@ final class CredentialsStore {
     /// 캘린더 막대에서 숨길 Jira 프로젝트 키 집합 (블랙리스트). 신규 프로젝트는 기본 ON.
     var calendarDisabledProjectKeys: Set<String> {
         Set(defaults.stringArray(forKey: UDKey.calDisabledProjects) ?? [])
+    }
+
+    /// 메뉴바 캘린더 위젯 표시 여부. 기본 ON.
+    var isMenuBarAgendaEnabled: Bool {
+        defaults.object(forKey: UDKey.menuBarAgendaEnabled) == nil
+            ? true
+            : defaults.bool(forKey: UDKey.menuBarAgendaEnabled)
     }
 
     // MARK: - Write (Settings UI)
@@ -185,6 +193,10 @@ final class CredentialsStore {
         } else {
             defaults.set(Array(ids), forKey: UDKey.iCalDisabledCalIDs)
         }
+    }
+
+    func setMenuBarAgendaEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: UDKey.menuBarAgendaEnabled)
     }
 
     func setCalendarDisabledProjectKeys(_ keys: Set<String>) {

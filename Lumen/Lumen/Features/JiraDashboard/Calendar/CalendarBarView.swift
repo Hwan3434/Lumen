@@ -100,6 +100,14 @@ extension CalendarItem {
         )
     }
 
+    /// 분이 0이면 "10 AM", 아니면 "9:30 AM" — 정각은 prefix를 더 짧게.
+    private static let timePrefixHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h a"
+        return f
+    }()
+
     private static let timePrefixFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -108,6 +116,8 @@ extension CalendarItem {
     }()
 
     private static func timePrefix(for date: Date) -> String {
-        timePrefixFormatter.string(from: date)
+        let minute = Calendar.current.component(.minute, from: date)
+        let formatter = (minute == 0) ? timePrefixHourFormatter : timePrefixFormatter
+        return formatter.string(from: date)
     }
 }

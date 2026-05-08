@@ -13,12 +13,14 @@ final class StatusBarCoordinator {
         initialIcon symbolName: String,
         accessibility: String? = nil,
         visible: Bool = true,
+        variableLength: Bool = false,
         menu: NSMenu? = nil,
         onClick: (() -> Void)? = nil
     ) -> StatusBarItemHandle {
         let handle = StatusBarItemHandle(
             symbolName: symbolName,
             accessibility: accessibility,
+            variableLength: variableLength,
             menu: menu,
             onClick: onClick
         )
@@ -41,12 +43,15 @@ final class StatusBarItemHandle: NSObject {
     private var statusItem: NSStatusItem?
     private var symbolName: String
     private let accessibility: String?
+    private let variableLength: Bool
+    private var titleText: String = ""
     private let menu: NSMenu?
-    private let onClick: (() -> Void)?
+    private var onClick: (() -> Void)?
 
-    fileprivate init(symbolName: String, accessibility: String?, menu: NSMenu?, onClick: (() -> Void)?) {
+    fileprivate init(symbolName: String, accessibility: String?, variableLength: Bool, menu: NSMenu?, onClick: (() -> Void)?) {
         self.symbolName = symbolName
         self.accessibility = accessibility
+        self.variableLength = variableLength
         self.menu = menu
         self.onClick = onClick
         super.init()
@@ -54,10 +59,15 @@ final class StatusBarItemHandle: NSObject {
 
     var isVisible: Bool { statusItem != nil }
 
+    /// status item의 button view에 직접 접근할 때 — popover anchor 등으로 쓰임.
+    var buttonView: NSView? { statusItem?.button }
+
     func show() {
         guard statusItem == nil else { return }
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let length = variableLength ? NSStatusItem.variableLength : NSStatusItem.squareLength
+        let item = NSStatusBar.system.statusItem(withLength: length)
         applyIcon(to: item)
+        applyTitle(to: item)
         if let menu {
             item.menu = menu
         } else if onClick != nil {
@@ -70,6 +80,20 @@ final class StatusBarItemHandle: NSObject {
     func updateIcon(_ symbolName: String) {
         self.symbolName = symbolName
         if let item = statusItem { applyIcon(to: item) }
+    }
+
+    func updateTitle(_ title: String) {
+        self.titleText = title
+        if let item = statusItem { applyTitle(to: item) }
+    }
+
+    /// init 시점엔 self 미완성이라 onClick 안에서 self.handle을 못 잡으므로,
+    /// init 후 setOnClick으로 교체할 수 있게 한다.
+    func setOnClick(_ handler: @escaping () -> Void) {
+        self.onClick = handler
+        guard let item = statusItem, item.menu == nil else { return }
+        item.button?.action = #selector(handleClick(_:))
+        item.button?.target = self
     }
 
     func hide() {
@@ -86,6 +110,12 @@ final class StatusBarItemHandle: NSObject {
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibility)
         image?.isTemplate = true
         item.button?.image = image
+        item.button?.imagePosition = titleText.isEmpty ? .imageOnly : .imageLeft
+    }
+
+    private func applyTitle(to item: NSStatusItem) {
+        item.button?.title = titleText
+        item.button?.imagePosition = titleText.isEmpty ? .imageOnly : .imageLeft
     }
 
     @objc private func handleClick(_ sender: Any?) {

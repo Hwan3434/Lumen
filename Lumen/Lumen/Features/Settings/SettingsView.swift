@@ -393,6 +393,7 @@ private struct JiraSettingsTab: View {
 
     @State private var enabled: Bool = false
     @State private var iCalEnabled: Bool = false
+    @State private var menuBarAgendaEnabled: Bool = true
     @State private var workspaceSlug: String = ""
     @State private var email: String = ""
     @State private var token: String = ""
@@ -401,9 +402,7 @@ private struct JiraSettingsTab: View {
     @State private var initialSnapshot: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 토글은 스크롤과 무관하게 항상 상단에 고정 — 자격증명/프로젝트 폼이
-            // 길어져 ScrollView가 활성화돼도 사용자가 토글 위치를 잃지 않도록.
+        ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 SettingsSection(title: "Jira") {
                     SwitchRow(
@@ -424,88 +423,88 @@ private struct JiraSettingsTab: View {
                         CredentialsStore.shared.setICalEnabled(newValue)
                         Task { await EventKitService.shared.requestAccessAndFetch() }
                     }
+
+                    SwitchRow(
+                        on: $menuBarAgendaEnabled,
+                        title: "메뉴바 캘린더 위젯",
+                        description: "메뉴바 우상단에 오늘의 다음 일정과 오늘 안건 popover를 띄웁니다. ⌘⇧A로도 열립니다."
+                    ) { newValue in
+                        CredentialsStore.shared.setMenuBarAgendaEnabled(newValue)
+                    }
+                }
+
+                if enabled {
+                    SettingsSection(title: "Jira 자격증명") {
+                        SettingsField(label: "워크스페이스 도메인",
+                                      hint: "https://{여기}.atlassian.net 의 서브도메인 부분만 — 예: your-workspace") {
+                            LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
+                        }
+                        SettingsField(label: "Email") {
+                            LumenTextField(text: $email, placeholder: "you@example.com")
+                        }
+                        SettingsField(label: "API Token",
+                                      hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
+                            LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
+                        }
+                    }
+
+                    SettingsSection(title: "대시보드 조회 프로젝트") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach($projects) { $entry in
+                                HStack(spacing: 8) {
+                                    LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
+                                        .frame(width: 130)
+                                    LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
+                                    Button {
+                                        projects.removeAll { $0.id == entry.id }
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(LumenTokens.TextColor.muted)
+                                            .frame(width: 28, height: 28)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            Button {
+                                projects.append(JiraProjectEntry(key: "", name: ""))
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text("프로젝트 추가")
+                                        .font(.system(size: 12, weight: .medium))
+                                    Spacer()
+                                }
+                                .foregroundStyle(LumenTokens.Accent.violetSoft)
+                                .padding(.horizontal, 10)
+                                .frame(height: 32)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+                                        .foregroundStyle(LumenTokens.stroke)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.015))
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Text(jiraProjectsHint)
+                            .font(.system(size: 11))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                            .lineSpacing(3)
+                    }
                 }
             }
             .padding(.horizontal, 22)
-            .padding(.top, 20)
-            .padding(.bottom, enabled ? 22 : 20)
-
-            if enabled {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        SettingsSection(title: "Jira 자격증명") {
-                            SettingsField(label: "워크스페이스 도메인",
-                                          hint: "https://{여기}.atlassian.net 의 서브도메인 부분만 — 예: your-workspace") {
-                                LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
-                            }
-                            SettingsField(label: "Email") {
-                                LumenTextField(text: $email, placeholder: "you@example.com")
-                            }
-                            SettingsField(label: "API Token",
-                                          hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
-                                LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
-                            }
-                        }
-
-                        SettingsSection(title: "대시보드 조회 프로젝트") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach($projects) { $entry in
-                                    HStack(spacing: 8) {
-                                        LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
-                                            .frame(width: 130)
-                                        LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
-                                        Button {
-                                            projects.removeAll { $0.id == entry.id }
-                                        } label: {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 12))
-                                                .foregroundStyle(LumenTokens.TextColor.muted)
-                                                .frame(width: 28, height: 28)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 6)
-                                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                                )
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                Button {
-                                    projects.append(JiraProjectEntry(key: "", name: ""))
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "plus")
-                                            .font(.system(size: 11, weight: .semibold))
-                                        Text("프로젝트 추가")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Spacer()
-                                    }
-                                    .foregroundStyle(LumenTokens.Accent.violetSoft)
-                                    .padding(.horizontal, 10)
-                                    .frame(height: 32)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
-                                            .foregroundStyle(LumenTokens.stroke)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.015))
-                                            )
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            Text(jiraProjectsHint)
-                                .font(.system(size: 11))
-                                .foregroundStyle(LumenTokens.TextColor.muted)
-                                .lineSpacing(3)
-                        }
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 20)
-                }
-                .scrollIndicators(.hidden)
-            }
+            .padding(.vertical, 20)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
+        .scrollIndicators(.hidden)
         .onAppear {
             loadFromStore()
             wireActionVM()
@@ -522,6 +521,7 @@ private struct JiraSettingsTab: View {
         let store = CredentialsStore.shared
         enabled       = store.isJiraEnabled
         iCalEnabled   = store.isICalEnabled
+        menuBarAgendaEnabled = store.isMenuBarAgendaEnabled
         workspaceSlug = store.jiraWorkspaceSlug
         email         = store.jiraEmail
         token         = store.jiraApiToken

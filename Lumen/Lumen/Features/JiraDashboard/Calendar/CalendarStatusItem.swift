@@ -7,23 +7,13 @@ import SwiftUI
 @MainActor
 final class CalendarStatusItem {
     private let handle: StatusBarItemHandle
-    private let popover: NSPopover
+    private var panel: NSPanel?
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
     private var refreshTimer: Timer?
-    private var observation: NSKeyValueObservation?
     private var observer: NSObjectProtocol?
 
     init(coordinator: StatusBarCoordinator) {
-        let hosting = NSHostingController(rootView: TodayAgendaPopover())
-        hosting.view.frame.size = NSSize(width: 320, height: 200)
-
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.contentSize = NSSize(width: 320, height: 200)
-        popover.contentViewController = hosting
-        self.popover = popover
-
-        // 두 단계로 만든다: handle을 먼저 만들고, onClick 클로저는 init 끝난 뒤 self를 통해 다룬다.
-        // (init 안에서 handle을 캡처하면 self가 아직 완성되지 않아 self.handle 접근이 안 된다.)
         self.handle = coordinator.addItem(
             initialIcon: "calendar",
             accessibility: "오늘 일정",
@@ -44,7 +34,6 @@ final class CalendarStatusItem {
                 self?.refresh()
             }
         }
-        // 시간 흐름에 따라 "다음 일정"이 바뀌므로 1분마다 갱신.
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -60,13 +49,64 @@ final class CalendarStatusItem {
     }
 
     func togglePopover() {
-        guard let button = handle.buttonView else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+        if panel != nil {
+            closePanel()
             return
         }
-        NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        showPanel()
+    }
+
+    private func showPanel() {
+        guard let button = handle.buttonView,
+              let buttonWindow = button.window else { return }
+
+        let size = NSSize(width: 320, height: 420)
+        let panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isFloatingPanel = true
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isOpaque = false
+        panel.isReleasedWhenClosed = false
+        panel.contentView = NSHostingView(rootView: TodayAgendaPopover())
+
+        // 메뉴바 버튼 아래 정렬.
+        let buttonInWindow = button.convert(button.bounds, to: nil as NSView?)
+        let buttonFrameInScreen = buttonWindow.convertToScreen(buttonInWindow)
+        let x = buttonFrameInScreen.midX - size.width / 2
+        let y = buttonFrameInScreen.minY - size.height - 6
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        panel.orderFrontRegardless()
+
+        self.panel = panel
+
+        // 외부 클릭/Esc 시 닫기.
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
+            if event.type == .keyDown, event.keyCode == 0x35 { // Escape
+                self?.closePanel()
+                return nil
+            }
+            if event.type != .keyDown, event.window !== self?.panel {
+                self?.closePanel()
+            }
+            return event
+        }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.closePanel()
+        }
+    }
+
+    private func closePanel() {
+        if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+        if let m = globalMonitor { NSEvent.removeMonitor(m); globalMonitor = nil }
+        panel?.orderOut(nil)
+        panel = nil
     }
 
     func refresh() {

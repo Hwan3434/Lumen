@@ -8,30 +8,34 @@ struct TodayAgendaPopover: View {
     @State private var jiraService = JiraService.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
+        ZStack {
+            LumenGlassBackground(radius: 12)
+            VStack(alignment: .leading, spacing: 0) {
+                header
 
-            let groups = grouped(items: todaysItems)
-            if groups.allDay.isEmpty && groups.timed.isEmpty {
-                empty
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        if !groups.timed.isEmpty {
-                            section(title: "시간 일정", items: groups.timed)
+                let groups = grouped(items: todaysItems)
+                if groups.allDay.isEmpty && groups.timed.isEmpty {
+                    empty
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            if !groups.timed.isEmpty {
+                                section(title: "시간 일정", items: groups.timed)
+                            }
+                            if !groups.allDay.isEmpty {
+                                section(title: "종일 / 마감", items: groups.allDay)
+                            }
                         }
-                        if !groups.allDay.isEmpty {
-                            section(title: "종일 / 마감", items: groups.allDay)
-                        }
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 14)
+                        .padding(.top, 4)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 14)
-                    .padding(.top, 4)
+                    .frame(maxHeight: 400)
                 }
-                .frame(maxHeight: 400)
             }
         }
         .frame(width: 320)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var header: some View {

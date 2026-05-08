@@ -60,6 +60,9 @@ struct CalendarItem: Identifiable, Hashable {
     /// EKCalendar에서 가져온 색을 그대로 보존 — 캘린더별 색 막대를 그릴 때 사용.
     /// nil이면 kind/projectKey 기준 색으로 fallback.
     var customColor: Color? = nil
+    /// EKEvent의 시간 이벤트만 true — 막대 앞에 시각 prefix를 그릴지 결정한다.
+    /// 일자 단위 항목(스프린트/에픽/태스크/로컬 이벤트, EKEvent 종일)은 false.
+    var hasTimeOfDay: Bool = false
 
     /// 이 항목이 주어진 날짜에 걸쳐 있는가. start만 있으면 그 날짜만, end 있으면 [start, end] inclusive.
     func covers(_ day: Date) -> Bool {
@@ -134,7 +137,8 @@ enum CalendarAdapter {
                     issueKey: nil,
                     isDone: false,
                     projectKey: nil,
-                    customColor: Color(cgColor: ev.calendar.cgColor)
+                    customColor: Color(cgColor: ev.calendar.cgColor),
+                    hasTimeOfDay: !ev.isAllDay
                 ))
             }
         }

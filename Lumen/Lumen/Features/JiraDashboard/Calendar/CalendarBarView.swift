@@ -6,6 +6,8 @@ import SwiftUI
 struct CalendarBarSpec {
     let title: String
     let color: Color
+    /// 막대 맨 앞에 작게 들어가는 시각 prefix (예: "9:30 AM"). nil이면 생략.
+    var timePrefix: String? = nil
     /// true면 stroke를 점선으로 (로컬 이벤트 표식).
     var isDashed: Bool = false
     /// true면 본문 텍스트에 취소선 + muted 색.
@@ -36,6 +38,12 @@ struct CalendarBarView: View {
                 Circle()
                     .fill(spec.dotColor ?? spec.color)
                     .frame(width: 5, height: 5)
+            }
+            if let prefix = spec.timePrefix {
+                Text(prefix)
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(textColor.opacity(0.85))
+                    .layoutPriority(1)
             }
             Text(spec.title)
                 .font(.system(size: 10.5, weight: .medium))
@@ -76,9 +84,11 @@ extension CalendarItem {
         // 막대 자체 색(EKEvent의 캘린더 색)이나 표식(로컬의 점선/흰 배경)만으로 구별 가능 →
         // Jira 항목(스프린트/에픽/태스크)에서만 kind 색 점을 점으로 표시.
         let showDot = (customColor == nil) && !isLocal
+        let prefix: String? = hasTimeOfDay ? Self.timePrefix(for: start) : nil
         return CalendarBarSpec(
             title: title,
             color: resolvedColor,
+            timePrefix: prefix,
             isDashed: isLocal,
             isDone: isDone,
             useSecondaryText: isLocal,
@@ -88,5 +98,16 @@ extension CalendarItem {
             customStroke: isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : nil,
             help: issueKey.map { "\($0) · \(title)" } ?? title
         )
+    }
+
+    private static let timePrefixFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static func timePrefix(for date: Date) -> String {
+        timePrefixFormatter.string(from: date)
     }
 }

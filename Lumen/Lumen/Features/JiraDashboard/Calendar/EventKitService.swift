@@ -78,4 +78,8 @@ final class EventKitService {
         fetch()
     }
 
+    func event(withIdentifier id: String) -> EKEvent? {
+        events.first { $0.eventIdentifier == id }
+    }
+
 }

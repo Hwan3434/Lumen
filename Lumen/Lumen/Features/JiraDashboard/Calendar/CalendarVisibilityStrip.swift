@@ -6,6 +6,9 @@ import SwiftUI
 /// 권한이 없거나 연동 토글이 꺼져있으면 안내 + 액션 버튼만 인라인으로 표시.
 struct CalendarVisibilityStrip: View {
     @Binding var showLocal: Bool
+    @Binding var disabledProjectKeys: Set<String>
+    /// 우측 종류 필터의 "캘린더" 토글 상태. OFF면 EKCalendar 칩 통째로 숨김.
+    let showGoogleCalendar: Bool
 
     /// service를 직접 들어 @Observable 변경(disabledCalendarIDs/events)을 자동 감지 →
     /// 한 strip에서 토글해도 다른 strip의 칩 색까지 같이 갱신.
@@ -22,22 +25,45 @@ struct CalendarVisibilityStrip: View {
                     color: LumenTokens.TextColor.secondary,
                     isOn: $showLocal
                 )
-                if calendars.isEmpty {
-                    inlineEmptyState
-                } else {
-                    ForEach(calendars, id: \.calendarIdentifier) { cal in
-                        FilterChip(
-                            label: cal.title,
-                            color: Color(cgColor: cal.cgColor),
-                            isOn: binding(for: cal)
-                        )
-                        .help(cal.source?.title ?? "")
+
+                ForEach(Constants.jiraProjects, id: \.key) { project in
+                    FilterChip(
+                        label: project.displayName,
+                        color: jiraProjectColor(project.key),
+                        isOn: projectBinding(for: project.key)
+                    )
+                }
+
+                if showGoogleCalendar {
+                    if calendars.isEmpty {
+                        inlineEmptyState
+                    } else {
+                        ForEach(calendars, id: \.calendarIdentifier) { cal in
+                            FilterChip(
+                                label: cal.title,
+                                color: Color(cgColor: cal.cgColor),
+                                isOn: binding(for: cal)
+                            )
+                            .help(cal.source?.title ?? "")
+                        }
                     }
                 }
             }
         }
         .scrollClipDisabled()
         .onAppear { reload() }
+    }
+
+    private func projectBinding(for key: String) -> Binding<Bool> {
+        Binding(
+            get: { !disabledProjectKeys.contains(key) },
+            set: { newValue in
+                var next = disabledProjectKeys
+                if newValue { next.remove(key) } else { next.insert(key) }
+                disabledProjectKeys = next
+                CredentialsStore.shared.setCalendarDisabledProjectKeys(next)
+            }
+        )
     }
 
     private func reload() {

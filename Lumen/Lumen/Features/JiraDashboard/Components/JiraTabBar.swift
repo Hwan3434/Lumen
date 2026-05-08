@@ -83,6 +83,7 @@ struct JiraTabBar: View {
                              : LumenTokens.TextColor.muted)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 5)
                     .fill(isActive ? LumenTokens.Accent.violet.opacity(0.22) : .clear)

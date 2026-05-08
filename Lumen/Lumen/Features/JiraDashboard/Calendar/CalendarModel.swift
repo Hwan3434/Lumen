@@ -57,6 +57,9 @@ struct CalendarItem: Identifiable, Hashable {
     /// 프로젝트별 배경색을 위해 어댑터가 채워준다 — 스프린트는 SprintInfo.projectKey,
     /// 에픽/태스크는 issueKey의 prefix("PROJ-123" → "PROJ")에서 추출.
     let projectKey: String?
+    /// EKCalendar에서 가져온 색을 그대로 보존 — 캘린더별 색 막대를 그릴 때 사용.
+    /// nil이면 kind/projectKey 기준 색으로 fallback.
+    var customColor: Color? = nil
 
     /// 이 항목이 주어진 날짜에 걸쳐 있는가. start만 있으면 그 날짜만, end 있으면 [start, end] inclusive.
     func covers(_ day: Date) -> Bool {
@@ -130,7 +133,8 @@ enum CalendarAdapter {
                     end: Calendar.current.isDate(start, inSameDayAs: effectiveEnd) ? nil : effectiveEnd,
                     issueKey: nil,
                     isDone: false,
-                    projectKey: nil
+                    projectKey: nil,
+                    customColor: Color(cgColor: ev.calendar.cgColor)
                 ))
             }
         }
@@ -283,14 +287,20 @@ struct CalendarFilter: Equatable {
     var showTask = true
     var showGoogleCalendar = true
     var showLocal = true
+    /// 사용자가 막대 표시에서 숨긴 프로젝트 키 — 종류 필터(sprint/epic/task)와 AND 결합.
+    var disabledProjectKeys: Set<String> = []
 
     func passes(_ item: CalendarItem) -> Bool {
+        let kindOK: Bool
         switch item.kind {
-        case .sprint:         return showSprint
-        case .epic:           return showEpic
-        case .task:           return showTask
+        case .sprint:         kindOK = showSprint
+        case .epic:           kindOK = showEpic
+        case .task:           kindOK = showTask
         case .local:          return showLocal
         case .googleCalendar: return showGoogleCalendar
         }
+        guard kindOK else { return false }
+        if let key = item.projectKey, disabledProjectKeys.contains(key) { return false }
+        return true
     }
 }

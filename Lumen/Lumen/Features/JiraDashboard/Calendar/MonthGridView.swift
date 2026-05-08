@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import EventKit
 
 // 월간 캘린더 — iCalendar 스타일 무한 스크롤.
 // ±3개월(=약 26주)의 주들을 LazyVStack으로 이어 붙이고, 각 주 위에 막대(bar) layer를 깔아
@@ -11,6 +12,8 @@ import AppKit
 struct MonthGridView: View {
     let items: [CalendarItem]
     @Binding var showLocal: Bool
+    @Binding var disabledProjectKeys: Set<String>
+    let showGoogleCalendar: Bool
     /// 외부에서 "오늘로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
     /// ZStack+opacity로 view가 항상 mount된 채라 onAppear가 한 번만 호출됨 → 매번 트리거 필요.
     var resetToTodayToken: Int = 0
@@ -67,7 +70,7 @@ struct MonthGridView: View {
                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
             )
 
-            CalendarVisibilityStrip(showLocal: $showLocal)
+            CalendarVisibilityStrip(showLocal: $showLocal, disabledProjectKeys: $disabledProjectKeys, showGoogleCalendar: showGoogleCalendar)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -201,6 +204,8 @@ private struct WeekRow: View {
     @State private var newEventDate: Date? = nil
     /// 로컬 막대 클릭 시 편집 popover의 대상 이벤트.
     @State private var editingEvent: LocalEvent? = nil
+    /// EKEvent 막대 클릭 시 띄울 미리보기 — bar.item.id를 anchor로 사용.
+    @State private var previewingEKBarID: String? = nil
 
     var body: some View {
         let cal = Calendar.current
@@ -295,20 +300,25 @@ private struct WeekRow: View {
         let width = cellW * CGFloat(bar.span) - 4
         let topOffset = topPadding + CGFloat(bar.lane) * (laneHeight + laneSpacing)
         let isLocal = (bar.item.kind == .local)
-        let projectColor = bar.item.projectKey.map { jiraProjectColor($0) } ?? bar.item.kind.color
+        let barColor = bar.item.customColor ?? bar.item.projectKey.map { jiraProjectColor($0) } ?? bar.item.kind.color
+        let hasDot = bar.item.customColor == nil
 
         return Button {
-            // 로컬 이벤트 막대 → 편집 popover. Jira 막대 → 미리보기 popover.
+            // 로컬 → 편집 popover, Jira → 이슈 미리보기, EKEvent → 캘린더 이벤트 미리보기.
             if isLocal, let ev = matchingLocalEvent(barID: bar.item.id) {
                 editingEvent = ev
+            } else if bar.item.kind == .googleCalendar {
+                previewingEKBarID = bar.item.id
             } else if let key = bar.item.issueKey {
                 previewingKey = key
             }
         } label: {
             HStack(spacing: 4) {
-                Circle()
-                    .fill(bar.item.kind.color)
-                    .frame(width: 5, height: 5)
+                if hasDot {
+                    Circle()
+                        .fill(bar.item.kind.color)
+                        .frame(width: 5, height: 5)
+                }
                 Text(bar.item.title)
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(bar.item.isDone
@@ -323,12 +333,12 @@ private struct WeekRow: View {
             .frame(width: width, height: laneHeight - 2, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(isLocal ? Color.white.opacity(0.04) : projectColor.opacity(0.22))
+                    .fill(isLocal ? Color.white.opacity(0.04) : barColor.opacity(0.22))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
                     .strokeBorder(
-                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : projectColor.opacity(0.45),
+                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : barColor.opacity(0.45),
                         style: StrokeStyle(lineWidth: 0.5, dash: isLocal ? [3, 2] : [])
                     )
             )
@@ -351,8 +361,23 @@ private struct WeekRow: View {
                 LocalEventEditPopover(event: ev) { editingEvent = nil }
             }
         }
+        .popover(isPresented: Binding(
+            get: { previewingEKBarID == bar.item.id },
+            set: { if !$0 { previewingEKBarID = nil } }
+        ), arrowEdge: .top) {
+            if let ev = matchingEKEvent(barID: bar.item.id) {
+                EKEventPreviewPopover(event: ev)
+            }
+        }
         .padding(.leading, leading)
         .padding(.top, topOffset)
+    }
+
+    /// CalendarItem.id ("gcal-{eventIdentifier}") → EventKitService에서 EKEvent 조회.
+    private func matchingEKEvent(barID: String) -> EKEvent? {
+        guard barID.hasPrefix("gcal-") else { return nil }
+        let id = String(barID.dropFirst("gcal-".count))
+        return EventKitService.shared.event(withIdentifier: id)
     }
 
     /// CalendarItem.id ("local-{uuid}") → 그 UUID에 해당하는 LocalEvent를 store에서 찾는다.

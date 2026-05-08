@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import EventKit
 
 // 타임라인 = 주간 뷰. 한 단위 = 1주(7컬럼). 다일 task는 그 주 안에서 *하나의 긴 막대*.
 // 같은 task가 주 경계를 넘으면 각 주에서 잘려 막대가 두 개 그려진다 (월간 그리드와 동일 정책).
@@ -14,12 +15,15 @@ struct TimelineView: View {
     let items: [CalendarItem]
     @Binding var anchorDate: Date
     @Binding var showLocal: Bool
+    @Binding var disabledProjectKeys: Set<String>
+    let showGoogleCalendar: Bool
     /// 외부에서 "이번 주로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
     var resetToTodayToken: Int = 0
 
     @State private var previewingKey: String? = nil
     @State private var editingEvent: LocalEvent? = nil
     @State private var newEventDate: Date? = nil
+    @State private var previewingEKBarID: String? = nil
 
     private static let cal = Calendar.current
     private let halfRangeWeeks: Int = 13   // ±3개월
@@ -87,7 +91,7 @@ struct TimelineView: View {
                     .stroke(LumenTokens.stroke, lineWidth: 0.5)
             )
 
-            CalendarVisibilityStrip(showLocal: $showLocal)
+            CalendarVisibilityStrip(showLocal: $showLocal, disabledProjectKeys: $disabledProjectKeys, showGoogleCalendar: showGoogleCalendar)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -218,7 +222,8 @@ struct TimelineView: View {
     private func barView(bar: LaidOutBar, dayWidth: CGFloat) -> some View {
         let item = bar.item
         let isLocal = (item.kind == .local)
-        let projectColor = item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
+        let barColor = item.customColor ?? item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
+        let hasDot = item.customColor == nil
         let leading = CGFloat(bar.startCol) * dayWidth + 2
         let width = dayWidth * CGFloat(bar.span) - 4
         let topOffset = CGFloat(bar.lane) * (laneHeight + laneSpacing) + 6
@@ -226,14 +231,18 @@ struct TimelineView: View {
         return Button {
             if isLocal, let ev = matchingLocalEvent(itemID: item.id) {
                 editingEvent = ev
+            } else if item.kind == .googleCalendar {
+                previewingEKBarID = item.id
             } else if let key = item.issueKey {
                 previewingKey = key
             }
         } label: {
             HStack(spacing: 4) {
-                Circle()
-                    .fill(item.kind.color)
-                    .frame(width: 5, height: 5)
+                if hasDot {
+                    Circle()
+                        .fill(item.kind.color)
+                        .frame(width: 5, height: 5)
+                }
                 Text(item.title)
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(item.isDone
@@ -248,12 +257,12 @@ struct TimelineView: View {
             .frame(width: width, height: laneHeight - 2, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(isLocal ? Color.white.opacity(0.04) : projectColor.opacity(0.22))
+                    .fill(isLocal ? Color.white.opacity(0.04) : barColor.opacity(0.22))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .strokeBorder(
-                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : projectColor.opacity(0.45),
+                        isLocal ? LumenTokens.TextColor.muted.opacity(0.55) : barColor.opacity(0.45),
                         style: StrokeStyle(lineWidth: 0.5, dash: isLocal ? [3, 2] : [])
                     )
             )
@@ -276,8 +285,22 @@ struct TimelineView: View {
                 LocalEventEditPopover(event: ev) { editingEvent = nil }
             }
         }
+        .popover(isPresented: Binding(
+            get: { previewingEKBarID == item.id },
+            set: { if !$0 { previewingEKBarID = nil } }
+        ), arrowEdge: .top) {
+            if let ev = matchingEKEvent(itemID: item.id) {
+                EKEventPreviewPopover(event: ev)
+            }
+        }
         .padding(.leading, leading)
         .padding(.top, topOffset)
+    }
+
+    private func matchingEKEvent(itemID: String) -> EKEvent? {
+        guard itemID.hasPrefix("gcal-") else { return nil }
+        let id = String(itemID.dropFirst("gcal-".count))
+        return EventKitService.shared.event(withIdentifier: id)
     }
 
     // MARK: - Week list

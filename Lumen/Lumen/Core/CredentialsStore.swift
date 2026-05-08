@@ -31,6 +31,7 @@ final class CredentialsStore {
         static let openAIEnabled       = "openAIEnabled"
         static let iCalEnabled         = "iCalEnabled"
         static let iCalDisabledCalIDs  = "iCalDisabledCalendarIDs"
+        static let calDisabledProjects = "calendarDisabledProjectKeys"
         static let didMigrateKeychain  = "didMigrateKeychainV1"
         static let didMigrateToFile    = "didMigrateKeychainToFileV1"
     }
@@ -94,6 +95,11 @@ final class CredentialsStore {
     /// 블랙리스트 방식 — 새로 추가된 캘린더는 자동으로 ON 상태가 된다.
     var iCalDisabledCalendarIDs: Set<String> {
         Set(defaults.stringArray(forKey: UDKey.iCalDisabledCalIDs) ?? [])
+    }
+
+    /// 캘린더 막대에서 숨길 Jira 프로젝트 키 집합 (블랙리스트). 신규 프로젝트는 기본 ON.
+    var calendarDisabledProjectKeys: Set<String> {
+        Set(defaults.stringArray(forKey: UDKey.calDisabledProjects) ?? [])
     }
 
     // MARK: - Write (Settings UI)
@@ -178,6 +184,14 @@ final class CredentialsStore {
             defaults.removeObject(forKey: UDKey.iCalDisabledCalIDs)
         } else {
             defaults.set(Array(ids), forKey: UDKey.iCalDisabledCalIDs)
+        }
+    }
+
+    func setCalendarDisabledProjectKeys(_ keys: Set<String>) {
+        if keys.isEmpty {
+            defaults.removeObject(forKey: UDKey.calDisabledProjects)
+        } else {
+            defaults.set(Array(keys), forKey: UDKey.calDisabledProjects)
         }
     }
 

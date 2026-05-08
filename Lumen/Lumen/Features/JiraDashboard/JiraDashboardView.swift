@@ -10,7 +10,11 @@ struct JiraDashboardView: View {
     @State private var activeTab: JiraTab = .dashboard
     @State private var calendarMode: CalendarMode = .month
     @State private var selectedProject: String = PresentColumn.allKey
-    @State private var filter = CalendarFilter()
+    @State private var filter: CalendarFilter = {
+        var f = CalendarFilter()
+        f.disabledProjectKeys = CredentialsStore.shared.calendarDisabledProjectKeys
+        return f
+    }()
     @State private var anchorDate: Date = Date()
     /// LocalEventStore / EventKitService 변경을 감지해 캘린더 막대도 즉시 재렌더 되게.
     @State private var localStore = LocalEventStore.shared
@@ -106,7 +110,7 @@ struct JiraDashboardView: View {
             LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
             LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
         case .calendar:
-            FilterChip(label: "캘린더",  color: LumenTokens.Accent.teal,           isOn: $filter.showGoogleCalendar)
+            FilterChip(label: "캘린더",  color: LumenTokens.Accent.teal,           isOn: $filter.showGoogleCalendar, showDot: false)
             FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,          isOn: $filter.showEpic)
             FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,          isOn: $filter.showSprint)
             FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,    isOn: $filter.showTask)
@@ -126,13 +130,13 @@ struct JiraDashboardView: View {
                 .opacity(activeTab == .dashboard ? 1 : 0)
                 .allowsHitTesting(activeTab == .dashboard)
 
-            MonthGridView(items: calendarItems, showLocal: $filter.showLocal, resetToTodayToken: monthResetToken)
+            MonthGridView(items: calendarItems, showLocal: $filter.showLocal, disabledProjectKeys: $filter.disabledProjectKeys, showGoogleCalendar: filter.showGoogleCalendar, resetToTodayToken: monthResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
                 .opacity(monthVisible ? 1 : 0)
                 .allowsHitTesting(monthVisible)
 
-            TimelineView(items: calendarItems, anchorDate: $anchorDate, showLocal: $filter.showLocal, resetToTodayToken: weekResetToken)
+            TimelineView(items: calendarItems, anchorDate: $anchorDate, showLocal: $filter.showLocal, disabledProjectKeys: $filter.disabledProjectKeys, showGoogleCalendar: filter.showGoogleCalendar, resetToTodayToken: weekResetToken)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
                 .opacity(weekVisible ? 1 : 0)
@@ -183,6 +187,7 @@ struct CalendarModeToggle: View {
             .foregroundStyle(isActive ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 3)
                     .fill(isActive ? LumenTokens.Accent.violet.opacity(0.22) : .clear)
@@ -198,28 +203,39 @@ struct FilterChip: View {
     let label: String
     let color: Color
     @Binding var isOn: Bool
+    /// false면 색 점 생략 — 라벨 텍스트 색으로 식별이 충분한 칩(EKCalendar 등)에 사용.
+    var showDot: Bool = true
 
     var body: some View {
         Button {
             isOn.toggle()
         } label: {
             HStack(spacing: 5) {
-                Circle()
-                    .fill(isOn ? color : color.opacity(0.25))
-                    .frame(width: 7, height: 7)
+                if showDot {
+                    Circle()
+                        .fill(isOn ? color : color.opacity(0.25))
+                        .frame(width: 7, height: 7)
+                }
                 Text(label)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isOn
-                                     ? LumenTokens.TextColor.secondary
-                                     : LumenTokens.TextColor.muted)
+                    .foregroundStyle(labelColor)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .stroke(isOn ? color.opacity(0.35) : LumenTokens.divider, lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
+    }
+
+    /// 점이 없는 칩은 라벨 색으로 식별해야 하므로 활성 시 brand color, 비활성 시 dim.
+    private var labelColor: Color {
+        if showDot {
+            return isOn ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.muted
+        }
+        return isOn ? color : color.opacity(0.4)
     }
 }

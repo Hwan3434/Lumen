@@ -15,7 +15,7 @@ final class CalendarStatusItem {
 
     init(coordinator: StatusBarCoordinator) {
         self.handle = coordinator.addItem(
-            initialIcon: "calendar",
+            initialIcon: Self.todayIconName(),
             accessibility: "오늘 일정",
             visible: true,
             variableLength: true,
@@ -116,6 +116,8 @@ final class CalendarStatusItem {
         let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
         let items = todaysCalendarItems()
 
+        handle.updateIcon(Self.todayIconName())
+
         // 1순위: 가장 가까운 시간 이벤트 (지금 진행 중이거나 아직 시작 안 한 것).
         if let next = items.filter({ $0.hasTimeOfDay && ($0.end ?? $0.start) > now && $0.start < tomorrow })
             .sorted(by: { $0.start < $1.start })
@@ -165,6 +167,12 @@ final class CalendarStatusItem {
 
     private static func truncate(_ s: String) -> String {
         s.count > 18 ? s.prefix(18) + "…" : s
+    }
+
+    /// 오늘 일자(1~31)에 해당하는 SF Symbol — 자정 넘으면 다음 날짜로 자연스럽게 바뀐다.
+    private static func todayIconName() -> String {
+        let day = Calendar.current.component(.day, from: Date())
+        return "\(day).square.fill"
     }
 
     private static let hourFormatter: DateFormatter = {

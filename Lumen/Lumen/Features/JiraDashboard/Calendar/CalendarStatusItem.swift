@@ -130,8 +130,8 @@ final class CalendarStatusItem {
             handle.updateTitle(Self.truncate(allDay.title))
             return
         }
-        // 3순위: 둘 다 없음.
-        handle.updateTitle("일정 없음")
+        // 3순위: 둘 다 없음 — 라벨 비우면 아이콘만 보인다.
+        handle.updateTitle("")
     }
 
     private func todaysCalendarItems() -> [CalendarItem] {

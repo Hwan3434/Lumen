@@ -114,7 +114,9 @@ final class StatusBarItemHandle: NSObject {
     }
 
     private func applyTitle(to item: NSStatusItem) {
-        item.button?.title = titleText
+        // NSStatusBarButton은 image와 title 사이 spacing을 제공하지 않아
+        // 라벨 앞에 공백을 두 칸 추가해 시각적 간격을 만든다.
+        item.button?.title = titleText.isEmpty ? "" : "  \(titleText)"
         item.button?.imagePosition = titleText.isEmpty ? .imageOnly : .imageLeft
     }
 

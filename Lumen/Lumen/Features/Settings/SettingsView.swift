@@ -5,12 +5,12 @@ import SwiftUI
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
 struct SettingsView: View {
     enum Tab: String, Hashable, CaseIterable {
-        case jira, openai, claude, hiddenApps
+        case jira, translator, claude, hiddenApps
 
         var label: String {
             switch self {
             case .jira:       return "Jira"
-            case .openai:     return "OpenAI"
+            case .translator: return "번역"
             case .claude:     return "Claude"
             case .hiddenApps: return "숨긴 앱"
             }
@@ -20,14 +20,14 @@ struct SettingsView: View {
         var asset: String? {
             switch self {
             case .jira:       return "JiraLogo"
-            case .openai:     return "OpenAILogo"
             case .claude:     return "ClaudeLogo"
-            case .hiddenApps: return nil
+            default:          return nil
             }
         }
 
         var systemImage: String {
             switch self {
+            case .translator: return "translate"
             case .hiddenApps: return "eye.slash"
             default:          return "questionmark"
             }
@@ -80,7 +80,7 @@ struct SettingsView: View {
     private var tabContent: some View {
         switch selection {
         case .jira:       JiraSettingsTab(action: actionVM)
-        case .openai:     OpenAISettingsTab(action: actionVM)
+        case .translator: TranslatorSettingsTab(action: actionVM)
         case .claude:     ClaudeSettingsTab(action: actionVM)
         case .hiddenApps: HiddenAppsSettingsTab(action: actionVM)
         }
@@ -571,104 +571,152 @@ private struct JiraSettingsTab: View {
     }
 }
 
-// MARK: - OpenAI tab
+// MARK: - Translator tab
 
-private struct OpenAISettingsTab: View {
+private struct TranslatorSettingsTab: View {
     let action: SettingsActionViewModel
 
-    @State private var enabled: Bool = false
-    @State private var apiKey: String = ""
+    @State private var provider: CredentialsStore.TranslationProvider = .openai
+    @State private var openAIKey: String = ""
+    @State private var googleAIKey: String = ""
     @State private var initialSnapshot: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 토글은 항상 상단 고정. Jira 탭과 같은 정책.
+        ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                SettingsSection(title: "OpenAI") {
-                    SwitchRow(
-                        on: $enabled,
-                        title: "사용",
-                        description: "꺼져 있으면 번역 패널 핫키와 메뉴 항목이 노출되지 않습니다. API Key는 꺼도 보존됩니다."
-                    ) { newValue in
-                        CredentialsStore.shared.setOpenAIEnabled(newValue)
+                SettingsSection(title: "번역 제공자") {
+                    VStack(spacing: 8) {
+                        ProviderChip(title: "OpenAI", isSelected: provider == .openai) {
+                            provider = .openai
+                            CredentialsStore.shared.setTranslationProvider(.openai)
+                            NotificationCenter.default.post(name: .translationProviderChanged, object: nil)
+                            updateDirty()
+                        }
+                        ProviderChip(title: "Google AI", isSelected: provider == .googleai) {
+                            provider = .googleai
+                            CredentialsStore.shared.setTranslationProvider(.googleai)
+                            NotificationCenter.default.post(name: .translationProviderChanged, object: nil)
+                            updateDirty()
+                        }
                     }
                 }
+
+                SettingsSection(title: "OpenAI 자격증명") {
+                    SettingsField(label: "API Key", hint: "platform.openai.com → API keys에서 발급.") {
+                        LumenTextField(text: $openAIKey, placeholder: "sk-proj-…", secure: true)
+                    }
+                }
+
+                SettingsSection(title: "Google AI 자격증명") {
+                    SettingsField(label: "API Key", hint: "aistudio.google.com → API keys에서 발급.") {
+                        LumenTextField(text: $googleAIKey, placeholder: "AIza…", secure: true)
+                    }
+                }
+
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .padding(.top, 1)
+                    Text("키는 암호화되어 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다. 변경 사항은 앱 재시작 후 반영됩니다.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .lineSpacing(3)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.02))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(LumenTokens.stroke, lineWidth: 0.5))
+                )
             }
             .padding(.horizontal, 22)
-            .padding(.top, 20)
-            .padding(.bottom, enabled ? 22 : 20)
-
-            if enabled {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        SettingsSection(title: "OpenAI 자격증명") {
-                            SettingsField(label: "API Key",
-                                          hint: "번역 패널에서 사용합니다. platform.openai.com → API keys에서 발급.") {
-                                LumenTextField(text: $apiKey, placeholder: "sk-proj-…", secure: true)
-                            }
-                        }
-
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 13))
-                                .foregroundStyle(LumenTokens.TextColor.muted)
-                                .padding(.top, 1)
-                            Text("키는 macOS 키체인에 저장됩니다. 이 화면에서는 다시 표시되지 않으며, 새로 입력하면 기존 값을 덮어씁니다.")
-                                .font(.system(size: 11.5))
-                                .foregroundStyle(LumenTokens.TextColor.muted)
-                                .lineSpacing(3)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.02))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                )
-                        )
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 20)
-                }
-                .scrollIndicators(.hidden)
-            }
+            .padding(.vertical, 20)
         }
+        .scrollIndicators(.hidden)
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             loadFromStore()
             wireActionVM()
         }
-        .onChange(of: apiKey) { _, _ in updateDirty() }
+        .onChange(of: openAIKey)   { _, _ in updateDirty() }
+        .onChange(of: googleAIKey) { _, _ in updateDirty() }
     }
+
+    private func snapshot() -> String { "\(provider.rawValue)|\(openAIKey)|\(googleAIKey)" }
 
     private func loadFromStore() {
         let store = CredentialsStore.shared
-        enabled = store.isOpenAIEnabled
-        apiKey = store.openAIAPIKey
-        initialSnapshot = apiKey
+        provider    = store.translationProvider
+        openAIKey   = store.openAIAPIKey
+        googleAIKey = store.googleAIAPIKey
+        initialSnapshot = snapshot()
         action.dirty = false
     }
 
     private func updateDirty() {
-        action.dirty = apiKey != initialSnapshot
+        action.dirty = snapshot() != initialSnapshot
         if action.dirty { action.saved = false }
     }
 
     private func wireActionVM() {
         action.hidden = false
         action.save = {
-            CredentialsStore.shared.setOpenAI(apiKey: apiKey)
+            let store = CredentialsStore.shared
+            store.setOpenAI(apiKey: openAIKey)
+            store.setGoogleAI(apiKey: googleAIKey)
+            store.setTranslationProvider(provider)
             loadFromStore()
             action.saved = true
         }
         action.reset = {
-            CredentialsStore.shared.resetOpenAI()
+            let store = CredentialsStore.shared
+            store.resetOpenAI()
+            store.resetGoogleAI()
             loadFromStore()
             action.saved = false
         }
+    }
+}
+
+private struct ProviderChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.muted.opacity(0.4), lineWidth: 1.5)
+                        .frame(width: 16, height: 16)
+                    if isSelected {
+                        Circle()
+                            .fill(LumenTokens.Accent.violetSoft)
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.08) : Color.white.opacity(0.02))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? LumenTokens.Accent.violetSoft.opacity(0.3) : LumenTokens.stroke, lineWidth: 0.5)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

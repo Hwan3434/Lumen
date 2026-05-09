@@ -1,27 +1,29 @@
 import Foundation
 
-final class OpenAIService: TranslationService {
+final class GoogleAIService: TranslationService {
     static var isAvailable: Bool {
-        CredentialsStore.shared.isOpenAIConfigured
+        CredentialsStore.shared.isGoogleAIConfigured
     }
 
-    let providerName = "OpenAI"
+    let providerName = "Google AI"
 
-    // init 시점에 캡처 — 런타임 키 교체는 재시작 필요. JiraService와 동일 정책.
     private let apiKey: String
 
-    init(apiKey: String = CredentialsStore.shared.openAIAPIKey) {
+    init(apiKey: String = CredentialsStore.shared.googleAIAPIKey) {
         self.apiKey = apiKey
     }
 
-    struct ChatResponse: Decodable {
-        struct Choice: Decodable {
-            struct Message: Decodable {
-                let content: String
+    private struct ChatResponse: Decodable {
+        struct Candidate: Decodable {
+            struct Content: Decodable {
+                struct Part: Decodable {
+                    let text: String
+                }
+                let parts: [Part]
             }
-            let message: Message
+            let content: Content
         }
-        let choices: [Choice]
+        let candidates: [Candidate]
     }
 
     private struct TranslationJSON: Decodable {
@@ -36,11 +38,30 @@ final class OpenAIService: TranslationService {
         }
     }
 
+    private func extractLastJSON(from text: String) -> String {
+        // "translation" 키가 포함된 JSON 블록만 추출
+        let indices = text.indices.filter { text[$0] == "{" }
+        for idx in indices.reversed() {
+            var depth = 0
+            var result = ""
+            for ch in text[idx...] {
+                if ch == "{" { depth += 1 }
+                else if ch == "}" { depth -= 1 }
+                result.append(ch)
+                if depth == 0 {
+                    if result.contains("\"translation\"") { return result }
+                    break
+                }
+            }
+        }
+        return text
+    }
+
     func translate(_ text: String, includePronunciation: Bool) async throws -> TranslationResult {
-        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        let model = Constants.googleAIModel
+        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent?key=\(apiKey)")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let systemPrompt: String
@@ -56,7 +77,6 @@ final class OpenAIService: TranslationService {
                     - "analyze" → "애널라이즈"
                     - "butterfly" → "버터플라이"
                     - "Hello, my name is John." → "헬로, 마이 네임 이즈 존."
-                    - "Claude Code is an agentic, terminal-based coding tool." → "클로드 코드 이즈 언 에이전틱, 터미널 베이스드 코딩 툴."
                   • If the input is KOREAN → write Revised Romanization in lowercase English letters.
                     - "나비" → "nabi"
                     - "안녕하세요" → "annyeonghaseyo"
@@ -67,8 +87,8 @@ final class OpenAIService: TranslationService {
 
                 Rules:
                   • ALWAYS fill BOTH input_pronunciation and pronunciation. Never leave them empty, never echo the input as-is.
-                  • For English source: input_pronunciation MUST be Hangul (한글). It MUST NOT be lowercase English. Never output romanization for an English source.
-                  • For Korean source: input_pronunciation MUST be lowercase English Revised Romanization. It MUST NOT be Hangul.
+                  • For English source: input_pronunciation MUST be Hangul (한글).
+                  • For Korean source: input_pronunciation MUST be lowercase English Revised Romanization.
                   • Length does not matter — apply the same rule to single words and to long sentences.
                 """
         } else {
@@ -78,13 +98,31 @@ final class OpenAIService: TranslationService {
                 """
         }
 
+        let responseSchema: [String: Any] = includePronunciation ? [
+            "type": "OBJECT",
+            "properties": [
+                "translation":          ["type": "STRING"],
+                "input_pronunciation":  ["type": "STRING"],
+                "pronunciation":        ["type": "STRING"]
+            ],
+            "required": ["translation", "input_pronunciation", "pronunciation"]
+        ] : [
+            "type": "OBJECT",
+            "properties": ["translation": ["type": "STRING"]],
+            "required": ["translation"]
+        ]
+
         let body: [String: Any] = [
-            "model": Constants.openAIModel,
-            "temperature": 0.3,
-            "response_format": ["type": "json_object"],
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": text]
+            "systemInstruction": [
+                "parts": [["text": systemPrompt]]
+            ],
+            "contents": [
+                ["parts": [["text": text]]]
+            ],
+            "generationConfig": [
+                "temperature": 0.3,
+                "responseMimeType": "application/json",
+                "responseSchema": responseSchema
             ]
         ]
 
@@ -93,8 +131,10 @@ final class OpenAIService: TranslationService {
         let (data, _) = try await URLSession.shared.data(for: request)
         let response = try JSONDecoder().decode(ChatResponse.self, from: data)
 
-        let rawContent = response.choices.first?.message.content ?? ""
-        if let jsonData = rawContent.data(using: .utf8),
+        let rawContent = response.candidates.first?.content.parts.first?.text ?? ""
+        // Gemma가 thinking 텍스트 뒤에 JSON을 붙이는 경우가 있어 마지막 { } 블록만 추출
+        let jsonString = extractLastJSON(from: rawContent)
+        if let jsonData = jsonString.data(using: .utf8),
            let parsed = try? JSONDecoder().decode(TranslationJSON.self, from: jsonData) {
             return TranslationResult(translation: parsed.translation, pronunciation: parsed.pronunciation, inputPronunciation: parsed.inputPronunciation)
         }

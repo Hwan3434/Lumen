@@ -43,6 +43,16 @@ struct TranslatorView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(LumenTokens.TextColor.muted)
                 }
+                Text(viewModel.providerName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.06))
+                            .overlay(Capsule().stroke(LumenTokens.stroke, lineWidth: 0.5))
+                    )
             }
             Spacer()
             Text("⌘⇧C")

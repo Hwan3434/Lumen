@@ -1,6 +1,10 @@
 import AppKit
 import Observation
 
+extension Notification.Name {
+    static let translationProviderChanged = Notification.Name("com.lumen.translator.providerChanged")
+}
+
 struct TranslationHistoryItem: Identifiable {
     let id: UUID
     let original: String
@@ -32,13 +36,32 @@ final class TranslatorViewModel {
 
     var inputExceedsLimit: Bool { inputText.count > 100 }
 
-    private let service = OpenAIService()
+    private var service: any TranslationService
+    var providerName: String
     private let maxHistory = 30
     private let savePath: URL = LumenStorage.url(for: .translationHistory)
     private var currentTask: Task<Void, Never>?
 
     init() {
+        let svc = Self.makeService()
+        service = svc
+        providerName = svc.providerName
         loadFromDisk()
+        NotificationCenter.default.addObserver(self, selector: #selector(onProviderChanged), name: .translationProviderChanged, object: nil)
+    }
+
+    @objc private func onProviderChanged() {
+        let svc = Self.makeService()
+        service = svc
+        providerName = svc.providerName
+    }
+
+    private static func makeService() -> any TranslationService {
+        let store = CredentialsStore.shared
+        if store.translationProvider == .googleai && store.isGoogleAIConfigured {
+            return GoogleAIService()
+        }
+        return OpenAIService()
     }
 
     func translate() {
@@ -145,5 +168,9 @@ final class TranslatorViewModel {
         guard let pron = inputPronunciationText else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(pron, forType: .string)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

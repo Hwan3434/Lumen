@@ -6,7 +6,12 @@ final class TranslatorFeature: BuiltInFeature {
     let iconName = "textformat.abc"
     let searchKeywords = ["번역", "translate", "translation", "ai"]
 
-    var isEnabled: Bool { OpenAIService.isAvailable }
+    var isEnabled: Bool {
+        switch CredentialsStore.shared.translationProvider {
+        case .openai:   return OpenAIService.isAvailable
+        case .googleai: return GoogleAIService.isAvailable
+        }
+    }
 
     let windowController = TranslatorWindowController()
 

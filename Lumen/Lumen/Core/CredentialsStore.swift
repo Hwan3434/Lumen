@@ -21,6 +21,7 @@ final class CredentialsStore {
         static let jiraEmail         = "jiraEmail"
         static let jiraApiToken      = "jiraApiToken"
         static let openAIAPIKey      = "openAIAPIKey"
+        static let googleAIAPIKey    = "googleAIAPIKey"
     }
 
     private enum UDKey {
@@ -29,6 +30,7 @@ final class CredentialsStore {
         static let claudeUsageEnabled  = "claudeUsageEnabled"
         static let jiraEnabled         = "jiraEnabled"
         static let openAIEnabled       = "openAIEnabled"
+        static let translationProvider = "translationProvider"
         static let iCalEnabled         = "iCalEnabled"
         static let iCalDisabledCalIDs  = "iCalDisabledCalendarIDs"
         static let calDisabledProjects = "calendarDisabledProjectKeys"
@@ -47,6 +49,7 @@ final class CredentialsStore {
     var jiraEmail:          String { SecretStore.read(KCAccount.jiraEmail)         ?? Constants.jiraEmail    }
     var jiraApiToken:       String { SecretStore.read(KCAccount.jiraApiToken)      ?? Constants.jiraApiToken }
     var openAIAPIKey:       String { SecretStore.read(KCAccount.openAIAPIKey)      ?? Constants.openAIAPIKey }
+    var googleAIAPIKey:     String { SecretStore.read(KCAccount.googleAIAPIKey)    ?? "" }
 
     /// Jira 대시보드가 조회할 프로젝트 key 목록. UserDefaults에 저장된 값이 있으면 그것을,
     /// 없으면 Constants.defaultJiraProjectKeys 를 반환한다.
@@ -83,6 +86,16 @@ final class CredentialsStore {
         defaults.object(forKey: UDKey.openAIEnabled) == nil
             ? false
             : defaults.bool(forKey: UDKey.openAIEnabled)
+    }
+
+    enum TranslationProvider: String {
+        case openai, googleai
+    }
+
+    var translationProvider: TranslationProvider {
+        guard let raw = defaults.string(forKey: UDKey.translationProvider),
+              let provider = TranslationProvider(rawValue: raw) else { return .openai }
+        return provider
     }
 
     /// macOS Calendar(iCal) 연동 여부. ON이면 Jira 캘린더에 Google Calendar 일정이 표시된다.
@@ -166,6 +179,18 @@ final class CredentialsStore {
         SecretStore.write(sanitize(apiKey), for: KCAccount.openAIAPIKey)
     }
 
+    func setGoogleAI(apiKey: String) {
+        SecretStore.write(sanitize(apiKey), for: KCAccount.googleAIAPIKey)
+    }
+
+    func setTranslationProvider(_ provider: TranslationProvider) {
+        defaults.set(provider.rawValue, forKey: UDKey.translationProvider)
+    }
+
+    func resetGoogleAI() {
+        SecretStore.delete(KCAccount.googleAIAPIKey)
+    }
+
     /// 붙여넣기 시 끼어 들어가는 줄바꿈·공백·탭을 제거. API 호출 시 401의 흔한 원인.
     private func sanitize(_ raw: String) -> String {
         raw.components(separatedBy: .whitespacesAndNewlines).joined()
@@ -232,6 +257,10 @@ final class CredentialsStore {
 
     var isOpenAIConfigured: Bool {
         !openAIAPIKey.isEmpty
+    }
+
+    var isGoogleAIConfigured: Bool {
+        !googleAIAPIKey.isEmpty
     }
 
     // MARK: - Migration

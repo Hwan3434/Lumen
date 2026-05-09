@@ -32,6 +32,8 @@ final class CaffeineFeature: BuiltInFeature {
             visible: false,
             onClick: { [weak self] in self?.toggle() }
         )
+        // 앱 시작 시 자동 활성화 — 사용자가 끌 때까지 유지.
+        if !isActive { activateSleep() }
     }
 
     private func toggle() {

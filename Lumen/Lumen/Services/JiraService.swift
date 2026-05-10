@@ -195,7 +195,7 @@ final class JiraService {
             cloudId = try await ensureCloudId()
         } catch {
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = error.networkErrorMessage
                 self.isLoading = false
             }
             return
@@ -325,7 +325,7 @@ final class JiraService {
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = error.networkErrorMessage
                 self.isLoading = false
             }
         }

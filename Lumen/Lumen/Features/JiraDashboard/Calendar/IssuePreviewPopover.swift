@@ -109,7 +109,7 @@ struct IssuePreviewPopover: View {
             detail = d
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.networkErrorMessage
         }
         isLoading = false
     }

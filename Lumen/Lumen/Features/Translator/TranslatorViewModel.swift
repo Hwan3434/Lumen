@@ -102,7 +102,7 @@ final class TranslatorViewModel {
                 self.saveToDisk()
             } catch {
                 guard !Task.isCancelled else { return }
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = error.networkErrorMessage
             }
             self.isLoading = false
         }

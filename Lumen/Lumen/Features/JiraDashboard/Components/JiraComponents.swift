@@ -103,6 +103,7 @@ struct InlineSpinner: View {
 struct IssueRow: View {
     let issue: JiraIssue
     @State private var hovered = false
+    @State private var showingPreview = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -128,7 +129,10 @@ struct IssueRow: View {
         )
         .contentShape(Rectangle())
         .onHover { hovered = $0; if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-        .onTapGesture { openJira(issue.key) }
+        .onTapGesture { showingPreview = true }
+        .popover(isPresented: $showingPreview, arrowEdge: .top) {
+            IssuePreviewPopover(issueKey: issue.key)
+        }
     }
 
     private var textColor: Color {

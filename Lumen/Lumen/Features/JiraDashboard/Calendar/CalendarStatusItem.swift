@@ -9,7 +9,7 @@ final class CalendarStatusItem {
     private let handle: StatusBarItemHandle
     private var panel: NSPanel?
     private var localMonitor: Any?
-    private var globalMonitor: Any?
+    private var lastClosedAt: Date = .distantPast
     private var refreshTimer: Timer?
     private var observer: NSObjectProtocol?
 
@@ -49,7 +49,8 @@ final class CalendarStatusItem {
     }
 
     func togglePopover() {
-        if panel != nil {
+        // 닫힌 직후(0.3초 이내) 재클릭이면 무시 — localMonitor closePanel과 togglePopover가 같은 틱에 실행되는 문제 방지.
+        if panel != nil || Date().timeIntervalSince(lastClosedAt) < 0.3 {
             closePanel()
             return
         }
@@ -93,22 +94,18 @@ final class CalendarStatusItem {
                 return nil
             }
             if event.type != .keyDown, event.window !== self?.panel {
+                let isButtonWindow = self?.handle.buttonView?.window === event.window
+                if isButtonWindow {
+                    self?.lastClosedAt = Date()
+                }
                 self?.closePanel()
             }
             return event
-        }
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            guard let self, let button = self.handle.buttonView else { return }
-            let loc = event.locationInWindow
-            let screenLoc = event.window?.convertToScreen(NSRect(origin: loc, size: .zero)).origin ?? loc
-            if NSMouseInRect(screenLoc, button.window?.convertToScreen(button.convert(button.bounds, to: nil)) ?? .zero, false) { return }
-            self.closePanel()
         }
     }
 
     private func closePanel() {
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
-        if let m = globalMonitor { NSEvent.removeMonitor(m); globalMonitor = nil }
         panel?.orderOut(nil)
         panel = nil
     }

@@ -63,6 +63,7 @@ struct CalendarItem: Identifiable, Hashable {
     /// EKEvent의 시간 이벤트만 true — 막대 앞에 시각 prefix를 그릴지 결정한다.
     /// 일자 단위 항목(스프린트/에픽/태스크/로컬 이벤트, EKEvent 종일)은 false.
     var hasTimeOfDay: Bool = false
+    var location: String? = nil
 
     /// 이 항목이 주어진 날짜에 걸쳐 있는가. start만 있으면 그 날짜만, end 있으면 [start, end] inclusive.
     func covers(_ day: Date) -> Bool {

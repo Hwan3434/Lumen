@@ -97,8 +97,12 @@ final class CalendarStatusItem {
             }
             return event
         }
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.closePanel()
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self, let button = self.handle.buttonView else { return }
+            let loc = event.locationInWindow
+            let screenLoc = event.window?.convertToScreen(NSRect(origin: loc, size: .zero)).origin ?? loc
+            if NSMouseInRect(screenLoc, button.window?.convertToScreen(button.convert(button.bounds, to: nil)) ?? .zero, false) { return }
+            self.closePanel()
         }
     }
 
@@ -122,12 +126,16 @@ final class CalendarStatusItem {
         if let next = items.filter({ $0.hasTimeOfDay && ($0.end ?? $0.start) > now && $0.start < tomorrow })
             .sorted(by: { $0.start < $1.start })
             .first {
-            handle.updateTitle("\(Self.format(next.start))  \(Self.truncate(next.title))")
+            var label = "\(Self.format(next.start))  \(Self.truncate(next.title))"
+            if let loc = next.location, !loc.isEmpty { label += " · \(Self.truncate(loc))" }
+            handle.updateTitle(label)
             return
         }
         // 2순위: 종일/마감 항목 1개.
         if let allDay = items.first(where: { !$0.hasTimeOfDay }) {
-            handle.updateTitle(Self.truncate(allDay.title))
+            var label = Self.truncate(allDay.title)
+            if let loc = allDay.location, !loc.isEmpty { label += " · \(Self.truncate(loc))" }
+            handle.updateTitle(label)
             return
         }
         // 3순위: 둘 다 없음 — 라벨 비우면 아이콘만 보인다.
@@ -136,10 +144,6 @@ final class CalendarStatusItem {
 
     private func todaysCalendarItems() -> [CalendarItem] {
         let day = Date()
-        if let data = JiraService.shared.data {
-            return CalendarAdapter.buildItems(from: data, includeLocal: true).filter { $0.covers(day) }
-        }
-        // Jira 데이터 없으면 EKEvent + 로컬만 포함.
         var items: [CalendarItem] = []
         let cal = Calendar.current
         for ev in LocalEventStore.shared.events {

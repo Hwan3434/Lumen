@@ -5,17 +5,18 @@ import SwiftUI
 /// Jira(스프린트/에픽/태스크) + 로컬 이벤트 + EKEvent를 한 곳에 모아 종일/시간 그룹으로 보여준다.
 struct TodayAgendaPopover: View {
     @State private var service = EventKitService.shared
-    @State private var jiraService = JiraService.shared
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             LumenGlassBackground(radius: 12)
             VStack(alignment: .leading, spacing: 0) {
                 header
 
                 let groups = grouped(items: todaysItems)
                 if groups.allDay.isEmpty && groups.timed.isEmpty {
+                    Spacer()
                     empty
+                    Spacer()
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {
@@ -85,19 +86,11 @@ struct TodayAgendaPopover: View {
     // MARK: - Data
 
     private var todaysItems: [CalendarItem] {
-        let cal = Calendar.current
         let day = Date()
-        guard let data = jiraService.data else {
-            return adaptedItems(jiraData: nil).filter { $0.covers(day) }
-        }
-        return adaptedItems(jiraData: data).filter { $0.covers(day) }
+        return adaptedItems().filter { $0.covers(day) }
     }
 
-    private func adaptedItems(jiraData: JiraDashboardData?) -> [CalendarItem] {
-        if let jiraData {
-            return CalendarAdapter.buildItems(from: jiraData, includeLocal: true)
-        }
-        // Jira 데이터가 없어도 로컬·EKEvent는 표시.
+    private func adaptedItems() -> [CalendarItem] {
         var items: [CalendarItem] = []
         for ev in LocalEventStore.shared.events {
             items.append(CalendarItem(
@@ -126,7 +119,8 @@ struct TodayAgendaPopover: View {
                 isDone: false,
                 projectKey: nil,
                 customColor: Color(cgColor: ev.calendar.cgColor),
-                hasTimeOfDay: !ev.isAllDay
+                hasTimeOfDay: !ev.isAllDay,
+                location: ev.location
             ))
         }
         return items
@@ -187,9 +181,16 @@ private struct AgendaRow: View {
                         .strikethrough(item.isDone, color: LumenTokens.TextColor.muted)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    Text(timeLabel)
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    HStack(spacing: 4) {
+                        Text(timeLabel)
+                        if let loc = item.location, !loc.isEmpty {
+                            Text("·")
+                            Text(loc)
+                                .lineLimit(1)
+                        }
+                    }
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
                 }
                 Spacer(minLength: 0)
             }

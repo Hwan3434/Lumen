@@ -164,12 +164,7 @@ struct SearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, item in
-                            switch item {
-                            case .app, .calculation, .currency:
-                                resultRow(item: item, index: index)
-                            case .feature:
-                                EmptyView()
-                            }
+                            resultRow(item: item, index: index)
                         }
                     }
                     .padding(.horizontal, 12)
@@ -307,9 +302,6 @@ struct SearchView: View {
                 }
                 .foregroundStyle(LumenTokens.Accent.violetSoft)
             }
-
-        case .feature:
-            EmptyView()
         }
     }
 
@@ -328,7 +320,6 @@ struct SearchView: View {
             switch item {
             case .calculation, .currency: return "결과 복사"
             case .app:                    return "열기"
-            case .feature:                return "실행"
             }
         }
         return "열기"

@@ -3,14 +3,12 @@ import Observation
 
 enum SearchResultItem: Identifiable {
     case app(AppItem)
-    case feature(BuiltInFeature)
     case calculation(expression: String, result: String)
     case currency(input: String, result: String, copyValue: String)
 
     var id: String {
         switch self {
         case .app(let item): return "app_\(item.id)"
-        case .feature(let f): return "feature_\(f.name)"
         case .calculation(let expr, _): return "calc_\(expr)"
         case .currency(let input, _, _): return "fx_\(input)"
         }
@@ -113,8 +111,6 @@ final class SearchViewModel {
             }
             AppResourceMonitor.trace("SearchVM:launchApp:afterOpen")
             onDismiss(false)
-        case .feature:
-            break
         case .calculation(_, let result):
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(result, forType: .string)

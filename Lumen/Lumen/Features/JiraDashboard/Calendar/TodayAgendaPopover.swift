@@ -123,6 +123,10 @@ struct TodayAgendaPopover: View {
                 location: ev.location
             ))
         }
+        // Jira 이슈 — 팝오버에만 표시 (상태바 라벨 제외)
+        if let data = JiraService.shared.data {
+            items += CalendarAdapter.buildItems(from: data, includeLocal: false)
+        }
         return items
     }
 

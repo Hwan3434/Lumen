@@ -122,16 +122,13 @@ final class CalendarStatusItem {
         // 상태바 라벨은 캘린더/로컬만 — Jira 이슈는 팝오버에서만 보임.
         let labelItems = items.filter { $0.kind == .googleCalendar || $0.kind == .local }
 
-        // 1순위: 가장 가까운 시간 이벤트 (지금 진행 중이거나 아직 시작 안 한 것).
         if let next = labelItems.filter({ $0.hasTimeOfDay && ($0.end ?? $0.start) > now && $0.start < tomorrow })
-            .sorted(by: { $0.start < $1.start })
-            .first {
+            .min(by: { $0.start < $1.start }) {
             var label = "\(Self.format(next.start))  \(Self.truncate(next.title))"
             if let loc = next.location, !loc.isEmpty { label += " · \(Self.truncate(loc))" }
             handle.updateTitle(label)
             return
         }
-        // 2순위: 종일/마감 항목 1개.
         if let allDay = labelItems.first(where: { !$0.hasTimeOfDay }) {
             var label = Self.truncate(allDay.title)
             if let loc = allDay.location, !loc.isEmpty { label += " · \(Self.truncate(loc))" }

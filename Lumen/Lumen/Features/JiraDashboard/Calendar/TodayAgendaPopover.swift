@@ -7,12 +7,13 @@ struct TodayAgendaPopover: View {
     @State private var service = EventKitService.shared
 
     var body: some View {
-        ZStack(alignment: .top) {
+        let items = todaysItems
+        let groups = grouped(items: items)
+        return ZStack(alignment: .top) {
             LumenGlassBackground(radius: 12)
             VStack(alignment: .leading, spacing: 0) {
-                header
+                header(count: items.count)
 
-                let groups = grouped(items: todaysItems)
                 if groups.allDay.isEmpty && groups.timed.isEmpty {
                     Spacer()
                     empty
@@ -39,16 +40,16 @@ struct TodayAgendaPopover: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private var header: some View {
+    private func header(count: Int) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "calendar")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text(headerLabel)
+            Text(Self.headerLabel)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(LumenTokens.TextColor.primary)
             Spacer()
-            Text(countText)
+            Text(count == 0 ? "" : "\(count)개")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(LumenTokens.TextColor.muted)
         }
@@ -152,16 +153,15 @@ struct TodayAgendaPopover: View {
         return Groups(allDay: allDay, timed: timed)
     }
 
-    private var headerLabel: String {
+    private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
         f.dateFormat = "M월 d일 (E)"
-        return f.string(from: Date()) + " 일정"
-    }
+        return f
+    }()
 
-    private var countText: String {
-        let total = todaysItems.count
-        return total == 0 ? "" : "\(total)개"
+    private static var headerLabel: String {
+        Self.headerDateFormatter.string(from: Date()) + " 일정"
     }
 }
 
@@ -220,28 +220,33 @@ private struct AgendaRow: View {
         item.customColor ?? item.projectKey.map { jiraProjectColor($0) } ?? item.kind.color
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "M월 d일"
+        return f
+    }()
+
     private var timeLabel: String {
         if !item.hasTimeOfDay {
             switch item.kind {
-            case .epic, .task: return "마감 \(dayLabel(item.start))"
+            case .epic, .task: return "마감 \(Self.dayFormatter.string(from: item.start))"
             case .sprint: return "스프린트"
             default: return "종일"
             }
         }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "h:mm a"
+        let f = Self.timeFormatter
         if let end = item.end {
             return "\(f.string(from: item.start)) – \(f.string(from: end))"
         }
         return f.string(from: item.start)
-    }
-
-    private func dayLabel(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M월 d일"
-        return f.string(from: d)
     }
 
     @ViewBuilder

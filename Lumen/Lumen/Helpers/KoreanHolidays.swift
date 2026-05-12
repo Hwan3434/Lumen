@@ -4,21 +4,12 @@ import Foundation
 // 양력 고정 공휴일은 코드에서 자동 생성, 음력 기반(설/추석/석가탄신일)과 대체공휴일은
 // 연도별로 채운다. 매년 1월쯤 다음 해 데이터 추가 필요.
 
-struct KoreanHoliday: Hashable {
-    let date: Date  // 자정 기준
-    let name: String
-}
-
 enum KoreanHolidays {
     /// 어느 날짜가 공휴일이면 이름 반환, 아니면 nil.
     static func name(for date: Date) -> String? {
         let cal = Calendar.current
         let day = cal.startOfDay(for: date)
         return holidayMap[day]
-    }
-
-    static func isHoliday(_ date: Date) -> Bool {
-        name(for: date) != nil
     }
 
     // MARK: - Build map

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import EventKit
+import Combine
 
 // 월간 캘린더 — iCalendar 스타일 무한 스크롤.
 // ±3개월(=약 26주)의 주들을 LazyVStack으로 이어 붙이고, 각 주 위에 막대(bar) layer를 깔아
@@ -25,6 +26,7 @@ struct MonthGridView: View {
 
     /// 가시 중앙 주의 시작일 — onScrollGeometryChange로 갱신.
     @State private var visibleAnchor: Date = CalendarDateUtils.startOfWeek(of: Date())
+    @State private var today: Date = Calendar.current.startOfDay(for: Date())
     @State private var weeks: [Date] = []
     /// 주 시작일 → 그 주에 그릴 막대 layout. items가 바뀔 때만 재계산.
     @State private var layoutByWeek: [Date: WeekLayout] = [:]
@@ -42,6 +44,10 @@ struct MonthGridView: View {
         }
         .onChange(of: items) { _, _ in
             rebuildLayout()
+        }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            let newToday = Calendar.current.startOfDay(for: Date())
+            if newToday != today { today = newToday }
         }
     }
 
@@ -117,7 +123,8 @@ struct MonthGridView: View {
                     ForEach(weeks, id: \.self) { weekStart in
                         WeekRow(
                             weekStart: weekStart,
-                            layout: layoutByWeek[weekStart] ?? WeekLayout(weekStart: weekStart, bars: [], overflowByCol: [:])
+                            layout: layoutByWeek[weekStart] ?? WeekLayout(weekStart: weekStart, bars: [], overflowByCol: [:]),
+                            today: today
                         )
                         .frame(height: weekRowHeight)
                         .id(weekKey(weekStart))
@@ -195,6 +202,7 @@ struct MonthGridView: View {
 private struct WeekRow: View {
     let weekStart: Date
     let layout: WeekLayout
+    let today: Date
     private let laneHeight: CGFloat = 18
     private let laneSpacing: CGFloat = 2
     private let topPadding: CGFloat = 22  // 날짜 숫자 자리
@@ -244,7 +252,7 @@ private struct WeekRow: View {
 
     private func cellBackground(day: Date, cellWidth: CGFloat, cellHeight: CGFloat) -> some View {
         let cal = Calendar.current
-        let isToday = cal.isDateInToday(day)
+        let isToday = cal.isDate(cal.startOfDay(for: day), inSameDayAs: today)
         let dayNum = cal.component(.day, from: day)
         let isFirstOfMonth = (dayNum == 1)
         let holidayName = KoreanHolidays.name(for: day)

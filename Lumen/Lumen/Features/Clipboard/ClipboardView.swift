@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
+    @State private var showDeleteAllConfirm = false
 
     private let listColumnWidth: CGFloat = 320
     private let totalCapacity = 500
@@ -25,6 +26,16 @@ struct ClipboardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .confirmationDialog(
+            "클립보드 기록을 모두 삭제할까요?",
+            isPresented: $showDeleteAllConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("모두 삭제", role: .destructive) { viewModel.deleteAll() }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("이 작업은 되돌릴 수 없습니다.")
+        }
     }
 
     // MARK: - Title strip
@@ -52,7 +63,25 @@ struct ClipboardView: View {
                 }
             }
             Spacer()
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Button {
+                    showDeleteAllConfirm = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("모두 삭제")
+                .disabled(ClipboardManager.shared.history.isEmpty)
+                .opacity(ClipboardManager.shared.history.isEmpty ? 0.35 : 1)
+
+                Rectangle()
+                    .fill(LumenTokens.divider)
+                    .frame(width: 1, height: 12)
+
                 Text("패널")
                     .font(.system(size: 11))
                     .foregroundStyle(LumenTokens.TextColor.muted)
@@ -137,7 +166,8 @@ struct ClipboardView: View {
                     ForEach(Array(viewModel.filteredItems.enumerated()), id: \.element.id) { index, item in
                         ClipboardListRow(
                             item: item,
-                            isSelected: index == viewModel.selectedIndex
+                            isSelected: index == viewModel.selectedIndex,
+                            onDelete: { viewModel.delete(item: item) }
                         )
                         .id(item.id)
                         .onTapGesture { viewModel.selectedIndex = index }
@@ -184,8 +214,8 @@ struct ClipboardView: View {
     private var footer: some View {
         LumenFooterBar(actions: [
             .init(label: "복사", kbd: "⏎", primary: true),
+            .init(label: "삭제", kbd: "⌫"),
             .init(label: "닫기", kbd: "esc"),
-            .init(label: "패널", kbd: "⌘⇧V"),
         ])
     }
 }
@@ -195,6 +225,9 @@ struct ClipboardView: View {
 private struct ClipboardListRow: View {
     let item: ClipboardItem
     let isSelected: Bool
+    let onDelete: () -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -240,16 +273,28 @@ private struct ClipboardListRow: View {
                         )
                 }
 
-                Text(item.typeLabel)
-                    .font(.system(size: 10.5))
-                    .tracking(0.2)
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                if isHovering {
+                    Button(action: onDelete) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LumenTokens.TextColor.muted)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("삭제")
+                } else {
+                    Text(item.typeLabel)
+                        .font(.system(size: 10.5))
+                        .tracking(0.2)
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                }
             }
             .padding(.horizontal, 12)
         }
         .frame(height: 36)
         .padding(.horizontal, 6)
         .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
     }
 
     private var typeIcon: String {

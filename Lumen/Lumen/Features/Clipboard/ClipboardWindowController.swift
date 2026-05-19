@@ -26,7 +26,7 @@ final class ClipboardWindowController: PanelWindowController {
 
         panel.contentView = NSHostingView(rootView: ClipboardView(viewModel: vm))
 
-        panel.onKeyEvent = { [weak self] keyCode in
+        panel.onKeyEvent = { [weak self, weak panel] keyCode in
             guard let vm = self?.clipboardViewModel else { return false }
             switch keyCode {
             case KeyCode.downArrow: vm.moveDown(); return true
@@ -36,6 +36,14 @@ final class ClipboardWindowController: PanelWindowController {
                 self?.hide()
                 return true
             case KeyCode.escape: self?.hide(); return true
+            case KeyCode.delete, KeyCode.forwardDelete:
+                // 검색창 포커스 중에는 텍스트 편집용으로 흘려보낸다.
+                if let responder = panel?.firstResponder,
+                   responder is NSText || responder is NSTextView {
+                    return false
+                }
+                vm.deleteCurrent()
+                return true
             default: return false
             }
         }

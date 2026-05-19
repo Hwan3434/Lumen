@@ -176,6 +176,29 @@ final class ClipboardManager {
         }
     }
 
+    // MARK: - 삭제
+
+    /// 단건 삭제. 첨부된 이미지 파일도 함께 정리.
+    func delete(id: UUID) {
+        guard let idx = history.firstIndex(where: { $0.id == id }) else { return }
+        let removed = history.remove(at: idx)
+        if let path = removed.imagePath {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+        scheduleSave()
+    }
+
+    /// 전체 삭제. 이미지 디렉터리도 통째로 비운다.
+    func deleteAll() {
+        for item in history {
+            if let path = item.imagePath {
+                try? FileManager.default.removeItem(atPath: path)
+            }
+        }
+        history.removeAll()
+        scheduleSave()
+    }
+
     private func addItem(_ item: ClipboardItem) {
         // 텍스트 항목은 본문 전체로, 그 외는 displayText로 dedup.
         // displayText는 prefix 200자라 텍스트 항목엔 부적합 — 1만자 항목 두 개의 prefix만 같으면 잘못 합쳐진다.

@@ -7,6 +7,8 @@ enum KeyCode {
     static let upArrow = 126
     static let enter = 36
     static let escape = 53
+    static let delete = 51        // backspace
+    static let forwardDelete = 117
 }
 
 extension Constants {

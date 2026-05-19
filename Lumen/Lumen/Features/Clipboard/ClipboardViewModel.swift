@@ -52,6 +52,29 @@ final class ClipboardViewModel {
         item.copyToPasteboard()
     }
 
+    /// 현재 선택된 항목 삭제. 삭제 후 같은 인덱스 유지 — 다음 항목이 자연스럽게 선택된다.
+    func deleteCurrent() {
+        guard let item = filteredItems[safe: selectedIndex] else { return }
+        delete(item: item)
+    }
+
+    func delete(item: ClipboardItem) {
+        manager.delete(id: item.id)
+        // filteredItems가 줄었으니 인덱스 clamp
+        let newCount = filteredItems.count
+        if selectedIndex >= newCount {
+            selectedIndex = max(0, newCount - 1)
+        } else {
+            // 같은 인덱스를 유지해도 preview는 새 항목 기준으로 갱신돼야 함
+            loadPreview()
+        }
+    }
+
+    func deleteAll() {
+        manager.deleteAll()
+        selectedIndex = 0
+    }
+
     private func loadPreview() {
         previewWorkItem?.cancel()
         previewText = nil

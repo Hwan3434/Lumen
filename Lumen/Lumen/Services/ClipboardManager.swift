@@ -2,6 +2,10 @@ import AppKit
 import Observation
 
 struct ClipboardItem: Identifiable, Equatable {
+    /// 큰 본문(수만 자 텍스트)이 행/필터/dedup마다 매번 trim·lowercased 되지 않도록
+    /// 표시·검색용으로만 사용할 prefix 한도. 본문 자체는 text에 그대로 남는다.
+    static let displayPrefixLimit = 200
+
     let id: UUID
     let date: Date
     let text: String?
@@ -10,6 +14,11 @@ struct ClipboardItem: Identifiable, Equatable {
     let imagePath: String?
     let sourceApp: String?
     let sourceAppBundleID: String?
+
+    /// 리스트 행에 그릴 짧은 한 줄. 1회만 계산해 저장.
+    let displayText: String
+    /// 검색 비교용 소문자 키. displayText 기반이라 본문 9000번째 단어는 매칭되지 않는다 (의도된 트레이드오프).
+    let searchKey: String
 
     init(id: UUID = UUID(), date: Date, text: String?, fileURLs: [URL]?, image: NSImage?, imagePath: String? = nil, sourceApp: String? = nil, sourceAppBundleID: String? = nil) {
         self.id = id
@@ -20,6 +29,23 @@ struct ClipboardItem: Identifiable, Equatable {
         self.imagePath = imagePath
         self.sourceApp = sourceApp
         self.sourceAppBundleID = sourceAppBundleID
+        let display = Self.computeDisplayText(text: text, fileURLs: fileURLs, image: image, imagePath: imagePath)
+        self.displayText = display
+        self.searchKey = display.lowercased()
+    }
+
+    private static func computeDisplayText(text: String?, fileURLs: [URL]?, image: NSImage?, imagePath: String?) -> String {
+        if let text = text, !text.isEmpty {
+            let head = text.prefix(displayPrefixLimit)
+            return String(head).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let urls = fileURLs, !urls.isEmpty {
+            return urls.map { $0.lastPathComponent }.joined(separator: ", ")
+        }
+        if image != nil || imagePath != nil {
+            return "[이미지]"
+        }
+        return "[알 수 없는 항목]"
     }
 
     private static var iconCache: [String: NSImage] = [:]
@@ -32,19 +58,6 @@ struct ClipboardItem: Identifiable, Equatable {
         icon.size = NSSize(width: 16, height: 16)
         Self.iconCache[bundleID] = icon
         return icon
-    }
-
-    var displayText: String {
-        if let text = text, !text.isEmpty {
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        if let urls = fileURLs, !urls.isEmpty {
-            return urls.map { $0.lastPathComponent }.joined(separator: ", ")
-        }
-        if image != nil || imagePath != nil {
-            return "[이미지]"
-        }
-        return "[알 수 없는 항목]"
     }
 
     var typeLabel: String {
@@ -164,14 +177,17 @@ final class ClipboardManager {
     }
 
     private func addItem(_ item: ClipboardItem) {
+        // 텍스트 항목은 본문 전체로, 그 외는 displayText로 dedup.
+        // displayText는 prefix 200자라 텍스트 항목엔 부적합 — 1만자 항목 두 개의 prefix만 같으면 잘못 합쳐진다.
+        let newKey = item.text ?? item.displayText
         // 중복 제거 시 이전 이미지 파일도 삭제
-        let removed = history.filter { $0.displayText == item.displayText }
+        let removed = history.filter { ($0.text ?? $0.displayText) == newKey }
         for old in removed {
             if let path = old.imagePath {
                 try? FileManager.default.removeItem(atPath: path)
             }
         }
-        history.removeAll { $0.displayText == item.displayText }
+        history.removeAll { ($0.text ?? $0.displayText) == newKey }
 
         history.insert(item, at: 0)
 

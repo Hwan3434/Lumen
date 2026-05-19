@@ -28,7 +28,9 @@ final class ClipboardViewModel {
         let items = manager.history
         guard !query.isEmpty else { return items }
         let q = query.lowercased()
-        return items.filter { $0.displayText.lowercased().contains(q) }
+        // searchKey는 item 생성 시 1회만 계산된 lowercased prefix.
+        // 본문 후반부의 단어는 매칭되지 않는다 (의도된 트레이드오프, ClipboardItem.searchKey 참조).
+        return items.filter { $0.searchKey.contains(q) }
     }
 
     init() {}

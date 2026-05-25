@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import EventKit
+import Combine
 
 // 타임라인 = 주간 뷰. 한 단위 = 1주(7컬럼). 다일 task는 그 주 안에서 *하나의 긴 막대*.
 // 같은 task가 주 경계를 넘으면 각 주에서 잘려 막대가 두 개 그려진다 (월간 그리드와 동일 정책).
@@ -20,6 +21,7 @@ struct TimelineView: View {
     /// 외부에서 "이번 주로 다시 점프" 신호 — 탭 활성화 시 부모가 increment.
     var resetToTodayToken: Int = 0
 
+    @State private var today: Date = Calendar.current.startOfDay(for: Date())
     @State private var previewingKey: String? = nil
     @State private var editingEvent: LocalEvent? = nil
     @State private var newEventDate: Date? = nil
@@ -66,6 +68,10 @@ struct TimelineView: View {
                     }
                 }
             }
+        }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            let newToday = Calendar.current.startOfDay(for: Date())
+            if newToday != today { today = newToday }
         }
     }
 
@@ -149,7 +155,7 @@ struct TimelineView: View {
 
     private func dayHeader(day: Date) -> some View {
         let weekday = Self.cal.component(.weekday, from: day)
-        let isToday = Self.cal.isDateInToday(day)
+        let isToday = Self.cal.isDate(day, inSameDayAs: today)
         let isFirstOfMonth = (Self.cal.component(.day, from: day) == 1)
         let holidayName = KoreanHolidays.name(for: day)
         return VStack(spacing: 1) {
@@ -202,7 +208,7 @@ struct TimelineView: View {
             ForEach(days, id: \.self) { day in
                 let weekday = Self.cal.component(.weekday, from: day)
                 let isWeekend = (weekday == 1 || weekday == 7)
-                let isToday = Self.cal.isDateInToday(day)
+                let isToday = Self.cal.isDate(day, inSameDayAs: today)
                 Rectangle()
                     .fill(isToday
                           ? LumenTokens.Accent.amber.opacity(0.06)

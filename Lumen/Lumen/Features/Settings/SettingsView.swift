@@ -1,17 +1,16 @@
 import SwiftUI
 
 /// Cmd+, 로 열리는 macOS 기본 설정창의 루트 뷰.
-/// Jira / OpenAI / Claude 자격증명·옵션을 사이드바로 분리해 보여준다.
+/// Jira / OpenAI 자격증명·옵션을 사이드바로 분리해 보여준다.
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
 struct SettingsView: View {
     enum Tab: String, Hashable, CaseIterable {
-        case jira, translator, claude, hiddenApps
+        case jira, translator, hiddenApps
 
         var label: String {
             switch self {
             case .jira:       return "Jira"
             case .translator: return "번역"
-            case .claude:     return "Claude"
             case .hiddenApps: return "숨긴 앱"
             }
         }
@@ -20,7 +19,6 @@ struct SettingsView: View {
         var asset: String? {
             switch self {
             case .jira:       return "JiraLogo"
-            case .claude:     return "ClaudeLogo"
             default:          return nil
             }
         }
@@ -81,7 +79,6 @@ struct SettingsView: View {
         switch selection {
         case .jira:       JiraSettingsTab(action: actionVM)
         case .translator: TranslatorSettingsTab(action: actionVM)
-        case .claude:     ClaudeSettingsTab(action: actionVM)
         case .hiddenApps: HiddenAppsSettingsTab(action: actionVM)
         }
     }
@@ -720,50 +717,7 @@ private struct ProviderChip: View {
     }
 }
 
-// MARK: - Claude tab
 
-private struct ClaudeSettingsTab: View {
-    let action: SettingsActionViewModel
-
-    @State private var enabled: Bool = CredentialsStore.shared.isClaudeUsageEnabled
-    @State private var showCannotTrackAlert = false
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                SettingsSection(title: "Claude 사용량") {
-                    SwitchRow(
-                        on: $enabled,
-                        title: "사용량 추적",
-                        description: "~/.claude/projects 를 읽어 검색창 우측에 사용량 패널을 표시합니다. OFF 시 디렉터리가 존재해도 패널이 노출되지 않습니다. 변경 사항은 앱을 재시작해야 반영됩니다."
-                    ) { newValue in
-                        if newValue && !ClaudeUsageService.canTrack {
-                            showCannotTrackAlert = true
-                            enabled = false
-                            CredentialsStore.shared.setClaudeUsageEnabled(false)
-                            return
-                        }
-                        CredentialsStore.shared.setClaudeUsageEnabled(newValue)
-                    }
-                }
-            }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
-        }
-        .scrollIndicators(.hidden)
-        .onAppear {
-            // Claude 탭은 토글이 곧 저장이라 ActionBar(저장/초기화)를 숨긴다.
-            action.hidden = true
-            action.dirty = false
-            action.saved = false
-        }
-        .alert("추적할 수 없습니다", isPresented: $showCannotTrackAlert) {
-            Button("확인", role: .cancel) {}
-        } message: {
-            Text("~/.claude/projects 디렉터리를 찾을 수 없습니다.\nClaude Code CLI가 설치되어 최소 1회 이상 세션이 기록된 상태여야 합니다.")
-        }
-    }
-}
 
 private struct SwitchRow: View {
     @Binding var on: Bool

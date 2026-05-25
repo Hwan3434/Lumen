@@ -56,7 +56,7 @@ final class OpenAIService: TranslationService {
                     - "analyze" → "애널라이즈"
                     - "butterfly" → "버터플라이"
                     - "Hello, my name is John." → "헬로, 마이 네임 이즈 존."
-                    - "Claude Code is an agentic, terminal-based coding tool." → "클로드 코드 이즈 언 에이전틱, 터미널 베이스드 코딩 툴."
+                    - "Antigravity is an agentic, terminal-based coding tool." → "안티그래비티 이즈 언 에이전틱, 터미널 베이스드 코딩 툴."
                   • If the input is KOREAN → write Revised Romanization in lowercase English letters.
                     - "나비" → "nabi"
                     - "안녕하세요" → "annyeonghaseyo"

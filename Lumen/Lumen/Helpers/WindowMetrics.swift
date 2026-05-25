@@ -2,12 +2,7 @@ import SwiftUI
 
 extension Constants {
     // MARK: - Search Window
-    static let usagePanelWidth: CGFloat = 260
-    static let searchWindowBaseWidth: CGFloat = 680
-    /// UsagePanel 노출 여부에 따라 너비가 달라진다 — ClaudeUsageService가 없으면 좁은 창.
-    static var searchWindowWidth: CGFloat {
-        ClaudeUsageService.isAvailable ? searchWindowBaseWidth + usagePanelWidth : searchWindowBaseWidth
-    }
+    static let searchWindowWidth: CGFloat = 680
     static let searchWindowHeight: CGFloat = 600
 
     // MARK: - Translator Window

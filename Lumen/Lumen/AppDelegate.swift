@@ -87,21 +87,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Search 입력에서 환율 변환에 쓰는 USD-기준 환율 캐시 — 24h마다 백그라운드 갱신.
         CurrencyService.shared.refreshIfStale()
-        AppResourceMonitor.trace("availability: jira=\(JiraService.isAvailable) openai=\(OpenAIService.isAvailable) googleai=\(GoogleAIService.isAvailable) claude=\(ClaudeUsageService.isAvailable)")
+        AppResourceMonitor.trace("availability: jira=\(JiraService.isAvailable) openai=\(OpenAIService.isAvailable) googleai=\(GoogleAIService.isAvailable)")
         let names = FeatureRegistry.shared.enabledFeatures.map(\.name).joined(separator: ", ")
         AppResourceMonitor.trace("enabled_features: \(names)")
 
         appStatusBar = AppStatusBar(updater: updaterController.updater)
         appStatusBar.attachFeatures(FeatureRegistry.shared.enabledFeatures)
         AppResourceMonitor.trace("statusbar_ready")
-
-        if ClaudeUsageService.isAvailable {
-            Task {
-                AppResourceMonitor.trace("fetchHeavy:kickoff")
-                await ClaudeUsageService.shared.fetchHeavy()
-                AppResourceMonitor.trace("fetchHeavy:done")
-            }
-        }
 
         // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로, non-panel
         // 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다. 두 가지 가드로

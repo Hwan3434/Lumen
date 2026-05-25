@@ -39,7 +39,6 @@ enum LumenStorage {
         case clipboardImagesDir
         case hiddenApps
         case usageHistory
-        case claudeJSONLCache
         case resourceAnomalies
         case currencyRates
         case localEvents
@@ -53,7 +52,6 @@ enum LumenStorage {
             case .clipboardImagesDir:  return "images"
             case .hiddenApps:          return "hidden_apps.json"
             case .usageHistory:        return "usage_history.json"
-            case .claudeJSONLCache:    return "jsonl_cache.json"
             case .resourceAnomalies:   return "resource_anomalies.json"
             case .currencyRates:       return "currency_rates.json"
             case .localEvents:         return "local_events.json"

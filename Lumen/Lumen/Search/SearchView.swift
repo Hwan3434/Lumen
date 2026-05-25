@@ -11,15 +11,7 @@ struct SearchView: View {
     var body: some View {
         ZStack {
             LumenGlassBackground(radius: LumenTokens.Radius.window)
-            HStack(spacing: 0) {
-                mainPanel
-                if ClaudeUsageService.isAvailable {
-                    sidePanelDivider
-                    UsagePanelView()
-                        .frame(width: Constants.usagePanelWidth)
-                        .background(LumenTokens.BG.sidePanel)
-                }
-            }
+            mainPanel
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
@@ -41,12 +33,6 @@ struct SearchView: View {
         } message: { _ in
             Text("검색 결과에서 더 이상 보이지 않습니다.\nSettings → 숨긴 앱에서 언제든 되돌릴 수 있습니다.")
         }
-    }
-
-    private var sidePanelDivider: some View {
-        Rectangle()
-            .fill(LumenTokens.divider)
-            .frame(width: 0.5)
     }
 
     private var mainPanel: some View {

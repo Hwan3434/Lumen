@@ -10,9 +10,9 @@ final class ColorPickerFeature: BuiltInFeature {
     var hotkeys: [HotkeySpec] {
         [
             HotkeySpec(
-                keyCode: UInt16(kVK_ANSI_D),
+                keyCode: UInt16(kVK_ANSI_E),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+D",
+                description: "Cmd+Shift+E",
                 action: { [weak self] in
                     self?.activate()
                 }

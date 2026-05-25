@@ -27,7 +27,6 @@ final class CredentialsStore {
     private enum UDKey {
         static let jiraProjectKeys     = "jiraProjectKeys"
         static let jiraProjectNames    = "jiraProjectNames"   // [String: String] — projectKey → 별칭
-        static let claudeUsageEnabled  = "claudeUsageEnabled"
         static let jiraEnabled         = "jiraEnabled"
         static let openAIEnabled       = "openAIEnabled"
         static let translationProvider = "translationProvider"
@@ -65,12 +64,6 @@ final class CredentialsStore {
         (defaults.dictionary(forKey: UDKey.jiraProjectNames) as? [String: String]) ?? [:]
     }
 
-    /// Claude 사용량 추적 활성화 여부. 최초 기본값은 false — 사용자가 Settings에서 명시적으로 켜야 동작.
-    var isClaudeUsageEnabled: Bool {
-        defaults.object(forKey: UDKey.claudeUsageEnabled) == nil
-            ? false
-            : defaults.bool(forKey: UDKey.claudeUsageEnabled)
-    }
 
     /// Jira 기능 사용 여부. 자격증명과 별개로 사용자가 명시적으로 켜야 활성화된다.
     /// OFF면 자격증명이 채워져 있어도 feature가 isEnabled=false가 되어 핫키·메뉴·검색
@@ -196,9 +189,6 @@ final class CredentialsStore {
         raw.components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    func setClaudeUsageEnabled(_ enabled: Bool) {
-        defaults.set(enabled, forKey: UDKey.claudeUsageEnabled)
-    }
 
     func setJiraEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: UDKey.jiraEnabled)

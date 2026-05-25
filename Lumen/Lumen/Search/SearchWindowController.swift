@@ -78,8 +78,5 @@ final class SearchWindowController: PanelWindowController {
 
     override func didShow(_ panel: KeyablePanel) {
         AppResourceMonitor.trace("search:didShow")
-        guard ClaudeUsageService.isAvailable else { return }
-        Task { await ClaudeUsageService.shared.fetchLive() }
-        Task { await ClaudeUsageService.shared.fetchHeavy() }
     }
 }

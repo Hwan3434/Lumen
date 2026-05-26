@@ -58,9 +58,10 @@ final class WindowMagnetManager {
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
             // focusedWindow 먼저 시도, 실패하면 windows 배열의 첫 번째
             var windowRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success {
-                // swiftlint:disable:next force_cast
-                window = (windowRef as! AXUIElement)
+            if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
+               let ref = windowRef,
+               CFGetTypeID(ref) == AXUIElementGetTypeID() {
+                window = (ref as! AXUIElement)
             } else {
                 var windowsRef: CFTypeRef?
                 guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
@@ -97,11 +98,12 @@ final class WindowMagnetManager {
         let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
 
         var windowRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success else {
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
+              let ref = windowRef,
+              CFGetTypeID(ref) == AXUIElementGetTypeID() else {
             return nil
         }
-        // swiftlint:disable:next force_cast
-        return (windowRef as! AXUIElement)
+        return (ref as! AXUIElement)
     }
 
     private func setWindowPosition(_ window: AXUIElement, point: CGPoint) {

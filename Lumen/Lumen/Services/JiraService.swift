@@ -107,6 +107,7 @@ struct IssueDetail {
 // MARK: - Service
 
 @Observable
+@MainActor
 final class JiraService {
     static let shared = JiraService()
 

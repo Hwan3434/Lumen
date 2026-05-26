@@ -7,11 +7,11 @@ final class GoogleAIService: TranslationService {
 
     let providerName = "Google AI"
 
-    private let apiKey: String
-
-    init(apiKey: String = CredentialsStore.shared.googleAIAPIKey) {
-        self.apiKey = apiKey
+    private var apiKey: String {
+        CredentialsStore.shared.googleAIAPIKey
     }
+
+    init() {}
 
     private struct ChatResponse: Decodable {
         struct Candidate: Decodable {

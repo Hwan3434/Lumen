@@ -27,7 +27,7 @@ final class SearchViewModel {
     var selectedIndex = 0
 
     private let appIndexer = AppIndexer()
-    private let usageTracker = UsageTracker()
+    private let usageTracker = UsageTracker.shared
     private var allApps: [AppItem] = []
 
     func loadApps() {

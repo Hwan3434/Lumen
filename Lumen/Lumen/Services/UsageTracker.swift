@@ -1,10 +1,13 @@
 import Foundation
 
+@MainActor
 final class UsageTracker {
+    static let shared = UsageTracker()
+
     private let key = "Lumen.appUsageCounts"
     private var cache: [String: Int]
 
-    init() {
+    private init() {
         cache = UserDefaults.standard.dictionary(forKey: key) as? [String: Int] ?? [:]
     }
 

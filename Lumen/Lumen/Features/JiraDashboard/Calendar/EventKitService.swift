@@ -6,6 +6,7 @@ import Foundation
 // 휴일 자동 제외는 하지 않는다 — 사용자가 KoreanHolidays와 중복되는 게 싫으면 직접 끈다.
 
 @Observable
+@MainActor
 final class EventKitService {
     static let shared = EventKitService()
 
@@ -61,7 +62,13 @@ final class EventKitService {
             return
         }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendars)
-        events = store.events(matching: predicate)
+        let eventStore = self.store
+        Task.detached(priority: .userInitiated) {
+            let matched = eventStore.events(matching: predicate)
+            await MainActor.run {
+                EventKitService.shared.events = matched
+            }
+        }
     }
 
     /// 휴일 캘린더도 포함 — 사용자가 KoreanHolidays와 중복되면 직접 OFF한다.

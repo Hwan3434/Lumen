@@ -87,22 +87,19 @@ enum CurrencyQuery {
         let to: String
     }
 
+    private static let sortedAliases: [(token: String, code: String)] = [
+        ("dollar", "USD"),
+        ("euro", "EUR"), ("달러", "USD"), ("유로", "EUR"),
+        ("usd", "USD"), ("won", "KRW"), ("krw", "KRW"), ("eur", "EUR"), ("yen", "JPY"), ("jpy", "JPY"),
+        ("$", "USD"), ("₩", "KRW"), ("원", "KRW"), ("€", "EUR"), ("¥", "JPY"), ("엔", "JPY")
+    ]
+
     /// Search 한 줄 입력을 받아 Match 또는 nil. nil이면 환율 결과 행 비표시.
     static func parse(_ raw: String) -> Match? {
         let q = raw.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return nil }
 
-        // 명시 통화 추출 — symbol/code/한국어 별칭 모두 수용.
-        let aliases: [(token: String, code: String)] = [
-            ("$", "USD"), ("usd", "USD"), ("dollar", "USD"), ("달러", "USD"),
-            ("₩", "KRW"), ("krw", "KRW"), ("won", "KRW"), ("원", "KRW"),
-            ("€", "EUR"), ("eur", "EUR"), ("euro", "EUR"), ("유로", "EUR"),
-            ("¥", "JPY"), ("jpy", "JPY"), ("yen", "JPY"), ("엔", "JPY"),
-        ]
-
-        // 가장 길게 매칭되는 alias부터 시도 (예: "달러"가 "$"보다 우선).
-        let sorted = aliases.sorted { $0.token.count > $1.token.count }
-        guard let hit = sorted.first(where: { q.contains($0.token) }) else { return nil }
+        guard let hit = sortedAliases.first(where: { q.contains($0.token) }) else { return nil }
 
         var numberPart = q.replacingOccurrences(of: hit.token, with: " ")
         numberPart = numberPart.replacingOccurrences(of: ",", with: "")

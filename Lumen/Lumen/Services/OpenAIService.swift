@@ -8,11 +8,11 @@ final class OpenAIService: TranslationService {
     let providerName = "OpenAI"
 
     // init 시점에 캡처 — 런타임 키 교체는 재시작 필요. JiraService와 동일 정책.
-    private let apiKey: String
-
-    init(apiKey: String = CredentialsStore.shared.openAIAPIKey) {
-        self.apiKey = apiKey
+    private var apiKey: String {
+        CredentialsStore.shared.openAIAPIKey
     }
+
+    init() {}
 
     struct ChatResponse: Decodable {
         struct Choice: Decodable {

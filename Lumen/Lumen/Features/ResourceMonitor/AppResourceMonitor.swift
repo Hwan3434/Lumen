@@ -86,6 +86,9 @@ final class AppResourceMonitor {
               let threads = threadList else { return 0 }
 
         defer {
+            for i in 0..<Int(count) {
+                mach_port_deallocate(mach_task_self_, threads[i])
+            }
             vm_deallocate(mach_task_self_,
                           vm_address_t(UInt(bitPattern: threads)),
                           vm_size_t(Int(count) * MemoryLayout<thread_t>.size))
@@ -173,6 +176,9 @@ final class AppResourceMonitor {
         guard task_threads(mach_task_self_, &threadList, &count) == KERN_SUCCESS,
               let threads = threadList else { return 0 }
         defer {
+            for i in 0..<Int(count) {
+                mach_port_deallocate(mach_task_self_, threads[i])
+            }
             vm_deallocate(mach_task_self_,
                           vm_address_t(UInt(bitPattern: threads)),
                           vm_size_t(Int(count) * MemoryLayout<thread_t>.size))

@@ -7,19 +7,6 @@ final class ColorPickerFeature: BuiltInFeature {
     let iconName = "eyedropper"
     let searchKeywords = ["컬러", "색상", "color", "picker", "스포이드", "hex", "rgb"]
 
-    var hotkeys: [HotkeySpec] {
-        [
-            HotkeySpec(
-                keyCode: UInt16(kVK_ANSI_E),
-                modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+E",
-                action: { [weak self] in
-                    self?.activate()
-                }
-            )
-        ]
-    }
-
     private var isActive = false
 
     func activate() {

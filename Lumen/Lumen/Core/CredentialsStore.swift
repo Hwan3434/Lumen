@@ -1,7 +1,7 @@
 import Foundation
 
 /// 사용자 입력 자격증명의 단일 접근점.
-/// 민감 값(Jira/OpenAI 토큰)은 SecretStore(파일, XOR-obfuscated)에, 비-민감 설정(프로젝트 목록·별칭, 토글)은 UserDefaults에 둔다.
+/// 민감 값(Jira 토큰)은 SecretStore(파일, XOR-obfuscated)에, 비-민감 설정(프로젝트 목록·별칭, 토글)은 UserDefaults에 둔다.
 /// Settings UI에서 값을 쓰고, Service 레이어에서 값을 읽는다.
 /// 반영 시점은 앱 재시작 후 — Service 초기화 시 한 번 읽어 캐싱하는 구조를 가정한다.
 final class CredentialsStore {
@@ -20,16 +20,12 @@ final class CredentialsStore {
         static let jiraWorkspaceSlug = "jiraWorkspaceSlug"
         static let jiraEmail         = "jiraEmail"
         static let jiraApiToken      = "jiraApiToken"
-        static let openAIAPIKey      = "openAIAPIKey"
-        static let googleAIAPIKey    = "googleAIAPIKey"
     }
 
     private enum UDKey {
         static let jiraProjectKeys     = "jiraProjectKeys"
         static let jiraProjectNames    = "jiraProjectNames"   // [String: String] — projectKey → 별칭
         static let jiraEnabled         = "jiraEnabled"
-        static let openAIEnabled       = "openAIEnabled"
-        static let translationProvider = "translationProvider"
         static let iCalEnabled         = "iCalEnabled"
         static let iCalDisabledCalIDs  = "iCalDisabledCalendarIDs"
         static let calDisabledProjects = "calendarDisabledProjectKeys"
@@ -47,8 +43,6 @@ final class CredentialsStore {
     var jiraWorkspaceSlug:  String { SecretStore.read(KCAccount.jiraWorkspaceSlug) ?? "" }
     var jiraEmail:          String { SecretStore.read(KCAccount.jiraEmail)         ?? Constants.jiraEmail    }
     var jiraApiToken:       String { SecretStore.read(KCAccount.jiraApiToken)      ?? Constants.jiraApiToken }
-    var openAIAPIKey:       String { SecretStore.read(KCAccount.openAIAPIKey)      ?? Constants.openAIAPIKey }
-    var googleAIAPIKey:     String { SecretStore.read(KCAccount.googleAIAPIKey)    ?? "" }
 
     /// Jira 대시보드가 조회할 프로젝트 key 목록. UserDefaults에 저장된 값이 있으면 그것을,
     /// 없으면 Constants.defaultJiraProjectKeys 를 반환한다.
@@ -74,22 +68,7 @@ final class CredentialsStore {
             : defaults.bool(forKey: UDKey.jiraEnabled)
     }
 
-    /// OpenAI(Translator) 사용 여부. Jira와 같은 정책.
-    var isOpenAIEnabled: Bool {
-        defaults.object(forKey: UDKey.openAIEnabled) == nil
-            ? false
-            : defaults.bool(forKey: UDKey.openAIEnabled)
-    }
 
-    enum TranslationProvider: String {
-        case openai, googleai
-    }
-
-    var translationProvider: TranslationProvider {
-        guard let raw = defaults.string(forKey: UDKey.translationProvider),
-              let provider = TranslationProvider(rawValue: raw) else { return .openai }
-        return provider
-    }
 
     /// macOS Calendar(iCal) 연동 여부. ON이면 Jira 캘린더에 Google Calendar 일정이 표시된다.
     var isICalEnabled: Bool {
@@ -168,21 +147,7 @@ final class CredentialsStore {
         }
     }
 
-    func setOpenAI(apiKey: String) {
-        SecretStore.write(sanitize(apiKey), for: KCAccount.openAIAPIKey)
-    }
 
-    func setGoogleAI(apiKey: String) {
-        SecretStore.write(sanitize(apiKey), for: KCAccount.googleAIAPIKey)
-    }
-
-    func setTranslationProvider(_ provider: TranslationProvider) {
-        defaults.set(provider.rawValue, forKey: UDKey.translationProvider)
-    }
-
-    func resetGoogleAI() {
-        SecretStore.delete(KCAccount.googleAIAPIKey)
-    }
 
     /// 붙여넣기 시 끼어 들어가는 줄바꿈·공백·탭을 제거. API 호출 시 401의 흔한 원인.
     private func sanitize(_ raw: String) -> String {
@@ -192,10 +157,6 @@ final class CredentialsStore {
 
     func setJiraEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: UDKey.jiraEnabled)
-    }
-
-    func setOpenAIEnabled(_ enabled: Bool) {
-        defaults.set(enabled, forKey: UDKey.openAIEnabled)
     }
 
     func setICalEnabled(_ enabled: Bool) {
@@ -232,9 +193,7 @@ final class CredentialsStore {
         defaults.removeObject(forKey: UDKey.jiraProjectNames)
     }
 
-    func resetOpenAI() {
-        SecretStore.delete(KCAccount.openAIAPIKey)
-    }
+
 
     // MARK: - Convenience
 
@@ -245,13 +204,7 @@ final class CredentialsStore {
             && !jiraApiToken.isEmpty
     }
 
-    var isOpenAIConfigured: Bool {
-        !openAIAPIKey.isEmpty
-    }
 
-    var isGoogleAIConfigured: Bool {
-        !googleAIAPIKey.isEmpty
-    }
 
     // MARK: - Migration
 
@@ -264,7 +217,6 @@ final class CredentialsStore {
             ("jiraCloudId",  KCAccount.jiraCloudId),
             ("jiraEmail",    KCAccount.jiraEmail),
             ("jiraApiToken", KCAccount.jiraApiToken),
-            ("openAIAPIKey", KCAccount.openAIAPIKey),
         ]
 
         for (udKey, account) in pairs {
@@ -291,7 +243,6 @@ final class CredentialsStore {
             KCAccount.jiraWorkspaceSlug,
             KCAccount.jiraEmail,
             KCAccount.jiraApiToken,
-            KCAccount.openAIAPIKey,
         ]
 
         for account in accounts {

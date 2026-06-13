@@ -1,9 +1,7 @@
 import AppKit
 import Observation
-
-extension Notification.Name {
-    static let translationProviderChanged = Notification.Name("com.lumen.translator.providerChanged")
-}
+import Translation
+import NaturalLanguage
 
 struct TranslationHistoryItem: Identifiable {
     let id: UUID
@@ -36,32 +34,16 @@ final class TranslatorViewModel {
 
     var inputExceedsLimit: Bool { inputText.count > 100 }
 
-    private var service: any TranslationService
-    var providerName: String
+    var providerName: String { "Apple" }
+    
+    // 이 바인딩은 SwiftUI의 .translationTask에 사용됩니다.
+    var translationConfig: TranslationSession.Configuration? = nil
+
     private let maxHistory = 30
     private let savePath: URL = LumenStorage.url(for: .translationHistory)
-    private var currentTask: Task<Void, Never>?
 
     init() {
-        let svc = Self.makeService()
-        service = svc
-        providerName = svc.providerName
         loadFromDisk()
-        NotificationCenter.default.addObserver(self, selector: #selector(onProviderChanged), name: .translationProviderChanged, object: nil)
-    }
-
-    @objc private func onProviderChanged() {
-        let svc = Self.makeService()
-        service = svc
-        providerName = svc.providerName
-    }
-
-    private static func makeService() -> any TranslationService {
-        let store = CredentialsStore.shared
-        if store.translationProvider == .googleai && store.isGoogleAIConfigured {
-            return GoogleAIService()
-        }
-        return OpenAIService()
     }
 
     func translate() {
@@ -70,42 +52,55 @@ final class TranslatorViewModel {
 
         isLoading = true
         errorMessage = nil
-        // 이전 결과를 즉시 클리어해야 새 요청 도는 동안 stale 값이 화면에 남지 않는다.
         translatedText = ""
         pronunciationText = nil
         inputPronunciationText = nil
 
-        let needsPronunciation = text.count <= 100
+        let isKorean = detectIsKorean(text)
+        let sourceLang = Locale.Language(identifier: isKorean ? "ko" : "en")
+        let targetLang = Locale.Language(identifier: isKorean ? "en" : "ko")
 
-        currentTask?.cancel()
-        currentTask = Task {
-            do {
-                let result = try await service.translate(text, includePronunciation: needsPronunciation)
-                guard !Task.isCancelled else { return }
-                self.translatedText = result.translation
-                self.pronunciationText = result.pronunciation
-                self.inputPronunciationText = result.inputPronunciation
-                self.history.insert(
-                    TranslationHistoryItem(
-                        original: text,
-                        translated: result.translation,
-                        pronunciation: result.pronunciation,
-                        inputPronunciation: result.inputPronunciation,
-                        date: Date()
-                    ),
-                    at: 0
-                )
-                if self.history.count > self.maxHistory {
-                    self.history = Array(self.history.prefix(self.maxHistory))
-                }
-                self.selectedHistoryIndex = 0
-                self.saveToDisk()
-            } catch {
-                guard !Task.isCancelled else { return }
-                self.errorMessage = error.networkErrorMessage
-            }
-            self.isLoading = false
+        if let currentConfig = translationConfig,
+           currentConfig.source == sourceLang,
+           currentConfig.target == targetLang {
+            translationConfig?.invalidate()
+        } else {
+            translationConfig = TranslationSession.Configuration(source: sourceLang, target: targetLang)
         }
+    }
+
+    private func detectIsKorean(_ text: String) -> Bool {
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(text)
+        let dominant = recognizer.dominantLanguage?.rawValue ?? "ko"
+        return dominant == "ko"
+    }
+
+    @MainActor
+    func handleTranslationResult(_ text: String) {
+        self.translatedText = text
+        self.isLoading = false
+
+        let originalText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.history.insert(
+            TranslationHistoryItem(
+                original: originalText,
+                translated: text,
+                date: Date()
+            ),
+            at: 0
+        )
+        if self.history.count > self.maxHistory {
+            self.history = Array(self.history.prefix(self.maxHistory))
+        }
+        self.selectedHistoryIndex = 0
+        self.saveToDisk()
+    }
+
+    @MainActor
+    func handleTranslationError(_ error: Error) {
+        self.errorMessage = error.localizedDescription
+        self.isLoading = false
     }
 
     func moveUp() {
@@ -168,9 +163,5 @@ final class TranslatorViewModel {
         guard let pron = inputPronunciationText else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(pron, forType: .string)
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
 }

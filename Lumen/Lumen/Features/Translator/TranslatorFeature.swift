@@ -7,10 +7,7 @@ final class TranslatorFeature: BuiltInFeature {
     let searchKeywords = ["번역", "translate", "translation", "ai"]
 
     var isEnabled: Bool {
-        switch CredentialsStore.shared.translationProvider {
-        case .openai:   return OpenAIService.isAvailable
-        case .googleai: return GoogleAIService.isAvailable
-        }
+        true
     }
 
     let windowController = TranslatorWindowController()

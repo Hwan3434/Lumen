@@ -1,4 +1,5 @@
 import SwiftUI
+import Translation
 
 struct TranslatorView: View {
     @State var viewModel: TranslatorViewModel
@@ -22,6 +23,21 @@ struct TranslatorView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .translationTask(viewModel.translationConfig) { session in
+            do {
+                let text = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { return }
+                
+                let response = try await session.translate(text)
+                await MainActor.run {
+                    viewModel.handleTranslationResult(response.targetText)
+                }
+            } catch {
+                await MainActor.run {
+                    viewModel.handleTranslationError(error)
+                }
+            }
+        }
     }
 
     // MARK: - Title strip
@@ -77,27 +93,13 @@ struct TranslatorView: View {
 
     private var inputArea: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                LumenSectionLabel(text: "입력")
-                Spacer()
-                if !viewModel.inputText.isEmpty {
-                    CharThresholdMeter(count: viewModel.inputText.count)
-                }
-            }
+            LumenSectionLabel(text: "입력")
 
             LumenTextArea(
                 text: $viewModel.inputText,
                 placeholder: "여기에 한국어 또는 영어 문장을 입력하세요…",
                 fontSize: 17
             )
-
-            if !viewModel.inputText.isEmpty {
-                PronunRow(
-                    mode: pronunMode(for: .input),
-                    text: viewModel.inputPronunciationText,
-                    onCopy: { viewModel.copyInputPronunciation() }
-                )
-            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -118,16 +120,6 @@ struct TranslatorView: View {
 
             outputBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            if !viewModel.translatedText.isEmpty,
-               !viewModel.isLoading,
-               viewModel.errorMessage == nil {
-                PronunRow(
-                    mode: pronunMode(for: .output),
-                    text: viewModel.pronunciationText,
-                    onCopy: { viewModel.copyPronunciation() }
-                )
-            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -160,19 +152,7 @@ struct TranslatorView: View {
         }
     }
 
-    // MARK: - Pronunciation mode
 
-    private enum PronunSide { case input, output }
-
-    private func pronunMode(for side: PronunSide) -> PronunRow.Mode {
-        if viewModel.inputExceedsLimit { return .overLimit }
-        switch side {
-        case .input:
-            return (viewModel.inputPronunciationText?.isEmpty == false) ? .pronun : .hidden
-        case .output:
-            return (viewModel.pronunciationText?.isEmpty == false) ? .pronun : .hidden
-        }
-    }
 
     // MARK: - History rail
 
@@ -314,101 +294,7 @@ private struct HistoryItemRow: View {
     }
 }
 
-// MARK: - Pronunciation row
 
-struct PronunRow: View {
-    enum Mode { case hidden, pronun, overLimit }
-
-    let mode: Mode
-    let text: String?
-    var onCopy: (() -> Void)? = nil
-
-    var body: some View {
-        if mode == .hidden { EmptyView() } else {
-            HStack(alignment: .top, spacing: 12) {
-                HStack(spacing: 6) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    LumenSectionLabel(text: "발음")
-                }
-                .padding(.top, 2)
-
-                if mode == .pronun {
-                    Text(text ?? "")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                        .lineSpacing(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if let onCopy {
-                        Button(action: onCopy) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "doc.on.doc")
-                                    .font(.system(size: 10, weight: .semibold))
-                                Text("발음 복사")
-                                    .font(.system(size: 11))
-                            }
-                            .foregroundStyle(LumenTokens.TextColor.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    Text("100자가 넘는 문자는 발음을 제공해주지 않습니다.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LumenTokens.BG.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
-            )
-        }
-    }
-}
-
-// MARK: - Char threshold meter
-
-struct CharThresholdMeter: View {
-    let count: Int
-
-    private var over: Bool { count > 100 }
-    private var pct: Double { min(1.0, Double(count) / 100.0) }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text("\(count) / 100")
-                .font(.system(size: 10.5, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(width: 60, height: 2)
-                Capsule()
-                    .fill(over ? LumenTokens.TextColor.muted : LumenTokens.Accent.violetSoft)
-                    .opacity(over ? 0.4 : 0.7)
-                    .frame(width: 60 * pct, height: 2)
-            }
-
-            Text(over ? "발음 미제공" : "발음 포함")
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(over ? LumenTokens.TextColor.muted : LumenTokens.Accent.violetSoft)
-        }
-    }
-}
 
 // MARK: - Shimmer
 

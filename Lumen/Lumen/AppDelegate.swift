@@ -87,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Search 입력에서 환율 변환에 쓰는 USD-기준 환율 캐시 — 24h마다 백그라운드 갱신.
         CurrencyService.shared.refreshIfStale()
-        AppResourceMonitor.trace("availability: jira=\(JiraService.isAvailable) openai=\(OpenAIService.isAvailable) googleai=\(GoogleAIService.isAvailable)")
+        AppResourceMonitor.trace("availability: jira=\(JiraService.isAvailable)")
         let names = FeatureRegistry.shared.enabledFeatures.map(\.name).joined(separator: ", ")
         AppResourceMonitor.trace("enabled_features: \(names)")
 

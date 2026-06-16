@@ -33,8 +33,8 @@ struct TimelineView: View {
     private let dayHeaderHeight: CGFloat = 44
     private let laneHeight: CGFloat = 22
     private let laneSpacing: CGFloat = 3
-    /// lane 너무 많으면 +N으로 잘라낸다.
-    private let maxLanesVisible: Int = 12
+    /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
+    private let maxLanesVisible: Int = 999
 
     var body: some View {
         VStack(spacing: 0) {
@@ -118,6 +118,11 @@ struct TimelineView: View {
         let days = (0..<7).compactMap { Self.cal.date(byAdding: .day, value: $0, to: weekStart) }
         let layout = layoutWeek(weekStart: weekStart, items: items, maxLanes: maxLanesVisible)
         let weekW = dayWidth * 7
+        
+        let maxLane = layout.bars.map { $0.lane }.max() ?? -1
+        let requiredHeight = CGFloat(maxLane + 1) * (laneHeight + laneSpacing) + 20
+        let gridHeight = max(viewportHeight - dayHeaderHeight, requiredHeight)
+        
         return VStack(spacing: 0) {
             // 헤더
             HStack(spacing: 0) {
@@ -128,27 +133,30 @@ struct TimelineView: View {
             .frame(height: dayHeaderHeight)
             Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
 
-            // 막대 layer + 격자
-            ZStack(alignment: .topLeading) {
-                gridLines(days: days, dayWidth: dayWidth, height: max(viewportHeight - dayHeaderHeight, 200))
+            ScrollView(.vertical, showsIndicators: false) {
+                // 막대 layer + 격자
+                ZStack(alignment: .topLeading) {
+                    gridLines(days: days, dayWidth: dayWidth, height: gridHeight)
 
-                ForEach(layout.bars) { bar in
-                    barView(bar: bar, dayWidth: dayWidth)
-                }
+                    ForEach(layout.bars) { bar in
+                        barView(bar: bar, dayWidth: dayWidth)
+                    }
 
-                // overflow 표시 — 잘려 안 보이는 task가 있는 col에 +N
-                ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
-                    if let n = layout.overflowByCol[col] {
-                        Text("+\(n)")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .padding(.leading, CGFloat(col) * dayWidth + 4)
-                            .padding(.top, CGFloat(maxLanesVisible) * (laneHeight + laneSpacing) + 4)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    // overflow 표시 — 잘려 안 보이는 task가 있는 col에 +N (maxLanesVisible이 999라 사실상 안 뜸)
+                    ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
+                        if let n = layout.overflowByCol[col] {
+                            Text("+\\(n)")
+                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .padding(.leading, CGFloat(col) * dayWidth + 4)
+                                .padding(.top, CGFloat(maxLanesVisible) * (laneHeight + laneSpacing) + 4)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
                     }
                 }
+                .frame(width: weekW, height: gridHeight, alignment: .topLeading)
             }
-            .frame(width: weekW, alignment: .topLeading)
+            .frame(width: weekW, height: max(0, viewportHeight - dayHeaderHeight), alignment: .topLeading)
         }
         .frame(width: weekW, height: viewportHeight, alignment: .topLeading)
     }

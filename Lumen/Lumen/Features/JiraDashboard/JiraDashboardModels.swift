@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// 대시보드 탭 전환용 라우트 정의 (단축키 1, 2, 3 매핑)
+enum JiraRoute: Int {
+    case dashboard = 0
+    case calendarMonth = 1
+    case calendarWeek = 2
+}
+
 /// JiraStatusCategory(데이터 분류) → 디자인 토큰(fg/bg) 매핑.
 /// UI에서 직접 categoryKey 문자열을 쓰지 않도록 이 한 곳에서 색을 결정한다.
 enum JiraStatusKey {

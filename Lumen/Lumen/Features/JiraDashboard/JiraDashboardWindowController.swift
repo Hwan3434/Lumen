@@ -44,18 +44,23 @@ final class JiraDashboardWindowController: PanelWindowController {
         panel.onCommandKey = { event in
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             guard flags == .command else { return false }
-            let tabIndex: Int
+            let route: JiraRoute
             switch Int(event.keyCode) {
-            case kVK_ANSI_1: tabIndex = 0
-            case kVK_ANSI_2: tabIndex = 1
-            case kVK_ANSI_3: tabIndex = 2
+            case kVK_ANSI_1: route = .dashboard
+            case kVK_ANSI_2: route = .calendarMonth
+            case kVK_ANSI_3: route = .calendarWeek
             default: return false
             }
-            NotificationCenter.default.post(name: .jiraSwitchTab, object: tabIndex)
+            NotificationCenter.default.post(name: .jiraSwitchTab, object: route)
             return true
         }
 
-        panel.contentView = NSHostingView(rootView: JiraDashboardView())
+        let rootView = JiraDashboardView()
+            .environment(JiraService.shared)
+            .environment(EventKitService.shared)
+            .environment(LocalEventStore.shared)
+            
+        panel.contentView = NSHostingView(rootView: rootView)
         return panel
     }
 

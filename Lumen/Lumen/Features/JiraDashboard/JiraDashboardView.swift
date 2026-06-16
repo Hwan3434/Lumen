@@ -6,7 +6,10 @@ import SwiftUI
 /// 단축키: ⌘1 = 대시보드, ⌘2 = 캘린더(월간), ⌘3 = 캘린더(주간).
 /// ⌘2/⌘3는 같은 캘린더 탭으로 진입하되 모드만 다르게 — 사용자가 잘 쓰던 ⌘1/⌘2/⌘3을 보존.
 struct JiraDashboardView: View {
-    private var service: JiraService { JiraService.shared }
+    @Environment(JiraService.self) private var service
+    @Environment(LocalEventStore.self) private var localStore
+    @Environment(EventKitService.self) private var eventKitService
+    
     @State private var activeTab: JiraTab = .dashboard
     @State private var calendarMode: CalendarMode = .month
     @State private var selectedProject: String = PresentColumn.allKey
@@ -16,9 +19,6 @@ struct JiraDashboardView: View {
         return f
     }()
     @State private var anchorDate: Date = Date()
-    /// LocalEventStore / EventKitService 변경을 감지해 캘린더 막대도 즉시 재렌더 되게.
-    @State private var localStore = LocalEventStore.shared
-    @State private var eventKitService = EventKitService.shared
     /// 캘린더 탭 진입/모드 전환 시 increment — 자식 view가 onChange로 받아 오늘로 점프.
     /// ZStack+opacity로 항상 mount된 채라 onAppear가 첫 한 번만 호출되는 부작용을 보완.
     @State private var monthResetToken: Int = 0
@@ -44,25 +44,19 @@ struct JiraDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
         .onAppear {
             Task { await service.fetch() }
-            Task { await EventKitService.shared.requestAccessAndFetch() }
+            Task { await eventKitService.requestAccessAndFetch() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .jiraSwitchTab)) { note in
-            // post(object: 0/1/2) — ⌘1/⌘2/⌘3.
-            //   0 → 대시보드
-            //   1 → 캘린더(월간 모드로 진입)
-            //   2 → 캘린더(주간 모드로 진입)
-            guard let idx = note.object as? Int else { return }
-            switch idx {
-            case 0:
+            guard let route = note.object as? JiraRoute else { return }
+            switch route {
+            case .dashboard:
                 activeTab = .dashboard
-            case 1:
+            case .calendarMonth:
                 activeTab = .calendar
                 calendarMode = .month
-            case 2:
+            case .calendarWeek:
                 activeTab = .calendar
                 calendarMode = .week
-            default:
-                break
             }
         }
         .onChange(of: activeTab) { _, newTab in

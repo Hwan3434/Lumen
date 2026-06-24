@@ -136,10 +136,10 @@ final class NotesViewModel {
 
     func createNewNote(activate: Bool) {
         if activate { commitDraftNow() }
-        let id = String(Int(Date().timeIntervalSince1970 * 1000))
+        let id = Self.makeNoteID()
         let item = NoteItem(id: id, text: "")
         notes.append(item)
-        writeToDisk(item)
+        writeToDisk(item, async: false)
         writeOrder()
         if activate {
             selectedID = id
@@ -240,8 +240,21 @@ final class NotesViewModel {
         notesDir.appendingPathComponent("\(id).md")
     }
 
-    private func writeToDisk(_ note: NoteItem) {
-        try? note.text.write(to: fileURL(for: note.id), atomically: true, encoding: .utf8)
+    private static func makeNoteID() -> String {
+        "\(Int(Date().timeIntervalSince1970 * 1000))-\(UUID().uuidString)"
+    }
+
+    private func writeToDisk(_ note: NoteItem, async: Bool = true) {
+        let url = fileURL(for: note.id)
+        let text = note.text
+        let write: () -> Void = {
+            try? text.write(to: url, atomically: true, encoding: .utf8)
+        }
+        if async {
+            diskQueue.async(execute: write)
+        } else {
+            write()
+        }
     }
 
     /// 노트 순서는 .order.json에 id 배열로 저장. 새 노트(메타에 없는 파일)는 timestamp 순으로 끝에 추가.
@@ -296,7 +309,7 @@ final class NotesViewModel {
         let existing = (try? fm.contentsOfDirectory(at: notesDir, includingPropertiesForKeys: nil)) ?? []
         guard existing.filter({ $0.pathExtension == "md" }).isEmpty else { return }
 
-        let id = String(Int(Date().timeIntervalSince1970 * 1000))
+        let id = Self.makeNoteID()
         let dest = fileURL(for: id)
         do {
             try fm.moveItem(at: legacyURL, to: dest)

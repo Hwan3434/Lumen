@@ -89,6 +89,7 @@ struct ClipboardItem: Identifiable, Equatable {
 }
 
 @Observable
+@MainActor
 final class ClipboardManager {
     static let shared = ClipboardManager()
 
@@ -112,7 +113,10 @@ final class ClipboardManager {
         AppResourceMonitor.trace("ClipboardManager.loadFromDisk:done (\(history.count)개)")
         lastChangeCount = NSPasteboard.general.changeCount
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.checkClipboard()
+            guard let manager = self else { return }
+            Task { @MainActor [manager] in
+                manager.checkClipboard()
+            }
         }
     }
 

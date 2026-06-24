@@ -29,13 +29,15 @@ final class CalendarStatusItem {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            guard let item = self else { return }
+            Task { @MainActor [item] in
                 EventKitService.shared.fetch()
-                self?.refresh()
+                item.refresh()
             }
         }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            guard let item = self else { return }
+            Task { @MainActor [item] in item.refresh() }
         }
     }
 
@@ -150,17 +152,18 @@ final class CalendarStatusItem {
             ))
         }
         for ev in EventKitService.shared.events {
-            guard let start = ev.startDate, let end = ev.endDate else { continue }
-            let effectiveEnd = ev.isAllDay ? cal.date(byAdding: .day, value: -1, to: end) ?? end : end
+            let effectiveEnd = ev.isAllDay ? cal.date(byAdding: .day, value: -1, to: ev.endDate) ?? ev.endDate : ev.endDate
             items.append(CalendarItem(
-                id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)", kind: .googleCalendar,
-                title: ev.title ?? "(제목 없음)",
-                start: start,
+                id: "gcal-\(ev.id)", kind: .googleCalendar,
+                title: ev.title,
+                start: ev.startDate,
                 end: ev.isAllDay
-                    ? (cal.isDate(start, inSameDayAs: effectiveEnd) ? nil : effectiveEnd)
-                    : end,
+                    ? (cal.isDate(ev.startDate, inSameDayAs: effectiveEnd) ? nil : effectiveEnd)
+                    : ev.endDate,
                 issueKey: nil, isDone: false, projectKey: nil,
-                hasTimeOfDay: !ev.isAllDay
+                customColor: Color(cgColor: ev.calendarColor),
+                hasTimeOfDay: !ev.isAllDay,
+                location: ev.location
             ))
         }
         return items.filter { $0.covers(day) }

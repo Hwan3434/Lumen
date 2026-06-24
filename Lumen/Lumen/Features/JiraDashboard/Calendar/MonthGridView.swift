@@ -355,8 +355,8 @@ private struct WeekRow: View {
         .padding(.top, topOffset)
     }
 
-    /// CalendarItem.id ("gcal-{eventIdentifier}") → EventKitService에서 EKEvent 조회.
-    private func matchingEKEvent(barID: String) -> EKEvent? {
+    /// CalendarItem.id ("gcal-{eventIdentifier}") → EventKitService에서 외부 캘린더 이벤트 조회.
+    private func matchingEKEvent(barID: String) -> ExternalCalendarEvent? {
         guard barID.hasPrefix("gcal-") else { return nil }
         let id = String(barID.dropFirst("gcal-".count))
         return EventKitService.shared.event(withIdentifier: id)

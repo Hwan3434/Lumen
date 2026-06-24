@@ -80,8 +80,12 @@ enum CalendarAdapter {
     /// - 스프린트: startDate~endDate (둘 다 있어야)
     /// - 에픽: dueDate만 (단일 시점)
     /// - 태스크(이슈): startDate→dueDate 또는 둘 중 하나만 있어도 표시
-    /// - 로컬 이벤트: includeLocal일 때만 (월간 탭 한정)
-    static func buildItems(from data: JiraDashboardData, includeLocal: Bool = false) -> [CalendarItem] {
+    /// - 로컬/외부 캘린더 이벤트: 호출자가 명시적으로 넘길 때만 포함
+    static func buildItems(
+        from data: JiraDashboardData,
+        localEvents: [LocalEvent] = [],
+        externalEvents: [ExternalCalendarEvent] = []
+    ) -> [CalendarItem] {
         var items: [CalendarItem] = []
 
         for sprint in data.sprintInfos {
@@ -112,36 +116,36 @@ enum CalendarAdapter {
             ))
         }
 
-        if includeLocal {
-            for ev in LocalEventStore.shared.events {
-                items.append(CalendarItem(
-                    id: "local-\(ev.id.uuidString)",
-                    kind: .local,
-                    title: ev.title,
-                    start: ev.start,
-                    end: ev.end,
-                    issueKey: nil,
-                    isDone: false,
-                    projectKey: nil
-                ))
-            }
+        for ev in localEvents {
+            items.append(CalendarItem(
+                id: "local-\(ev.id.uuidString)",
+                kind: .local,
+                title: ev.title,
+                start: ev.start,
+                end: ev.end,
+                issueKey: nil,
+                isDone: false,
+                projectKey: nil
+            ))
+        }
 
-            for ev in EventKitService.shared.events {
-                guard let start = ev.startDate, let end = ev.endDate else { continue }
-                let effectiveEnd = ev.isAllDay ? Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end : end
-                items.append(CalendarItem(
-                    id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)",
-                    kind: .googleCalendar,
-                    title: ev.title ?? "(제목 없음)",
-                    start: start,
-                    end: Calendar.current.isDate(start, inSameDayAs: effectiveEnd) ? nil : effectiveEnd,
-                    issueKey: nil,
-                    isDone: false,
-                    projectKey: nil,
-                    customColor: Color(cgColor: ev.calendar.cgColor),
-                    hasTimeOfDay: !ev.isAllDay
-                ))
-            }
+        for ev in externalEvents {
+            let effectiveEnd = ev.isAllDay
+                ? Calendar.current.date(byAdding: .day, value: -1, to: ev.endDate) ?? ev.endDate
+                : ev.endDate
+            items.append(CalendarItem(
+                id: "gcal-\(ev.id)",
+                kind: .googleCalendar,
+                title: ev.title,
+                start: ev.startDate,
+                end: Calendar.current.isDate(ev.startDate, inSameDayAs: effectiveEnd) ? nil : effectiveEnd,
+                issueKey: nil,
+                isDone: false,
+                projectKey: nil,
+                customColor: Color(cgColor: ev.calendarColor),
+                hasTimeOfDay: !ev.isAllDay,
+                location: ev.location
+            ))
         }
 
         // ±3개월 윈도우에 들어온 모든 이슈가 단일 소스. dedup 불필요(이미 unique).

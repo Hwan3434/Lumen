@@ -6,8 +6,8 @@ import IOKit
 ///
 /// 저장 위치: `~/Library/Application Support/Lumen/secrets.dat`
 /// - 평문 JSON을 저장하지 않고, 이 머신의 IOPlatformUUID를 키로 한 XOR로 가볍게 가린다.
-///   머신을 통째로 들고 가는 위협은 막지 못하지만, 단순 파일 노출(백업, 실수 공유)에서
-///   토큰이 그대로 보이는 사고는 차단한다. 자가서명·단일사용자 환경의 위협 모델과 균형.
+///   이는 암호화가 아니라 난독화다. 같은 사용자 계정/같은 머신에서 파일을 읽을 수 있는
+///   공격자는 복구할 수 있으므로, 위협 모델은 "단순 파일 노출에서 평문 토큰을 피함"에 한정된다.
 /// - 파일은 owner-only(0600)로 만든다.
 enum SecretStore {
     static func read(_ account: String) -> String? {

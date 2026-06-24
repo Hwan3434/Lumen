@@ -1,5 +1,6 @@
 import EventKit
 import Foundation
+import CoreGraphics
 
 // macOS Calendar.app에 연동된 캘린더에서 이벤트를 가져온다.
 // 표시 여부는 사용자가 popover 토글로 직접 결정 (블랙리스트 방식 — disabled IDs).
@@ -11,7 +12,7 @@ final class EventKitService {
     static let shared = EventKitService()
 
     private let store = EKEventStore()
-    private(set) var events: [EKEvent] = []
+    private(set) var events: [ExternalCalendarEvent] = []
     private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
     /// 여러 strip이 동일 인스턴스를 구독해 한 strip의 토글이 즉시 다른 strip에 반영되도록 @Observable로 노출.
     private(set) var disabledCalendarIDs: Set<String> = []
@@ -64,7 +65,7 @@ final class EventKitService {
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendars)
         let eventStore = self.store
         Task.detached(priority: .userInitiated) {
-            let matched = eventStore.events(matching: predicate)
+            let matched = eventStore.events(matching: predicate).compactMap(ExternalCalendarEvent.init(event:))
             await MainActor.run {
                 EventKitService.shared.events = matched
             }
@@ -85,8 +86,65 @@ final class EventKitService {
         fetch()
     }
 
-    func event(withIdentifier id: String) -> EKEvent? {
-        events.first { $0.eventIdentifier == id }
+    func event(withIdentifier id: String) -> ExternalCalendarEvent? {
+        events.first { $0.id == id }
     }
 
+}
+
+nonisolated struct ExternalCalendarEvent: Identifiable {
+    let id: String
+    let title: String
+    let startDate: Date
+    let endDate: Date
+    let isAllDay: Bool
+    let calendarTitle: String
+    let sourceTitle: String?
+    let calendarColor: CGColor
+    let notes: String?
+    let location: String?
+    let urlString: String?
+
+    init?(
+        id: String?,
+        title: String?,
+        startDate: Date?,
+        endDate: Date?,
+        isAllDay: Bool,
+        calendarTitle: String,
+        sourceTitle: String?,
+        calendarColor: CGColor,
+        notes: String?,
+        location: String?,
+        urlString: String?
+    ) {
+        guard let id, let startDate, let endDate else { return nil }
+        self.id = id
+        self.title = title ?? "(제목 없음)"
+        self.startDate = startDate
+        self.endDate = endDate
+        self.isAllDay = isAllDay
+        self.calendarTitle = calendarTitle
+        self.sourceTitle = sourceTitle
+        self.calendarColor = calendarColor
+        self.notes = notes
+        self.location = location
+        self.urlString = urlString
+    }
+
+    init?(event: EKEvent) {
+        self.init(
+            id: event.eventIdentifier,
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            isAllDay: event.isAllDay,
+            calendarTitle: event.calendar.title,
+            sourceTitle: event.calendar.source?.title,
+            calendarColor: event.calendar.cgColor,
+            notes: event.notes,
+            location: event.location,
+            urlString: event.url?.absoluteString
+        )
+    }
 }

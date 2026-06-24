@@ -139,7 +139,11 @@ struct JiraDashboardView: View {
     }
 
     private func visibleCalendarItems(_ data: JiraDashboardData, includeLocal: Bool) -> [CalendarItem] {
-        CalendarAdapter.buildItems(from: data, includeLocal: includeLocal).filter { filter.passes($0) }
+        CalendarAdapter.buildItems(
+            from: data,
+            localEvents: includeLocal ? localStore.events : [],
+            externalEvents: includeLocal ? eventKitService.events : []
+        ).filter { filter.passes($0) }
     }
 }
 

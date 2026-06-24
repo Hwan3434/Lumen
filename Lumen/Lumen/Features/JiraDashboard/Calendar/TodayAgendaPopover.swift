@@ -106,27 +106,26 @@ struct TodayAgendaPopover: View {
             ))
         }
         for ev in service.events {
-            guard let start = ev.startDate, let end = ev.endDate else { continue }
-            let effectiveEnd = ev.isAllDay ? cal.date(byAdding: .day, value: -1, to: end) ?? end : end
+            let effectiveEnd = ev.isAllDay ? cal.date(byAdding: .day, value: -1, to: ev.endDate) ?? ev.endDate : ev.endDate
             items.append(CalendarItem(
-                id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)",
+                id: "gcal-\(ev.id)",
                 kind: .googleCalendar,
-                title: ev.title ?? "(제목 없음)",
-                start: start,
+                title: ev.title,
+                start: ev.startDate,
                 end: ev.isAllDay
-                    ? (cal.isDate(start, inSameDayAs: effectiveEnd) ? nil : effectiveEnd)
-                    : end,
+                    ? (cal.isDate(ev.startDate, inSameDayAs: effectiveEnd) ? nil : effectiveEnd)
+                    : ev.endDate,
                 issueKey: nil,
                 isDone: false,
                 projectKey: nil,
-                customColor: Color(cgColor: ev.calendar.cgColor),
+                customColor: Color(cgColor: ev.calendarColor),
                 hasTimeOfDay: !ev.isAllDay,
                 location: ev.location
             ))
         }
         // Jira 이슈 — 팝오버에만 표시 (상태바 라벨 제외)
         if let data = JiraService.shared.data {
-            items += CalendarAdapter.buildItems(from: data, includeLocal: false)
+            items += CalendarAdapter.buildItems(from: data)
         }
         return items
     }

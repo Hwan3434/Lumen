@@ -144,8 +144,8 @@ struct TimelineView: View {
 
                     // overflow 표시 — 잘려 안 보이는 task가 있는 col에 +N (maxLanesVisible이 999라 사실상 안 뜸)
                     ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
-                        if let n = layout.overflowByCol[col] {
-                            Text("+\\(n)")
+                        if let count = layout.overflowByCol[col] {
+                            Text("+\(count)")
                                 .font(.system(size: 9, weight: .medium, design: .monospaced))
                                 .foregroundStyle(LumenTokens.TextColor.muted)
                                 .padding(.leading, CGFloat(col) * dayWidth + 4)
@@ -285,7 +285,7 @@ struct TimelineView: View {
         .padding(.top, topOffset)
     }
 
-    private func matchingEKEvent(itemID: String) -> EKEvent? {
+    private func matchingEKEvent(itemID: String) -> ExternalCalendarEvent? {
         guard itemID.hasPrefix("gcal-") else { return nil }
         let id = String(itemID.dropFirst("gcal-".count))
         return EventKitService.shared.event(withIdentifier: id)

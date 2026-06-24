@@ -48,7 +48,7 @@ extension Constants {
     }
 
     /// Jira "Start date" 커스텀 필드 ID
-    static let jiraStartDateFieldId = "customfield_10015"
+    nonisolated static let jiraStartDateFieldId = "customfield_10015"
     /// JQL에서의 동일 필드 표현
-    static let jiraStartDateJQL     = "\"Start date\""
+    nonisolated static let jiraStartDateJQL     = "\"Start date\""
 }

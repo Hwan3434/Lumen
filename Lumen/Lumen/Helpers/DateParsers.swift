@@ -1,6 +1,6 @@
 import Foundation
 
-enum DateParsers {
+nonisolated enum DateParsers {
     static let iso8601Full: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

@@ -130,7 +130,7 @@ enum CalendarAdapter {
                 guard let start = ev.startDate, let end = ev.endDate else { continue }
                 let effectiveEnd = ev.isAllDay ? Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end : end
                 items.append(CalendarItem(
-                    id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)",
+                    id: "gcal-\(ev.eventIdentifier ?? ev.calendarItemIdentifier)",
                     kind: .googleCalendar,
                     title: ev.title ?? "(제목 없음)",
                     start: start,
@@ -180,7 +180,11 @@ struct LaidOutBar: Identifiable {
     let lane: Int
     /// id에 lane을 의도적으로 뺀다 — 항목 추가/필터로 lane이 재배치돼도 SwiftUI가 view identity를
     /// 유지해 Y offset을 부드럽게 애니메이션하게 한다.
-    var id: String { "\(item.id)|\(startCol)|\(span)" }
+    var id: String {
+        let startKey = item.start.timeIntervalSinceReferenceDate.bitPattern
+        let endKey = item.end?.timeIntervalSinceReferenceDate.bitPattern.description ?? "nil"
+        return "\(item.id)|\(startKey)|\(endKey)|\(startCol)|\(span)"
+    }
 }
 
 struct WeekLayout {

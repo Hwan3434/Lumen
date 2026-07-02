@@ -1,5 +1,6 @@
 import EventKit
 import Foundation
+import OSLog
 
 // macOS Calendar.app에 연동된 캘린더에서 이벤트를 가져온다.
 // 표시 여부는 사용자가 popover 토글로 직접 결정 (블랙리스트 방식 — disabled IDs).
@@ -9,6 +10,7 @@ import Foundation
 @MainActor
 final class EventKitService {
     static let shared = EventKitService()
+    private static let logger = Logger(subsystem: "com.jh.Lumen", category: "EventKitService")
 
     private let store = EKEventStore()
     private(set) var events: [EKEvent] = []
@@ -65,8 +67,16 @@ final class EventKitService {
         let eventStore = self.store
         Task.detached(priority: .userInitiated) {
             let matched = eventStore.events(matching: predicate)
+            var seenOccurrences: Set<EventOccurrenceKey> = []
+            let uniqueEvents = matched.filter { event in
+                seenOccurrences.insert(EventOccurrenceKey(event)).inserted
+            }
+            let duplicateCount = matched.count - uniqueEvents.count
             await MainActor.run {
-                EventKitService.shared.events = matched
+                if duplicateCount > 0 {
+                    Self.logger.warning("Removed \(duplicateCount, privacy: .public) duplicate EventKit occurrence(s)")
+                }
+                EventKitService.shared.events = uniqueEvents
             }
         }
     }
@@ -86,7 +96,24 @@ final class EventKitService {
     }
 
     func event(withIdentifier id: String) -> EKEvent? {
-        events.first { $0.eventIdentifier == id }
+        events.first { ($0.eventIdentifier ?? $0.calendarItemIdentifier) == id }
     }
 
+}
+
+/// EventKit may return the same synced occurrence more than once. Recurring events can share a
+/// base identifier, so dates and calendar identity are part of the key rather than deduplicating
+/// by `eventIdentifier` alone.
+private nonisolated struct EventOccurrenceKey: Hashable {
+    let calendarIdentifier: String
+    let eventIdentifier: String
+    let start: UInt64?
+    let end: UInt64?
+
+    init(_ event: EKEvent) {
+        calendarIdentifier = event.calendar.calendarIdentifier
+        eventIdentifier = event.eventIdentifier ?? event.calendarItemIdentifier
+        start = event.startDate?.timeIntervalSinceReferenceDate.bitPattern
+        end = event.endDate?.timeIntervalSinceReferenceDate.bitPattern
+    }
 }

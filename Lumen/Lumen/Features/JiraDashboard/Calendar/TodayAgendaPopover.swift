@@ -109,7 +109,7 @@ struct TodayAgendaPopover: View {
             guard let start = ev.startDate, let end = ev.endDate else { continue }
             let effectiveEnd = ev.isAllDay ? cal.date(byAdding: .day, value: -1, to: end) ?? end : end
             items.append(CalendarItem(
-                id: "gcal-\(ev.eventIdentifier ?? UUID().uuidString)",
+                id: "gcal-\(ev.eventIdentifier ?? ev.calendarItemIdentifier)",
                 kind: .googleCalendar,
                 title: ev.title ?? "(제목 없음)",
                 start: start,

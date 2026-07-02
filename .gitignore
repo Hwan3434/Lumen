@@ -24,3 +24,7 @@ build/
 dist/
 .agents/
 .antigravitycli/
+.claude/
+
+# Claude Code background session worktrees
+.claude/worktrees/

@@ -75,6 +75,47 @@ struct CalendarItem: Identifiable, Hashable {
     }
 }
 
+nonisolated enum CalendarItemSort {
+    /// 캘린더 전역 기본 표시 순서.
+    /// 시간 있는 일정은 같은 날짜 안에서 시작 시각순으로 배치하고, 종일/기간 항목은 그 뒤에 안정적으로 둔다.
+    static func ordered(_ items: [CalendarItem]) -> [CalendarItem] {
+        items.sorted(by: areInDisplayOrder)
+    }
+
+    static func areInDisplayOrder(_ lhs: CalendarItem, _ rhs: CalendarItem) -> Bool {
+        let cal = Calendar.current
+        let lhsDay = cal.startOfDay(for: lhs.start)
+        let rhsDay = cal.startOfDay(for: rhs.start)
+        if lhsDay != rhsDay { return lhsDay < rhsDay }
+
+        if lhs.hasTimeOfDay != rhs.hasTimeOfDay { return lhs.hasTimeOfDay }
+        if lhs.hasTimeOfDay, lhs.start != rhs.start { return lhs.start < rhs.start }
+
+        let lhsEnd = lhs.end ?? lhs.start
+        let rhsEnd = rhs.end ?? rhs.start
+        if lhsEnd != rhsEnd { return lhsEnd < rhsEnd }
+
+        let lhsKind = kindOrder(lhs.kind)
+        let rhsKind = kindOrder(rhs.kind)
+        if lhsKind != rhsKind { return lhsKind < rhsKind }
+
+        let titleOrder = lhs.title.localizedStandardCompare(rhs.title)
+        if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+
+        return lhs.id < rhs.id
+    }
+
+    private static func kindOrder(_ kind: CalendarItemKind) -> Int {
+        switch kind {
+        case .googleCalendar: return 0
+        case .local: return 1
+        case .sprint: return 2
+        case .epic: return 3
+        case .task: return 4
+        }
+    }
+}
+
 enum CalendarAdapter {
     /// JiraDashboardData에서 캘린더가 쓸 항목 목록을 빌드한다.
     /// - 스프린트: startDate~endDate (둘 다 있어야)
@@ -199,10 +240,9 @@ struct WeekLayout {
 }
 
 /// 우선순위:
-///   1) span desc — 긴 task가 위쪽 lane을 먼저 차지 ("오래가는 일이 위로")
-///   2) startCol asc — 같은 길이면 시작 빠른 게 먼저
-///   3) kind asc (이벤트 → 스프린트 → 에픽 → 태스크)
-///   4) title asc — 안정 정렬
+///   1) start day asc — 날짜별 표시 순서 유지
+///   2) timed event first + start time asc — 시간 일정은 날짜 안에서 시간순
+///   3) end/kind/title/id asc — 안정 정렬
 ///
 /// 같은 lane 안에서 task끼리 겹치지 않도록 greedy로 가장 위 비어있는 lane에 배치.
 /// lane >= maxLanes면 그 col에 overflow 카운트.
@@ -228,14 +268,9 @@ func layoutWeek(weekStart: Date, items: [CalendarItem], maxLanes: Int) -> WeekLa
         let span = max(1, endCol - startCol + 1)
         candidates.append(Candidate(item: item, startCol: startCol, span: span))
     }
-    let kindOrder: [CalendarItemKind: Int] = [.local: 0, .sprint: 1, .epic: 2, .task: 3]
     candidates.sort { a, b in
-        if a.span != b.span { return a.span > b.span }
         if a.startCol != b.startCol { return a.startCol < b.startCol }
-        let oa = kindOrder[a.item.kind] ?? 99
-        let ob = kindOrder[b.item.kind] ?? 99
-        if oa != ob { return oa < ob }
-        return a.item.title < b.item.title
+        return CalendarItemSort.areInDisplayOrder(a.item, b.item)
     }
 
     var lanes: [[Bool]] = []

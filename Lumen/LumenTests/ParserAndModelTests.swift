@@ -112,22 +112,40 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(items.map(\.projectKey), ["ABC", "ABC", nil, nil, "ABC"])
     }
 
-    func testWeekLayoutPrioritizesLongerBarsAndReportsOverflow() {
+    func testWeekLayoutUsesSharedDisplayOrderAndReportsOverflow() {
         let weekStart = date("2026-06-21")
         let items = [
-            CalendarItem(id: "short", kind: .task, title: "Short", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
-            CalendarItem(id: "long", kind: .task, title: "Long", start: date("2026-06-22"), end: date("2026-06-24"), issueKey: nil, isDone: false, projectKey: "ABC"),
-            CalendarItem(id: "overflow", kind: .task, title: "Overflow", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
+            CalendarItem(id: "late", kind: .googleCalendar, title: "Late", start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+            CalendarItem(id: "all-day", kind: .task, title: "All Day", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
+            CalendarItem(id: "early", kind: .googleCalendar, title: "Early", start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
         ]
 
         let layout = layoutWeek(weekStart: weekStart, items: items, maxLanes: 1)
 
         XCTAssertEqual(layout.bars.count, 1)
-        XCTAssertEqual(layout.bars.first?.item.id, "long")
+        XCTAssertEqual(layout.bars.first?.item.id, "early")
         XCTAssertEqual(layout.overflowByCol[1], 2)
+    }
+
+    func testCalendarItemSortOrdersTimedItemsWithinDate() {
+        let items = [
+            CalendarItem(id: "all-day", kind: .task, title: "All Day", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
+            CalendarItem(id: "tomorrow", kind: .googleCalendar, title: "Tomorrow", start: dateTime("2026-06-23 09:00"), end: dateTime("2026-06-23 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+            CalendarItem(id: "late", kind: .googleCalendar, title: "Late", start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+            CalendarItem(id: "early", kind: .googleCalendar, title: "Early", start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+        ]
+
+        XCTAssertEqual(CalendarItemSort.ordered(items).map(\.id), ["early", "late", "all-day", "tomorrow"])
     }
 
     private func date(_ value: String) -> Date {
         DateParsers.ymd.date(from: value) ?? Date()
+    }
+
+    private func dateTime(_ value: String) -> Date {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.date(from: value) ?? Date()
     }
 }

@@ -122,7 +122,9 @@ final class CalendarStatusItem {
         handle.updateIcon(Self.todayIconName())
 
         // 상태바 라벨은 캘린더/로컬만 — Jira 이슈는 팝오버에서만 보임.
-        let labelItems = items.filter { $0.kind == .googleCalendar || $0.kind == .local }
+        let labelItems = CalendarItemSort.ordered(
+            items.filter { $0.kind == .googleCalendar || $0.kind == .local }
+        )
 
         if let next = labelItems.filter({ $0.hasTimeOfDay && ($0.end ?? $0.start) > now && $0.start < tomorrow })
             .min(by: { $0.start < $1.start }) {

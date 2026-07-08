@@ -147,8 +147,8 @@ struct TodayAgendaPopover: View {
                 allDay.append(item)
             }
         }
-        timed.sort { $0.start < $1.start }
-        allDay.sort { $0.title < $1.title }
+        timed = CalendarItemSort.ordered(timed)
+        allDay = CalendarItemSort.ordered(allDay)
         return Groups(allDay: allDay, timed: timed)
     }
 

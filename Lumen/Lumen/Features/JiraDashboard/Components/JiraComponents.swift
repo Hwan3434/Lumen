@@ -107,7 +107,14 @@ struct IssueRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            ProjectChip(key: issue.projectKey)
+            HStack(spacing: 3) {
+                ProjectChip(key: issue.projectKey)
+                if let number = issueNumber {
+                    Text(number)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                }
+            }
             PriorityDot(priority: issue.priority)
             Text(issue.summary)
                 .font(.system(size: 12))
@@ -137,6 +144,12 @@ struct IssueRow: View {
 
     private var textColor: Color {
         issue.isDone ? LumenTokens.TextColor.muted : LumenTokens.TextColor.primary
+    }
+
+    /// "ABC-123" → "-123". 앞의 프로젝트 칩이 이미 프로젝트 키를 보여주므로 번호 부분만 이어 붙인다.
+    private var issueNumber: String? {
+        guard let dash = issue.key.lastIndex(of: "-") else { return nil }
+        return String(issue.key[dash...])
     }
 }
 

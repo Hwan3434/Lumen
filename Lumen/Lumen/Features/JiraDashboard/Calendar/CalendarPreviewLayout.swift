@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// 미리보기 popover의 공통 치수. 본 레이아웃뿐 아니라 호출자의 로딩/에러 상태도
+/// 같은 폭을 써야 popover가 상태 전환 때 흔들리지 않으므로 한 곳에서 관리한다.
+enum CalendarPreviewMetrics {
+    static let width: CGFloat = 440
+    /// 본문(설명/메모) 스크롤 영역의 높이 범위.
+    static let bodyMinHeight: CGFloat = 100
+    static let bodyMaxHeight: CGFloat = 340
+}
+
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.
 /// header(카테고리 색 점·라벨·뱃지) + title + meta rows + body + footer 구성.
 /// 호출자는 데이터만 넘겨 구성한다 — 두 popover의 시각 일관성을 한 곳에서 관리.
@@ -67,7 +76,8 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .textSelection(.enabled)
                     }
-                    .frame(minHeight: 60, maxHeight: 200)
+                    .frame(minHeight: CalendarPreviewMetrics.bodyMinHeight,
+                           maxHeight: CalendarPreviewMetrics.bodyMaxHeight)
                 }
 
                 extraContent()
@@ -76,7 +86,7 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
 
             footer()
         }
-        .frame(width: 340)
+        .frame(width: CalendarPreviewMetrics.width)
     }
 
     private var header: some View {

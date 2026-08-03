@@ -36,7 +36,7 @@ struct IssuePreviewPopover: View {
                     footer: { jiraOpenFooter }
                 )
             } else {
-                Color.clear.frame(width: 340, height: 80)
+                Color.clear.frame(width: CalendarPreviewMetrics.width, height: 100)
             }
         }
         .task { await load() }
@@ -49,7 +49,7 @@ struct IssuePreviewPopover: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(LumenTokens.TextColor.muted)
         }
-        .frame(width: 340, height: 120)
+        .frame(width: CalendarPreviewMetrics.width, height: 160)
     }
 
     private func errorView(_ msg: String) -> some View {
@@ -63,7 +63,7 @@ struct IssuePreviewPopover: View {
                 .lineLimit(3)
         }
         .padding(14)
-        .frame(width: 340, alignment: .leading)
+        .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
     }
 
     private var projectColor: Color {

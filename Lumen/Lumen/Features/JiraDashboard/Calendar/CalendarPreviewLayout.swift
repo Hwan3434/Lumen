@@ -5,8 +5,8 @@ import SwiftUI
 enum CalendarPreviewMetrics {
     static let width: CGFloat = 440
     /// 본문(설명/메모) 스크롤 영역의 높이 범위.
-    static let bodyMinHeight: CGFloat = 100
-    static let bodyMaxHeight: CGFloat = 340
+    static let bodyMinHeight: CGFloat = 180
+    static let bodyMaxHeight: CGFloat = 520
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.

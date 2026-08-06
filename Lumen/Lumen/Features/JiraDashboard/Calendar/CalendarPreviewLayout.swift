@@ -3,10 +3,15 @@ import SwiftUI
 /// 미리보기 popover의 공통 치수. 본 레이아웃뿐 아니라 호출자의 로딩/에러 상태도
 /// 같은 폭을 써야 popover가 상태 전환 때 흔들리지 않으므로 한 곳에서 관리한다.
 enum CalendarPreviewMetrics {
-    static let width: CGFloat = 440
+    static let width: CGFloat = 500
     /// 본문(설명/메모) 스크롤 영역의 높이 범위.
     static let bodyMinHeight: CGFloat = 180
     static let bodyMaxHeight: CGFloat = 520
+    /// 본문 아래에 댓글이 함께 붙을 때의 본문 최대 높이 — 둘을 합쳐도 팝오버가
+    /// 대시보드 패널(840pt)을 넘지 않도록 본문 쪽을 양보시킨다.
+    static let bodyMaxHeightWithComments: CGFloat = 260
+    /// 댓글 목록 영역의 최대 높이.
+    static let commentsMaxHeight: CGFloat = 190
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.
@@ -25,6 +30,9 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
     var metaRows: [MetaRow] = []
     /// 긴 본문(설명/메모) — 스크롤 영역으로 들어감. nil/빈 문자열이면 생략.
     var bodyText: String? = nil
+    /// 본문 스크롤 영역의 최대 높이. 아래에 댓글 같은 추가 컨텐츠가 붙는 호출자는
+    /// 이 값을 줄여 팝오버 전체 높이를 억제한다.
+    var bodyMaxHeight: CGFloat = CalendarPreviewMetrics.bodyMaxHeight
     /// 본문 아래 추가 컨텐츠 (예: 댓글 수). 없으면 EmptyView.
     @ViewBuilder var extraContent: () -> Body
     /// footer 영역 — 외부 열기 버튼 등. 없으면 EmptyView.
@@ -77,7 +85,7 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                             .textSelection(.enabled)
                     }
                     .frame(minHeight: CalendarPreviewMetrics.bodyMinHeight,
-                           maxHeight: CalendarPreviewMetrics.bodyMaxHeight)
+                           maxHeight: bodyMaxHeight)
                 }
 
                 extraContent()
@@ -130,6 +138,7 @@ extension CalendarPreviewLayout where Body == EmptyView {
         self.title = title
         self.metaRows = metaRows
         self.bodyText = bodyText
+        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = { EmptyView() }
         self.footer = footer
     }
@@ -151,6 +160,7 @@ extension CalendarPreviewLayout where Footer == EmptyView {
         self.title = title
         self.metaRows = metaRows
         self.bodyText = bodyText
+        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = extraContent
         self.footer = { EmptyView() }
     }
@@ -171,6 +181,7 @@ extension CalendarPreviewLayout where Body == EmptyView, Footer == EmptyView {
         self.title = title
         self.metaRows = metaRows
         self.bodyText = bodyText
+        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = { EmptyView() }
         self.footer = { EmptyView() }
     }

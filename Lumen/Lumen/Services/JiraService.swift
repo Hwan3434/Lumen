@@ -97,12 +97,22 @@ nonisolated struct JiraDashboardData {
 
 /// 단건 이슈 미리보기용 — 전체 이슈 fetch에 description/comments는 빠져 있어서
 /// 알약/막대 클릭 시점에 lazy로 받아 popover에 띄운다.
+nonisolated struct IssueComment: Identifiable {
+    let id: String
+    let author: String
+    let created: Date?
+    let bodyText: String
+}
+
 nonisolated struct IssueDetail {
     let key: String
     let summary: String
     let status: String
     let descriptionText: String
     let commentCount: Int
+    /// 최신 댓글 일부만 — 팝오버는 미리보기이므로 전체 스레드는 Jira 본문으로 넘긴다.
+    /// commentCount보다 적을 수 있고, 오래된 것부터 최신 순으로 정렬돼 있다.
+    let recentComments: [IssueComment]
 }
 
 // MARK: - Service

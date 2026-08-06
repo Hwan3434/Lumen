@@ -24,15 +24,10 @@ struct IssuePreviewPopover: View {
                     badgeText: d.status,
                     title: d.summary,
                     bodyText: d.descriptionText,
-                    extraContent: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bubble.right")
-                                .font(.system(size: 10, weight: .medium))
-                            Text("\(d.commentCount)")
-                                .font(.system(size: 11, design: .monospaced))
-                        }
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    },
+                    bodyMaxHeight: d.recentComments.isEmpty
+                        ? CalendarPreviewMetrics.bodyMaxHeight
+                        : CalendarPreviewMetrics.bodyMaxHeightWithComments,
+                    extraContent: { commentSection(d) },
                     footer: { jiraOpenFooter }
                 )
             } else {
@@ -64,6 +59,86 @@ struct IssuePreviewPopover: View {
         }
         .padding(14)
         .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
+    }
+
+    /// 좁은 미리보기 팝오버에서는 스레드를 페이지네이션하거나 무한스크롤하지 않는 것이 통례다.
+    /// 최신 몇 개만 보여주고 나머지는 "더 보기"로 Jira 본문에 넘긴다.
+    @ViewBuilder
+    private func commentSection(_ detail: IssueDetail) -> some View {
+        if detail.recentComments.isEmpty {
+            // 본문을 못 가져왔어도 개수는 알 수 있는 경우 — 기존처럼 개수만 노출.
+            if detail.commentCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "bubble.right")
+                        .font(.system(size: 10, weight: .medium))
+                    Text("\(detail.commentCount)")
+                        .font(.system(size: 11, design: .monospaced))
+                }
+                .foregroundStyle(LumenTokens.TextColor.muted)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 7) {
+                Rectangle()
+                    .fill(LumenTokens.divider)
+                    .frame(height: 0.5)
+
+                HStack(spacing: 5) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    Text("댓글 \(detail.commentCount)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LumenTokens.TextColor.secondary)
+                    Spacer()
+                    if hiddenCommentCount(detail) > 0 {
+                        Button {
+                            openJira(issueKey)
+                        } label: {
+                            Text("이전 \(hiddenCommentCount(detail))개 더 보기")
+                                .font(.system(size: 10.5, weight: .medium))
+                                .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 9) {
+                        ForEach(detail.recentComments) { commentRow($0) }
+                    }
+                }
+                .frame(maxHeight: CalendarPreviewMetrics.commentsMaxHeight)
+            }
+        }
+    }
+
+    private func hiddenCommentCount(_ detail: IssueDetail) -> Int {
+        max(0, detail.commentCount - detail.recentComments.count)
+    }
+
+    private func commentRow(_ comment: IssueComment) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Text(comment.author)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                    .lineLimit(1)
+                if let created = comment.created {
+                    Text(LumenTime.relative(created, granularity: .shortNoSuffix))
+                        .font(.system(size: 10))
+                        .foregroundStyle(LumenTokens.TextColor.muted)
+                }
+            }
+            Text(comment.bodyText)
+                .font(.system(size: 11))
+                .foregroundStyle(LumenTokens.TextColor.secondary)
+                .lineSpacing(1.5)
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+        }
     }
 
     private var projectColor: Color {

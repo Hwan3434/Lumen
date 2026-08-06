@@ -110,10 +110,27 @@ actor JiraRepository {
         )
     }
 
+    /// 미리보기 팝오버에 노출할 최신 댓글 수. 이보다 많으면 "더 보기"로 Jira 본문에 넘긴다.
+    static let previewCommentLimit = 3
+
     func fetchIssueDetail(key: String) async throws -> IssueDetail {
         let cloudId = try await ensureCloudId()
+
+        // 본문과 댓글은 서로 독립이라 동시에 받는다 — 댓글 때문에 미리보기가 느려지지 않도록.
+        async let fieldsTask = fetchIssueFields(cloudId: cloudId, key: key)
+        async let commentsTask = fetchRecentComments(cloudId: cloudId, key: key)
+
+        let (summary, statusName, descText) = try await fieldsTask
+        let (commentCount, recentComments) = await commentsTask
+
+        return IssueDetail(key: key, summary: summary, status: statusName,
+                           descriptionText: descText, commentCount: commentCount,
+                           recentComments: recentComments)
+    }
+
+    private func fetchIssueFields(cloudId: String, key: String) async throws -> (summary: String, status: String, description: String) {
         var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)")!
-        comps.queryItems = [URLQueryItem(name: "fields", value: "summary,status,description,comment")]
+        comps.queryItems = [URLQueryItem(name: "fields", value: "summary,status,description")]
         guard let url = comps.url else { throw URLError(.badURL) }
 
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
@@ -130,14 +147,53 @@ actor JiraRepository {
         let statusName = ((fields["status"] as? [String: Any])?["name"] as? String) ?? ""
         let descText = (fields["description"] as? [String: Any])
             .map { Self.adfPlainText(node: $0).trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+        return (summary, statusName, descText)
+    }
 
-        var commentCount = 0
-        if let comment = fields["comment"] as? [String: Any] {
-            commentCount = (comment["total"] as? Int) ?? ((comment["comments"] as? [Any])?.count ?? 0)
-        }
+    /// 최신 댓글 몇 개와 전체 개수.
+    ///
+    /// 이슈 GET에 딸려오는 `comment` 필드는 **오래된 것부터의 첫 페이지**라, 댓글이 많은 이슈에서는
+    /// 거기서 잘라내면 "최신"이 아니게 된다. 그래서 정렬을 지정할 수 있는 전용 엔드포인트를 쓴다.
+    /// 실패해도 던지지 않는다 — 댓글은 부가 정보이므로 본문 미리보기까지 막을 이유가 없다.
+    private func fetchRecentComments(cloudId: String, key: String) async -> (total: Int, comments: [IssueComment]) {
+        var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)/comment")!
+        comps.queryItems = [
+            URLQueryItem(name: "orderBy", value: "-created"),
+            URLQueryItem(name: "maxResults", value: "\(Self.previewCommentLimit)"),
+        ]
+        guard let url = comps.url else { return (0, []) }
 
-        return IssueDetail(key: key, summary: summary, status: statusName,
-                           descriptionText: descText, commentCount: commentCount)
+        guard
+            let (data, resp) = try? await URLSession.shared.data(for: makeRequest(url: url)),
+            let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return (0, []) }
+
+        return Self.parseCommentPage(json)
+    }
+
+    /// `/issue/{key}/comment?orderBy=-created` 응답 → (전체 개수, 표시용 댓글).
+    /// 네트워크와 분리된 순수 함수 — 정렬·필터 규칙을 테스트로 고정하기 위함.
+    static func parseCommentPage(_ json: [String: Any]) -> (total: Int, comments: [IssueComment]) {
+        let raw = (json["comments"] as? [[String: Any]]) ?? []
+        // 응답은 최신순(-created)이지만, 표시는 대화 흐름대로 오래된 것 → 최신 순으로 뒤집는다.
+        let parsed = Array(raw.compactMap(parseComment).reversed())
+        let total = (json["total"] as? Int) ?? parsed.count
+        return (max(total, parsed.count), parsed)
+    }
+
+    private static func parseComment(_ dict: [String: Any]) -> IssueComment? {
+        guard let id = dict["id"] as? String else { return nil }
+        let body = (dict["body"] as? [String: Any])
+            .map { adfPlainText(node: $0).trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
+        guard !body.isEmpty else { return nil }
+
+        return IssueComment(
+            id: id,
+            author: ((dict["author"] as? [String: Any])?["displayName"] as? String) ?? "알 수 없음",
+            created: (dict["created"] as? String).flatMap { DateParsers.parseISO8601($0) },
+            bodyText: body
+        )
     }
 
     private func ensureCloudId() async throws -> String {

@@ -138,6 +138,52 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(CalendarItemSort.ordered(items).map(\.id), ["early", "late", "all-day", "tomorrow"])
     }
 
+    func testCommentPageOrdersOldestFirstAndSkipsEmptyBodies() {
+        // Jira는 orderBy=-created로 최신순을 주지만, 표시는 대화 흐름대로 뒤집어야 한다.
+        let page: [String: Any] = [
+            "total": 12,
+            "comments": [
+                commentJSON(id: "3", author: "최신", body: "newest", created: "2026-06-23T10:00:00.000+0900"),
+                commentJSON(id: "2", author: "중간", body: "middle", created: "2026-06-22T10:00:00.000+0900"),
+                commentJSON(id: "1", author: nil, body: "", created: "2026-06-21T10:00:00.000+0900"),
+            ],
+        ]
+
+        let result = JiraRepository.parseCommentPage(page)
+
+        XCTAssertEqual(result.total, 12, "전체 개수는 응답의 total을 그대로 쓴다")
+        XCTAssertEqual(result.comments.map(\.id), ["2", "3"], "본문 없는 댓글은 빼고 오래된 것부터")
+        XCTAssertEqual(result.comments.first?.bodyText, "middle")
+        XCTAssertNotNil(result.comments.first?.created)
+    }
+
+    func testCommentPageFallsBackWhenTotalMissing() {
+        let page: [String: Any] = [
+            "comments": [commentJSON(id: "1", author: nil, body: "hi", created: nil)],
+        ]
+
+        let result = JiraRepository.parseCommentPage(page)
+
+        XCTAssertEqual(result.total, 1, "total이 없으면 파싱된 개수로 대체")
+        XCTAssertEqual(result.comments.first?.author, "알 수 없음")
+        XCTAssertNil(result.comments.first?.created)
+        XCTAssertTrue(JiraRepository.parseCommentPage([:]).comments.isEmpty, "빈 응답도 크래시 없이 처리")
+    }
+
+    /// Jira 댓글 한 건의 응답 형태 — body는 ADF 문서.
+    private func commentJSON(id: String, author: String?, body: String, created: String?) -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "body": [
+                "type": "doc",
+                "content": [["type": "paragraph", "content": [["type": "text", "text": body]]]],
+            ],
+        ]
+        if let author { dict["author"] = ["displayName": author] }
+        if let created { dict["created"] = created }
+        return dict
+    }
+
     private func date(_ value: String) -> Date {
         DateParsers.ymd.date(from: value) ?? Date()
     }

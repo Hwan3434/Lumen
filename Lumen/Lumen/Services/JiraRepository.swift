@@ -163,13 +163,25 @@ actor JiraRepository {
         ]
         guard let url = comps.url else { return (0, []) }
 
-        guard
-            let (data, resp) = try? await URLSession.shared.data(for: makeRequest(url: url)),
-            let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return (0, []) }
+        guard let (data, resp) = try? await URLSession.shared.data(for: makeRequest(url: url)) else {
+            NSLog("[Lumen] 댓글 조회 실패 (%@): 네트워크 오류", key)
+            return (0, [])
+        }
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
+        guard (200...299).contains(status),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            NSLog("[Lumen] 댓글 조회 실패 (%@): http=%d body=%@", key, status,
+                  String(data: data.prefix(200), encoding: .utf8) ?? "")
+            return (0, [])
+        }
 
-        return Self.parseCommentPage(json)
+        let page = Self.parseCommentPage(json)
+        if page.total > 0 && page.comments.isEmpty {
+            let raw = (json["comments"] as? [Any])?.count ?? -1
+            NSLog("[Lumen] 댓글 파싱 0건 (%@): total=%d 응답배열=%d", key, page.total, raw)
+        }
+        return page
     }
 
     /// `/issue/{key}/comment?orderBy=-created` 응답 → (전체 개수, 표시용 댓글).
@@ -183,11 +195,20 @@ actor JiraRepository {
     }
 
     private static func parseComment(_ dict: [String: Any]) -> IssueComment? {
-        guard let id = dict["id"] as? String else { return nil }
-        let body = (dict["body"] as? [String: Any])
-            .map { adfPlainText(node: $0).trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
-        guard !body.isEmpty else { return nil }
+        // id는 문자열이 원칙이지만 숫자로 오는 응답도 있어 둘 다 받는다.
+        guard let id = (dict["id"] as? String) ?? (dict["id"] as? NSNumber)?.stringValue else { return nil }
 
+        // body는 v3에서 ADF(dict)지만, 평문 문자열로 오는 경우도 방어한다.
+        let body: String
+        if let adf = dict["body"] as? [String: Any] {
+            body = adfPlainText(node: adf).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if let text = dict["body"] as? String {
+            body = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            body = ""
+        }
+
+        // 본문이 비어도 버리지 않는다 — 첨부만 있는 댓글도 "있다"는 사실은 보여줘야 한다.
         return IssueComment(
             id: id,
             author: ((dict["author"] as? [String: Any])?["displayName"] as? String) ?? "알 수 없음",
@@ -430,6 +451,28 @@ actor JiraRepository {
         if let dict = node as? [String: Any] {
             let type = dict["type"] as? String ?? ""
             if type == "text", let text = dict["text"] as? String { return text }
+
+            // 텍스트가 아닌 leaf 노드들 — 이걸 빼먹으면 멘션/이모지만 있는 댓글이 통째로 빈 문자열이 된다.
+            let attrs = dict["attrs"] as? [String: Any]
+            switch type {
+            case "mention":
+                return (attrs?["text"] as? String) ?? "@사용자"
+            case "emoji":
+                return (attrs?["text"] as? String) ?? (attrs?["shortName"] as? String) ?? ""
+            case "inlineCard", "blockCard", "embedCard":
+                return (attrs?["url"] as? String) ?? ""
+            case "media", "mediaInline":
+                return "[첨부]"
+            case "hardBreak":
+                return "\n"
+            case "date":
+                return (attrs?["timestamp"] as? String) ?? ""
+            case "status":
+                return (attrs?["text"] as? String) ?? ""
+            default:
+                break
+            }
+
             var inner = ""
             if let content = dict["content"] as? [Any] {
                 for child in content {

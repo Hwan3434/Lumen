@@ -138,23 +138,65 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(CalendarItemSort.ordered(items).map(\.id), ["early", "late", "all-day", "tomorrow"])
     }
 
-    func testCommentPageOrdersOldestFirstAndSkipsEmptyBodies() {
+    func testCommentPageOrdersOldestFirst() {
         // Jira는 orderBy=-created로 최신순을 주지만, 표시는 대화 흐름대로 뒤집어야 한다.
         let page: [String: Any] = [
             "total": 12,
             "comments": [
                 commentJSON(id: "3", author: "최신", body: "newest", created: "2026-06-23T10:00:00.000+0900"),
                 commentJSON(id: "2", author: "중간", body: "middle", created: "2026-06-22T10:00:00.000+0900"),
-                commentJSON(id: "1", author: nil, body: "", created: "2026-06-21T10:00:00.000+0900"),
             ],
         ]
 
         let result = JiraRepository.parseCommentPage(page)
 
         XCTAssertEqual(result.total, 12, "전체 개수는 응답의 total을 그대로 쓴다")
-        XCTAssertEqual(result.comments.map(\.id), ["2", "3"], "본문 없는 댓글은 빼고 오래된 것부터")
+        XCTAssertEqual(result.comments.map(\.id), ["2", "3"], "오래된 것부터 최신 순")
         XCTAssertEqual(result.comments.first?.bodyText, "middle")
         XCTAssertNotNil(result.comments.first?.created)
+    }
+
+    /// 멘션·이모지·첨부만 있는 댓글이 통째로 사라지던 회귀를 막는다.
+    func testCommentPageKeepsNonTextOnlyComments() {
+        let mentionOnly: [String: Any] = [
+            "id": "10",
+            "author": ["displayName": "홍길동"],
+            "body": [
+                "type": "doc",
+                "content": [["type": "paragraph", "content": [
+                    ["type": "mention", "attrs": ["text": "@김철수"]],
+                    ["type": "emoji", "attrs": ["text": "👍"]],
+                ]]],
+            ],
+        ]
+        let attachmentOnly: [String: Any] = [
+            "id": "11",
+            "author": ["displayName": "김철수"],
+            "body": ["type": "doc", "content": [["type": "mediaSingle", "content": [["type": "media"]]]]],
+        ]
+        // id가 숫자로 오는 응답도 버리지 않는다.
+        let numericID: [String: Any] = [
+            "id": 12,
+            "body": ["type": "doc", "content": [["type": "paragraph", "content": [["type": "text", "text": "hi"]]]]],
+        ]
+
+        let result = JiraRepository.parseCommentPage(["total": 3, "comments": [numericID, attachmentOnly, mentionOnly]])
+
+        XCTAssertEqual(result.comments.count, 3, "본문이 비어도 댓글 자체는 유지")
+        XCTAssertEqual(result.comments.map(\.id), ["10", "11", "12"])
+        XCTAssertEqual(result.comments.first?.bodyText, "@김철수👍", "멘션·이모지도 평문으로 뽑아낸다")
+        XCTAssertEqual(result.comments[1].bodyText, "[첨부]")
+    }
+
+    func testCommentAcceptsPlainStringBody() {
+        let page: [String: Any] = [
+            "total": 1,
+            "comments": [["id": "1", "body": "  평문 본문  ", "author": ["displayName": "홍길동"]]],
+        ]
+
+        let result = JiraRepository.parseCommentPage(page)
+
+        XCTAssertEqual(result.comments.first?.bodyText, "평문 본문", "ADF가 아닌 문자열 body도 받는다")
     }
 
     func testCommentPageFallsBackWhenTotalMissing() {

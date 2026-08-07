@@ -129,9 +129,12 @@ struct IssuePreviewPopover: View {
                         .foregroundStyle(LumenTokens.TextColor.muted)
                 }
             }
-            Text(comment.bodyText)
+            Text(comment.bodyText.isEmpty ? "(첨부만 있는 댓글)" : comment.bodyText)
                 .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
+                .italic(comment.bodyText.isEmpty)
+                .foregroundStyle(comment.bodyText.isEmpty
+                                 ? LumenTokens.TextColor.muted
+                                 : LumenTokens.TextColor.secondary)
                 .lineSpacing(1.5)
                 .lineLimit(3)
                 .truncationMode(.tail)

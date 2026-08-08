@@ -6,6 +6,9 @@ import SwiftUI
 
 struct IssuePreviewPopover: View {
     let issueKey: String
+    /// 주입된 값이 있으면 네트워크를 타지 않는다. Jira 연결 없이 레이아웃을 확인하기 위한 구멍 —
+    /// 실사용 경로는 항상 nil이라 동작에 영향이 없다.
+    var injectedDetail: IssueDetail? = nil
 
     @State private var detail: IssueDetail?
     @State private var errorMessage: String?
@@ -13,11 +16,8 @@ struct IssuePreviewPopover: View {
 
     var body: some View {
         Group {
-            if isLoading {
-                loadingView
-            } else if let msg = errorMessage {
-                errorView(msg)
-            } else if let d = detail {
+            // 주입값은 뷰 생명주기(.task)를 기다리지 않고 바로 그린다 — 오프스크린 렌더링에서도 보이도록.
+            if let d = injectedDetail ?? detail {
                 CalendarPreviewLayout(
                     accentColor: projectColor,
                     accentLabel: d.key,
@@ -30,6 +30,10 @@ struct IssuePreviewPopover: View {
                     extraContent: { commentSection(d) },
                     footer: { jiraOpenFooter }
                 )
+            } else if isLoading {
+                loadingView
+            } else if let msg = errorMessage {
+                errorView(msg)
             } else {
                 Color.clear.frame(width: CalendarPreviewMetrics.width, height: 100)
             }
@@ -102,12 +106,11 @@ struct IssuePreviewPopover: View {
                     }
                 }
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 9) {
-                        ForEach(detail.recentComments) { commentRow($0) }
-                    }
+                // 최대 3개 × 3줄 클램프라 높이가 이미 유계다. 스크롤을 두면 내용이 짧아도
+                // 영역을 다 차지해 아래가 빈 공간으로 남는다.
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(detail.recentComments) { commentRow($0) }
                 }
-                .frame(maxHeight: CalendarPreviewMetrics.commentsMaxHeight)
             }
         }
     }
@@ -181,6 +184,12 @@ struct IssuePreviewPopover: View {
     }
 
     private func load() async {
+        if let injected = injectedDetail {
+            detail = injected
+            errorMessage = nil
+            isLoading = false
+            return
+        }
         isLoading = true
         do {
             let d = try await JiraService.shared.fetchIssueDetail(key: issueKey)

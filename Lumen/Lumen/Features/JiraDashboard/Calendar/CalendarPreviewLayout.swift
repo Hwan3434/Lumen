@@ -5,13 +5,13 @@ import SwiftUI
 enum CalendarPreviewMetrics {
     static let width: CGFloat = 500
     /// 본문(설명/메모) 스크롤 영역의 높이 범위.
-    static let bodyMinHeight: CGFloat = 180
+    /// 최소값은 ScrollView가 0으로 붕괴하지 않을 만큼만 준다 — 이걸 키우면 설명이 짧은
+    /// 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
+    static let bodyMinHeight: CGFloat = 44
     static let bodyMaxHeight: CGFloat = 520
     /// 본문 아래에 댓글이 함께 붙을 때의 본문 최대 높이 — 둘을 합쳐도 팝오버가
     /// 대시보드 패널(840pt)을 넘지 않도록 본문 쪽을 양보시킨다.
     static let bodyMaxHeightWithComments: CGFloat = 260
-    /// 댓글 목록 영역의 최대 높이.
-    static let commentsMaxHeight: CGFloat = 190
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.

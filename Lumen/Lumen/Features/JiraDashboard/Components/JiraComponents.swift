@@ -160,37 +160,111 @@ struct IssueListSection: View {
     let items: [JiraIssue]
     var emptyText: String = "없음"
     var hideWhenEmpty: Bool = false
+    /// 지정하면 헤더를 눌러 접을 수 있고, 펼침 여부가 이 키로 기억된다. nil이면 항상 펼친 고정 섹션.
+    var collapseKey: String? = nil
 
     var body: some View {
         if hideWhenEmpty && items.isEmpty {
             EmptyView()
+        } else if let collapseKey {
+            CollapsibleIssueListSection(storageKey: collapseKey, icon: icon, iconColor: iconColor,
+                                        title: title, items: items, emptyText: emptyText)
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(iconColor)
-                    Text(title)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                    Text("\(items.count)")
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
-                .padding(.horizontal, 4)
+                IssueListHeader(icon: icon, iconColor: iconColor, title: title, count: items.count)
+                    .padding(.horizontal, 4)
+                IssueListItems(items: items, emptyText: emptyText)
+            }
+        }
+    }
+}
 
-                if items.isEmpty {
-                    Text(emptyText)
-                        .font(.system(size: 11))
-                        .italic()
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                } else {
-                    VStack(spacing: 1) {
-                        ForEach(items) { IssueRow(issue: $0) }
-                    }
-                }
+private struct IssueListHeader: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let count: Int
+    /// 접기 가능한 섹션에서만 회전하는 chevron을 앞에 붙인다.
+    var showsChevron: Bool = false
+    var expanded: Bool = true
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+                    .frame(width: 8)
+            }
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(iconColor)
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(LumenTokens.TextColor.secondary)
+            Text("\(count)")
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(LumenTokens.TextColor.muted)
+        }
+    }
+}
+
+private struct IssueListItems: View {
+    let items: [JiraIssue]
+    let emptyText: String
+
+    var body: some View {
+        if items.isEmpty {
+            Text(emptyText)
+                .font(.system(size: 11))
+                .italic()
+                .foregroundStyle(LumenTokens.TextColor.muted)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+        } else {
+            VStack(spacing: 1) {
+                ForEach(items) { IssueRow(issue: $0) }
+            }
+        }
+    }
+}
+
+private struct CollapsibleIssueListSection: View {
+    @AppStorage private var expanded: Bool
+    private let icon: String
+    private let iconColor: Color
+    private let title: String
+    private let items: [JiraIssue]
+    private let emptyText: String
+
+    init(storageKey: String, icon: String, iconColor: Color,
+         title: String, items: [JiraIssue], emptyText: String) {
+        // 기본은 펼침 — 처음 보는 사용자가 목록이 비어 보이는 일이 없도록.
+        _expanded = AppStorage(wrappedValue: true, storageKey)
+        self.icon = icon
+        self.iconColor = iconColor
+        self.title = title
+        self.items = items
+        self.emptyText = emptyText
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.16)) { expanded.toggle() }
+            } label: {
+                IssueListHeader(icon: icon, iconColor: iconColor, title: title,
+                                count: items.count, showsChevron: true, expanded: expanded)
+                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(expanded ? "접기" : "펼치기")
+
+            if expanded {
+                IssueListItems(items: items, emptyText: emptyText)
             }
         }
     }

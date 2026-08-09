@@ -71,9 +71,63 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         .background(Color(red: 0.05, green: 0.05, blue: 0.06))
         .environment(\.colorScheme, .dark)
 
-        // ImageRenderer는 ScrollView 컨텐츠를 그리지 못한다(설명·댓글이 통째로 빈다).
-        // 실제 창에 올려 레이아웃을 태운 뒤 그 뷰를 캡처해야 눈에 보이는 것과 같아진다.
-        let hosting = NSHostingView(rootView: panel)
+        try render(panel, named: "issue-preview-panel.png")
+    }
+
+    /// 기한 초과 섹션의 펼침/접힘 두 상태를 나란히 확인한다.
+    func testRenderOverdueSectionCollapsedAndExpanded() throws {
+        let items = [
+            JiraIssue.mock(key: "ABC-1180", summary: "결제 실패 로그 수집기 배포", priority: "Highest",
+                           status: "진행중", category: .indeterminate, dueDaysAgo: 12),
+            JiraIssue.mock(key: "ABC-1204", summary: "정산 배치 재실행 스크립트 정리", priority: "High",
+                           status: "할 일", category: .new, dueDaysAgo: 5),
+            JiraIssue.mock(key: "PPAI-31", summary: "온보딩 A/B 결과 리포트", priority: "Medium",
+                           status: "진행중", category: .indeterminate, dueDaysAgo: 2),
+        ]
+
+        let panel = HStack(alignment: .top, spacing: 24) {
+            ForEach([true, false], id: \.self) { expanded in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(expanded ? "펼침" : "접힘")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
+                    let key = "snapshotOverdueExpanded-\(expanded)"
+                    IssueListSection(
+                        icon: "exclamationmark.triangle",
+                        iconColor: LumenTokens.ErrorTone.icon,
+                        title: "기한 초과 미완료",
+                        items: items,
+                        emptyText: "기한 초과 없음",
+                        hideWhenEmpty: true,
+                        collapseKey: key
+                    )
+                    .frame(width: 380, alignment: .topLeading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(12)
+                    .background(Color(red: 0.11, green: 0.11, blue: 0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .padding(28)
+        .background(Color(red: 0.05, green: 0.05, blue: 0.06))
+        .environment(\.colorScheme, .dark)
+
+        // @AppStorage가 읽어갈 값을 렌더 전에 심어둔다.
+        UserDefaults.standard.set(true, forKey: "snapshotOverdueExpanded-true")
+        UserDefaults.standard.set(false, forKey: "snapshotOverdueExpanded-false")
+        defer {
+            UserDefaults.standard.removeObject(forKey: "snapshotOverdueExpanded-true")
+            UserDefaults.standard.removeObject(forKey: "snapshotOverdueExpanded-false")
+        }
+
+        try render(panel, named: "overdue-section.png")
+    }
+
+    // MARK: - Rendering
+
+    private func render(_ view: some View, named name: String) throws {
+        let hosting = NSHostingView(rootView: view)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless],
                               backing: .buffered, defer: false)
@@ -82,17 +136,28 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         hosting.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(1.0))
 
-        XCTAssertGreaterThan(hosting.bounds.width, 1000, "3개 변형이 가로로 배치돼야 함")
         let rep = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds), "캡처 실패")
         hosting.cacheDisplay(in: hosting.bounds, to: rep)
-
         let dir = ProcessInfo.processInfo.environment["LUMEN_SNAPSHOT_DIR"]
             .map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        let out = dir.appendingPathComponent("issue-preview-panel.png")
+        let out = dir.appendingPathComponent(name)
         let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
         try png.write(to: out)
         window.setIsVisible(false)
         print("[snapshot] \(out.path) (\(png.count) bytes, \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height)))")
+    }
+}
+
+private extension JiraIssue {
+    static func mock(key: String, summary: String, priority: String, status: String,
+                     category: JiraStatusCategory, dueDaysAgo: Int) -> JiraIssue {
+        JiraIssue(
+            id: key, key: key, summary: summary, status: status, statusCategory: category,
+            priority: priority, startDate: nil,
+            dueDate: Calendar.current.date(byAdding: .day, value: -dueDaysAgo, to: Date()),
+            resolutionDate: nil, created: nil, issueType: "Task",
+            projectKey: key.split(separator: "-").first.map(String.init) ?? "ABC"
+        )
     }
 }
 

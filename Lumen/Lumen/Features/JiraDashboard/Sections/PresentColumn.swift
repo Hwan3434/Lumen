@@ -5,6 +5,8 @@ struct PresentColumn: View {
     @Binding var selectedProject: String
 
     static let allKey = "ALL"
+    /// 기한 초과 섹션의 펼침 상태 저장 키 — 창을 다시 열어도 접어둔 선택이 유지된다.
+    static let overdueExpandedKey = "jiraOverdueSectionExpanded"
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -18,12 +20,13 @@ struct PresentColumn: View {
                 StatusGrid(counts: counts)
 
                 IssueListSection(
-                    icon: "calendar.badge.exclamationmark",
-                    iconColor: LumenTokens.Accent.amber,
-                    title: "오늘 마감",
-                    items: filterByProject(data.todayIssues),
-                    emptyText: "오늘 마감 일감 없음",
-                    hideWhenEmpty: true
+                    icon: "exclamationmark.triangle",
+                    iconColor: LumenTokens.ErrorTone.icon,
+                    title: "기한 초과 미완료",
+                    items: filterByProject(data.overdueIncomplete),
+                    emptyText: "기한 초과 없음",
+                    hideWhenEmpty: true,
+                    collapseKey: Self.overdueExpandedKey
                 )
 
                 IssueListSection(
@@ -32,15 +35,6 @@ struct PresentColumn: View {
                     title: "이번 주 전체",
                     items: filterByProject(data.thisWeekIssues),
                     emptyText: "이번 주 일감 없음"
-                )
-
-                IssueListSection(
-                    icon: "exclamationmark.triangle",
-                    iconColor: LumenTokens.ErrorTone.icon,
-                    title: "기한 초과",
-                    items: filterByProject(data.overdueIncomplete),
-                    emptyText: "기한 초과 없음",
-                    hideWhenEmpty: true
                 )
             }
             .padding(EdgeInsets(top: 14, leading: 16, bottom: 16, trailing: 16))

@@ -146,6 +146,38 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 
+    /// 본문이 길 때 실제로 커지는지 — 화면 여유에 맞춰 상한이 정해지므로 값도 같이 남긴다.
+    func testLongDescriptionUsesEnlargedBody() throws {
+        let screen = NSScreen.main?.visibleFrame.height ?? 0
+        print("[metrics] 화면여유=\(Int(screen)) 본문최대=\(Int(CalendarPreviewMetrics.bodyMaxHeight)) "
+              + "댓글동반=\(Int(CalendarPreviewMetrics.bodyMaxHeightWithComments))")
+
+        XCTAssertGreaterThan(CalendarPreviewMetrics.bodyMaxHeight, 520,
+                             "본문 상한이 이전(520)보다 커져야 한다")
+        XCTAssertGreaterThan(CalendarPreviewMetrics.bodyMaxHeightWithComments, 260,
+                             "댓글이 있어도 이전(260)보다 커져야 한다")
+
+        let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
+            .joined(separator: "\n")
+        let detail = IssueDetail.mock(key: "ABC-2001", summary: "긴 설명 렌더링 확인",
+                                      status: "진행중", description: long, total: 0, comments: [])
+
+        let popover = IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(Color(red: 0.11, green: 0.11, blue: 0.13))
+            .padding(24)
+            .background(Color(red: 0.05, green: 0.05, blue: 0.06))
+            .environment(\.colorScheme, .dark)
+
+        let hosting = NSHostingView(rootView: popover)
+        hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
+        XCTAssertGreaterThan(hosting.bounds.height, 700,
+                             "긴 설명이면 팝오버가 이전 상한 근처보다 확실히 커져야 한다")
+        print("[metrics] 긴 설명 팝오버 = \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height))")
+
+        try render(popover, named: "long-description.png")
+    }
+
     // MARK: - Rendering
 
     private func render(_ view: some View, named name: String) throws {

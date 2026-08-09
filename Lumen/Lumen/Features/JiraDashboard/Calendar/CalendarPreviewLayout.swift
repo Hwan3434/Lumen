@@ -1,17 +1,41 @@
 import SwiftUI
+import AppKit
 
 /// 미리보기 popover의 공통 치수. 본 레이아웃뿐 아니라 호출자의 로딩/에러 상태도
 /// 같은 폭을 써야 popover가 상태 전환 때 흔들리지 않으므로 한 곳에서 관리한다.
 enum CalendarPreviewMetrics {
     static let width: CGFloat = 500
-    /// 본문(설명/메모) 스크롤 영역의 높이 범위.
-    /// 최소값은 ScrollView가 0으로 붕괴하지 않을 만큼만 준다 — 이걸 키우면 설명이 짧은
-    /// 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
+    /// 본문(설명/메모) 스크롤 영역의 최소 높이. ScrollView가 0으로 붕괴하지 않을 만큼만 준다 —
+    /// 이걸 키우면 설명이 짧은 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
     static let bodyMinHeight: CGFloat = 44
-    static let bodyMaxHeight: CGFloat = 520
-    /// 본문 아래에 댓글이 함께 붙을 때의 본문 최대 높이 — 둘을 합쳐도 팝오버가
-    /// 대시보드 패널(840pt)을 넘지 않도록 본문 쪽을 양보시킨다.
-    static let bodyMaxHeightWithComments: CGFloat = 260
+
+    /// 본문 최대 높이의 희망치. 팝오버는 대시보드 패널이 아니라 별도 윈도우라
+    /// 패널(840pt)이 아닌 화면 높이가 한계이므로, 아래에서 화면 여유로 다시 조인다.
+    private static let desiredBodyMaxHeight: CGFloat = 2080
+    private static let desiredBodyMaxHeightWithComments: CGFloat = 1040
+    /// 헤더·제목·푸터·패딩이 쓰는 몫. 화면 여유에서 본문 몫을 계산할 때 뺀다.
+    private static let chromeAllowance: CGFloat = 200
+    /// 댓글 영역(최대 3개 × 3줄)이 쓰는 몫.
+    private static let commentsAllowance: CGFloat = 220
+
+    /// 본문만 있을 때의 최대 높이.
+    static var bodyMaxHeight: CGFloat {
+        clamped(min(desiredBodyMaxHeight, availableHeight - chromeAllowance))
+    }
+
+    /// 댓글이 함께 붙을 때의 본문 최대 높이 — 댓글 몫을 먼저 떼고 남는 만큼.
+    static var bodyMaxHeightWithComments: CGFloat {
+        clamped(min(desiredBodyMaxHeightWithComments,
+                    availableHeight - chromeAllowance - commentsAllowance))
+    }
+
+    /// 아주 작은 화면에서도 최소 높이 아래로는 내려가지 않게.
+    private static func clamped(_ value: CGFloat) -> CGFloat { max(bodyMinHeight, value) }
+
+    /// 팝오버가 잘리지 않고 쓸 수 있는 세로 여유. 화면을 못 읽으면 보수적인 기본값.
+    private static var availableHeight: CGFloat {
+        max(480, NSScreen.main?.visibleFrame.height ?? 900)
+    }
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.

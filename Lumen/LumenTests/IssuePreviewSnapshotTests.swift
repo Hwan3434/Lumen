@@ -124,6 +124,28 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         try render(panel, named: "overdue-section.png")
     }
 
+    /// 세 컬럼의 모든 섹션이 접기 가능한지 — 전부 펼친 상태와 전부 접은 상태를 나란히.
+    func testRenderAllSectionsCollapsedAndExpanded() throws {
+        let issues = (1...4).map {
+            JiraIssue.mock(key: "ABC-\(1300 + $0)", summary: "작업 \($0)", priority: "High",
+                           status: "진행중", category: .indeterminate, dueDaysAgo: $0)
+        }
+        let data = JiraDashboardData.sectionMock(issues: issues)
+        let keys = [JiraSectionKey.overdue, JiraSectionKey.thisWeek, JiraSectionKey.highest,
+                    JiraSectionKey.nextWeek, JiraSectionKey.backlog, JiraSectionKey.sprints,
+                    JiraSectionKey.epics]
+
+        for expanded in [true, false] {
+            keys.forEach { UserDefaults.standard.set(expanded, forKey: $0) }
+            let content = DashboardContent(data: data,
+                                           selectedProject: .constant(PresentColumn.allKey))
+                .frame(width: 1160, height: 840)
+                .environment(\.colorScheme, .dark)
+            try render(content, named: "sections-\(expanded ? "expanded" : "collapsed").png")
+        }
+        keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+    }
+
     // MARK: - Rendering
 
     private func render(_ view: some View, named name: String) throws {
@@ -157,6 +179,28 @@ private extension JiraIssue {
             dueDate: Calendar.current.date(byAdding: .day, value: -dueDaysAgo, to: Date()),
             resolutionDate: nil, created: nil, issueType: "Task",
             projectKey: key.split(separator: "-").first.map(String.init) ?? "ABC"
+        )
+    }
+}
+
+private extension JiraDashboardData {
+    /// 세 컬럼의 섹션이 모두 그려지도록 각 목록을 채운 mock.
+    static func sectionMock(issues: [JiraIssue]) -> JiraDashboardData {
+        JiraDashboardData(
+            thisWeekCounts: JiraStatusCounts(),
+            projectStats: [],
+            todayIssues: [],
+            thisWeekIssues: issues,
+            highestIncomplete: issues,
+            overdueIncomplete: issues,
+            completedLast30: [],
+            createdLast30: [],
+            nextWeekIssues: issues,
+            backlogCountByProject: [:],
+            sprintInfos: [],
+            epicInfos: [],
+            allIssuesInWindow: [],
+            lastUpdated: Date()
         )
     }
 }

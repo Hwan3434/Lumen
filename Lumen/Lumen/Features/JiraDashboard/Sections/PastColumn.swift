@@ -51,7 +51,8 @@ struct PastColumn: View {
                     iconColor: LumenTokens.JiraPriorityTone.highest,
                     title: "Highest 미완료",
                     items: data.highestIncomplete,
-                    emptyText: "해당 이슈 없음"
+                    emptyText: "해당 이슈 없음",
+                    collapseKey: JiraSectionKey.highest
                 )
             }
             .padding(14)

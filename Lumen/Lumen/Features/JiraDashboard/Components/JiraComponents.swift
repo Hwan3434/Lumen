@@ -167,8 +167,10 @@ struct IssueListSection: View {
         if hideWhenEmpty && items.isEmpty {
             EmptyView()
         } else if let collapseKey {
-            CollapsibleIssueListSection(storageKey: collapseKey, icon: icon, iconColor: iconColor,
-                                        title: title, items: items, emptyText: emptyText)
+            CollapsibleSection(storageKey: collapseKey, icon: icon, iconColor: iconColor,
+                               title: title, count: items.count) {
+                IssueListItems(items: items, emptyText: emptyText)
+            }
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 IssueListHeader(icon: icon, iconColor: iconColor, title: title, count: items.count)
@@ -179,11 +181,13 @@ struct IssueListSection: View {
     }
 }
 
+/// 대시보드 섹션 헤더의 공통 모양 — 아이콘 + 제목 + (개수).
 private struct IssueListHeader: View {
     let icon: String
     let iconColor: Color
     let title: String
-    let count: Int
+    /// nil이면 개수를 숨긴다 — 셀 수 있는 목록이 아닌 섹션용.
+    let count: Int?
     /// 접기 가능한 섹션에서만 회전하는 chevron을 앞에 붙인다.
     var showsChevron: Bool = false
     var expanded: Bool = true
@@ -203,9 +207,11 @@ private struct IssueListHeader: View {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(LumenTokens.TextColor.secondary)
-            Text("\(count)")
-                .font(.system(size: 10.5, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+            if let count {
+                Text("\(count)")
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(LumenTokens.TextColor.muted)
+            }
         }
     }
 }
@@ -230,32 +236,41 @@ private struct IssueListItems: View {
     }
 }
 
-private struct CollapsibleIssueListSection: View {
+/// 대시보드 섹션의 공통 껍데기 — 헤더를 눌러 접고, 펼침 여부를 storageKey로 기억한다.
+/// 이슈 목록뿐 아니라 백로그·스프린트·에픽처럼 내용이 임의인 섹션도 감쌀 수 있다.
+struct CollapsibleSection<Content: View>: View {
     @AppStorage private var expanded: Bool
     private let icon: String
     private let iconColor: Color
     private let title: String
-    private let items: [JiraIssue]
-    private let emptyText: String
+    private let count: Int?
+    private let spacing: CGFloat
+    private let content: () -> Content
 
-    init(storageKey: String, icon: String, iconColor: Color,
-         title: String, items: [JiraIssue], emptyText: String) {
-        // 기본은 펼침 — 처음 보는 사용자가 목록이 비어 보이는 일이 없도록.
+    init(storageKey: String,
+         icon: String,
+         iconColor: Color = LumenTokens.TextColor.muted,
+         title: String,
+         count: Int? = nil,
+         spacing: CGFloat = 6,
+         @ViewBuilder content: @escaping () -> Content) {
+        // 기본은 펼침 — 처음 보는 사용자에게 대시보드가 비어 보이지 않도록.
         _expanded = AppStorage(wrappedValue: true, storageKey)
         self.icon = icon
         self.iconColor = iconColor
         self.title = title
-        self.items = items
-        self.emptyText = emptyText
+        self.count = count
+        self.spacing = spacing
+        self.content = content
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: spacing) {
             Button {
                 withAnimation(.easeInOut(duration: 0.16)) { expanded.toggle() }
             } label: {
                 IssueListHeader(icon: icon, iconColor: iconColor, title: title,
-                                count: items.count, showsChevron: true, expanded: expanded)
+                                count: count, showsChevron: true, expanded: expanded)
                     .padding(.horizontal, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -263,11 +278,21 @@ private struct CollapsibleIssueListSection: View {
             .buttonStyle(.plain)
             .help(expanded ? "접기" : "펼치기")
 
-            if expanded {
-                IssueListItems(items: items, emptyText: emptyText)
-            }
+            if expanded { content() }
         }
     }
+}
+
+/// 섹션 펼침 상태 저장 키. 한곳에 모아 중복·오타를 막는다.
+enum JiraSectionKey {
+    /// 1.0.104에서 나간 키 — 값을 바꾸면 사용자가 접어둔 상태가 초기화되므로 그대로 둔다.
+    static let overdue  = "jiraOverdueSectionExpanded"
+    static let thisWeek = "jiraSectionThisWeekExpanded"
+    static let highest  = "jiraSectionHighestExpanded"
+    static let nextWeek = "jiraSectionNextWeekExpanded"
+    static let backlog  = "jiraSectionBacklogExpanded"
+    static let sprints  = "jiraSectionSprintsExpanded"
+    static let epics    = "jiraSectionEpicsExpanded"
 }
 
 // MARK: - Full-panel overlays

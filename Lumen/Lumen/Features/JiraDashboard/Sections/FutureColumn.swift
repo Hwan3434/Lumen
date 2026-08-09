@@ -13,7 +13,8 @@ struct FutureColumn: View {
                     iconColor: LumenTokens.TextColor.secondary,
                     title: "차주 이슈",
                     items: data.nextWeekIssues,
-                    emptyText: "차주 일감 없음"
+                    emptyText: "차주 일감 없음",
+                    collapseKey: JiraSectionKey.nextWeek
                 )
 
                 backlogSection
@@ -26,17 +27,12 @@ struct FutureColumn: View {
     }
 
     private var backlogSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "tray")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                Text("일정없는 내 백로그")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
-            }
-            .padding(.horizontal, 4)
-
+        CollapsibleSection(
+            storageKey: JiraSectionKey.backlog,
+            icon: "tray",
+            title: "일정없는 내 백로그",
+            spacing: 8
+        ) {
             HStack(spacing: 6) {
                 ForEach(Constants.jiraProjects, id: \.key) { proj in
                     BacklogBox(
@@ -49,22 +45,14 @@ struct FutureColumn: View {
     }
 
     private var sprintsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "circle.dotted")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
-                Text("진행중 스프린트")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
-                if !data.sprintInfos.isEmpty {
-                    Text("\(data.sprintInfos.count)")
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
-            }
-            .padding(.horizontal, 4)
-
+        CollapsibleSection(
+            storageKey: JiraSectionKey.sprints,
+            icon: "circle.dotted",
+            iconColor: LumenTokens.Accent.violetSoft,
+            title: "진행중 스프린트",
+            count: data.sprintInfos.isEmpty ? nil : data.sprintInfos.count,
+            spacing: 8
+        ) {
             if data.sprintInfos.isEmpty {
                 HStack(spacing: 8) {
                     Image(systemName: "circle.dotted")
@@ -96,19 +84,13 @@ struct FutureColumn: View {
     private var epicsSection: some View {
         let epics = data.epicInfos.filter { $0.dueDate != nil }
         if !epics.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "flag")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color(red: 0x9B/255, green: 0x7B/255, blue: 0xD9/255))
-                    Text("활성 에픽")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                    Text("\(epics.count)")
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
-                .padding(.horizontal, 4)
+            CollapsibleSection(
+                storageKey: JiraSectionKey.epics,
+                icon: "flag",
+                iconColor: Color(red: 0x9B/255, green: 0x7B/255, blue: 0xD9/255),
+                title: "활성 에픽",
+                count: epics.count
+            ) {
                 VStack(spacing: 1) {
                     ForEach(epics) { EpicRow(epic: $0) }
                 }

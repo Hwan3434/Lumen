@@ -149,13 +149,19 @@ final class IssuePreviewSnapshotTests: XCTestCase {
     /// 본문이 길 때 실제로 커지는지 — 화면 여유에 맞춰 상한이 정해지므로 값도 같이 남긴다.
     func testLongDescriptionUsesEnlargedBody() throws {
         let screen = NSScreen.main?.visibleFrame.height ?? 0
-        print("[metrics] 화면여유=\(Int(screen)) 본문최대=\(Int(CalendarPreviewMetrics.bodyMaxHeight)) "
-              + "댓글동반=\(Int(CalendarPreviewMetrics.bodyMaxHeightWithComments))")
+        print("[metrics] 화면여유=\(Int(screen)) 본문최대=\(Int(CalendarPreviewMetrics.bodyMaxHeight))")
 
         XCTAssertGreaterThan(CalendarPreviewMetrics.bodyMaxHeight, 520,
                              "본문 상한이 이전(520)보다 커져야 한다")
-        XCTAssertGreaterThan(CalendarPreviewMetrics.bodyMaxHeightWithComments, 260,
-                             "댓글이 있어도 이전(260)보다 커져야 한다")
+
+        // 댓글 몫은 개수에 비례해야 한다 — 짧은 댓글 하나에 본문이 크게 깎이면 안 된다.
+        let none = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 0)
+        let one = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 1)
+        let three = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 3)
+        print("[metrics] 본문최대 댓글0=\(Int(none)) 댓글1=\(Int(one)) 댓글3=\(Int(three))")
+        XCTAssertGreaterThan(none, one, "댓글이 없으면 더 넉넉해야 한다")
+        XCTAssertGreaterThan(one, three, "댓글이 많을수록 본문 몫이 줄어야 한다")
+        XCTAssertGreaterThan(one, 630, "댓글 1개는 예전 일괄 차감(630)보다 넉넉해야 한다")
 
         let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
             .joined(separator: "\n")
@@ -176,6 +182,30 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         print("[metrics] 긴 설명 팝오버 = \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height))")
 
         try render(popover, named: "long-description.png")
+    }
+
+    /// 상세 창 — 설명 전문 + 댓글 스레드 전체. 팝오버와 달리 높이 상한이 없다.
+    func testRenderIssueDetailWindow() throws {
+        let detail = IssueDetail.mock(
+            key: "ABC-1421",
+            summary: "결제 모듈 타임아웃 재현 및 원인 분석",
+            status: "진행중",
+            description: (1...12).map { "설명 \($0)번째 문단 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
+                .joined(separator: "\n"),
+            total: 7,
+            comments: [])
+        let comments = (1...7).map { i in
+            IssueComment.mock(id: "\(i)", author: ["김철수", "홍길동", "이영희"][i % 3],
+                              minutesAgo: (8 - i) * 240,
+                              body: i == 4 ? "" : "댓글 \(i)번 — 확인했습니다. 재현 조건과 로그를 함께 남깁니다. "
+                                  + "길이가 길어져도 상세 창에서는 잘리지 않고 전부 보여야 합니다.")
+        }
+
+        let view = IssueDetailView(issueKey: detail.key, injected: (detail, comments))
+            .frame(width: 640, height: 780)
+            .environment(\.colorScheme, .dark)
+
+        try render(view, named: "issue-detail-window.png")
     }
 
     // MARK: - Rendering

@@ -12,21 +12,25 @@ enum CalendarPreviewMetrics {
     /// 본문 최대 높이의 희망치. 팝오버는 대시보드 패널이 아니라 별도 윈도우라
     /// 패널(840pt)이 아닌 화면 높이가 한계이므로, 아래에서 화면 여유로 다시 조인다.
     private static let desiredBodyMaxHeight: CGFloat = 2080
-    private static let desiredBodyMaxHeightWithComments: CGFloat = 1040
     /// 헤더·제목·푸터·패딩이 쓰는 몫. 화면 여유에서 본문 몫을 계산할 때 뺀다.
     private static let chromeAllowance: CGFloat = 200
-    /// 댓글 영역(최대 3개 × 3줄)이 쓰는 몫.
-    private static let commentsAllowance: CGFloat = 220
+    /// 댓글 섹션 헤더(구분선 + "댓글 N" 줄)가 쓰는 몫.
+    private static let commentsHeaderAllowance: CGFloat = 28
+    /// 댓글 한 건의 대략 높이 — 작성자 줄 + 본문 최대 3줄 + 간격.
+    private static let perCommentAllowance: CGFloat = 62
 
-    /// 본문만 있을 때의 최대 높이.
-    static var bodyMaxHeight: CGFloat {
-        clamped(min(desiredBodyMaxHeight, availableHeight - chromeAllowance))
-    }
+    /// 댓글이 없을 때의 본문 최대 높이.
+    static var bodyMaxHeight: CGFloat { bodyMaxHeight(commentCount: 0) }
 
-    /// 댓글이 함께 붙을 때의 본문 최대 높이 — 댓글 몫을 먼저 떼고 남는 만큼.
-    static var bodyMaxHeightWithComments: CGFloat {
-        clamped(min(desiredBodyMaxHeightWithComments,
-                    availableHeight - chromeAllowance - commentsAllowance))
+    /// 표시할 댓글 수에 맞춘 본문 최대 높이.
+    /// 댓글 유무로 일괄 차감하면 짧은 댓글 하나 때문에 본문이 크게 손해를 보므로,
+    /// 그 댓글들이 실제로 쓸 만큼만 떼고 나머지는 전부 본문에 준다.
+    static func bodyMaxHeight(commentCount: Int) -> CGFloat {
+        let commentsNeed = commentCount <= 0
+            ? 0
+            : commentsHeaderAllowance + CGFloat(commentCount) * perCommentAllowance
+        return clamped(min(desiredBodyMaxHeight,
+                           availableHeight - chromeAllowance - commentsNeed))
     }
 
     /// 아주 작은 화면에서도 최소 높이 아래로는 내려가지 않게.

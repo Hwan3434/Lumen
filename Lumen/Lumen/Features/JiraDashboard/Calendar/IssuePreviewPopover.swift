@@ -24,9 +24,8 @@ struct IssuePreviewPopover: View {
                     badgeText: d.status,
                     title: d.summary,
                     bodyText: d.descriptionText,
-                    bodyMaxHeight: d.recentComments.isEmpty
-                        ? CalendarPreviewMetrics.bodyMaxHeight
-                        : CalendarPreviewMetrics.bodyMaxHeightWithComments,
+                    bodyMaxHeight: CalendarPreviewMetrics.bodyMaxHeight(
+                        commentCount: d.recentComments.count),
                     extraContent: { commentSection(d) },
                     footer: { jiraOpenFooter }
                 )
@@ -153,8 +152,32 @@ struct IssuePreviewPopover: View {
     }
 
     private var jiraOpenFooter: some View {
-        HStack {
+        HStack(spacing: 8) {
             Spacer()
+            // 긴 설명·긴 스레드는 팝오버가 화면 높이에 막히므로 창으로 넘긴다.
+            Button {
+                openIssueDetailWindow(issueKey)
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "macwindow")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("창으로 열기")
+                        .font(.system(size: 11.5, weight: .medium))
+                }
+                .foregroundStyle(LumenTokens.TextColor.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.white.opacity(0.04))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+
             Button {
                 openJira(issueKey)
             } label: {

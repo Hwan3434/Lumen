@@ -174,4 +174,9 @@ final class JiraService {
     func fetchIssueDetail(key: String) async throws -> IssueDetail {
         try await repository.fetchIssueDetail(key: key)
     }
+
+    /// 상세 창용 — 댓글 스레드 전체.
+    func fetchAllComments(key: String) async throws -> (total: Int, comments: [IssueComment]) {
+        try await repository.fetchAllComments(key: key)
+    }
 }

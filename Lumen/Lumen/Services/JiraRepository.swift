@@ -194,6 +194,46 @@ actor JiraRepository {
         return (max(total, parsed.count), parsed)
     }
 
+    /// 상세 창용 — 댓글을 페이지를 넘겨가며 전부 모은다(오래된 것 → 최신 순).
+    /// 팝오버는 최신 몇 개만 보여주지만 상세 창은 스레드 전체가 필요하다.
+    func fetchAllComments(key: String, limit: Int = 500) async throws -> (total: Int, comments: [IssueComment]) {
+        let cloudId = try await ensureCloudId()
+        let pageSize = 100
+        var collected: [IssueComment] = []
+        var total = 0
+        var startAt = 0
+
+        while collected.count < limit {
+            var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)/comment")!
+            comps.queryItems = [
+                URLQueryItem(name: "orderBy", value: "created"),
+                URLQueryItem(name: "startAt", value: "\(startAt)"),
+                URLQueryItem(name: "maxResults", value: "\(pageSize)"),
+            ]
+            guard let url = comps.url else { throw URLError(.badURL) }
+
+            let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
+            let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
+            guard (200...299).contains(status),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else {
+                NSLog("[Lumen] 댓글 전체 조회 실패 (%@): http=%d", key, status)
+                throw NSError(domain: "JiraAPI", code: status,
+                              userInfo: [NSLocalizedDescriptionKey: "댓글을 불러오지 못했습니다."])
+            }
+
+            total = (json["total"] as? Int) ?? total
+            let raw = (json["comments"] as? [[String: Any]]) ?? []
+            // orderBy=created라 이미 오래된 것 → 최신 순. 페이지 순서 그대로 이어 붙인다.
+            collected += raw.compactMap(Self.parseComment)
+
+            startAt += pageSize
+            if raw.count < pageSize || startAt >= total { break }
+        }
+
+        return (max(total, collected.count), collected)
+    }
+
     private static func parseComment(_ dict: [String: Any]) -> IssueComment? {
         // id는 문자열이 원칙이지만 숫자로 오는 응답도 있어 둘 다 받는다.
         guard let id = (dict["id"] as? String) ?? (dict["id"] as? NSNumber)?.stringValue else { return nil }

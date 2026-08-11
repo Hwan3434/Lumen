@@ -23,6 +23,8 @@ struct TimelineView: View {
 
     @State private var today: Date = Calendar.current.startOfDay(for: Date())
     @State private var previewingKey: String? = nil
+    /// ⌘클릭이면 설명 대신 댓글 팝오버를 띄운다.
+    @State private var previewingComments = false
     @State private var editingEvent: LocalEvent? = nil
     @State private var newEventDate: Date? = nil
     @State private var previewingEKBarID: String? = nil
@@ -246,6 +248,7 @@ struct TimelineView: View {
             } else if item.kind == .googleCalendar {
                 previewingEKBarID = item.id
             } else if let key = item.issueKey {
+                previewingComments = isCommandClick
                 previewingKey = key
             }
         } label: {
@@ -262,7 +265,11 @@ struct TimelineView: View {
             set: { if !$0 { previewingKey = nil } }
         ), arrowEdge: .top) {
             if let key = item.issueKey {
-                IssuePreviewPopover(issueKey: key)
+                if previewingComments {
+                    IssueCommentsPopover(issueKey: key)
+                } else {
+                    IssuePreviewPopover(issueKey: key)
+                }
             }
         }
         .popover(isPresented: Binding(

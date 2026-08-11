@@ -167,9 +167,12 @@ struct TodayAgendaPopover: View {
 private struct AgendaRow: View {
     let item: CalendarItem
     @State private var showingPreview = false
+    /// ⌘클릭이면 설명 대신 댓글 팝오버를 띄운다.
+    @State private var showingComments = false
 
     var body: some View {
         Button {
+            showingComments = isCommandClick
             showingPreview = true
         } label: {
             HStack(alignment: .top, spacing: 9) {
@@ -251,7 +254,11 @@ private struct AgendaRow: View {
     @ViewBuilder
     private var previewPopover: some View {
         if let key = item.issueKey, item.kind != .local {
-            IssuePreviewPopover(issueKey: key)
+            if showingComments {
+                IssueCommentsPopover(issueKey: key)
+            } else {
+                IssuePreviewPopover(issueKey: key)
+            }
         } else if item.kind == .googleCalendar {
             ekEventPreview
         } else {

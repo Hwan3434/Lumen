@@ -11,60 +11,46 @@ import AppKit
 final class IssuePreviewSnapshotTests: XCTestCase {
 
     func testRenderIssuePreviewVariants() throws {
-        let variants: [(String, IssueDetail)] = [
-            ("01-댓글3개", .mock(
-                key: "ABC-1421",
-                summary: "결제 모듈 타임아웃 재현 및 원인 분석",
-                status: "진행중",
-                description: """
-                결제 승인 요청이 간헐적으로 30초 타임아웃에 걸립니다.
-                재현 조건은 동시 요청 50건 이상이며, PG사 응답 지연과 겹칠 때 발생합니다.
-                우선 커넥션 풀 설정부터 확인이 필요합니다.
-                """,
-                total: 5,
-                comments: [
-                    .mock(id: "1", author: "김철수", minutesAgo: 60 * 26,
-                          body: "커넥션 풀 max가 8로 잡혀 있었습니다. 우선 32로 올려봤어요."),
-                    .mock(id: "2", author: "홍길동", minutesAgo: 60 * 3,
-                          body: "@김철수 그 설정 스테이징에도 반영됐나요? 어제 테스트에선 여전히 재현됐습니다."),
-                    .mock(id: "3", author: "이영희", minutesAgo: 25,
-                          body: "PG사에서 회신 왔습니다. 자기네 배치 시간대(02:00~02:30)와 겹치는 구간이라고 하네요."),
-                ])),
-            ("02-댓글없음", .mock(
-                key: "PPAI-77",
-                summary: "온보딩 화면 카피 최종 검토",
-                status: "할 일",
-                description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
-                total: 0,
-                comments: [])),
-            ("03-첨부만-긴제목", .mock(
-                key: "ABC-999",
-                summary: "월간 리포트 자동 생성 파이프라인 구축 — 데이터 수집부터 배포까지 전 구간",
-                status: "코드 리뷰",
-                description: "",
-                total: 12,
-                comments: [
-                    .mock(id: "1", author: "박민수", minutesAgo: 60 * 24 * 3, body: ""),
-                    .mock(id: "2", author: "최지우", minutesAgo: 5,
-                          body: "스크린샷 첨부합니다. 두 번째 그래프 축 라벨이 잘리네요."),
-                ])),
+        let withComments = IssueDetail.mock(
+            key: "ABC-1421",
+            summary: "결제 모듈 타임아웃 재현 및 원인 분석",
+            status: "진행중",
+            description: """
+            결제 승인 요청이 간헐적으로 30초 타임아웃에 걸립니다.
+            재현 조건은 동시 요청 50건 이상이며, PG사 응답 지연과 겹칠 때 발생합니다.
+            우선 커넥션 풀 설정부터 확인이 필요합니다.
+            """,
+            total: 5,
+            comments: [])
+        let noComments = IssueDetail.mock(
+            key: "PPAI-77",
+            summary: "온보딩 화면 카피 최종 검토",
+            status: "할 일",
+            description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
+            total: 0,
+            comments: [])
+
+        let commentList = [
+            IssueComment.mock(id: "1", author: "김철수", minutesAgo: 60 * 26,
+                              body: "커넥션 풀 max가 8로 잡혀 있었습니다. 우선 32로 올려봤어요."),
+            IssueComment.mock(id: "2", author: "홍길동", minutesAgo: 60 * 3,
+                              body: "@김철수 그 설정 스테이징에도 반영됐나요? 어제 테스트에선 여전히 재현됐습니다."),
+            IssueComment.mock(id: "3", author: "이영희", minutesAgo: 25, body: ""),
+            IssueComment.mock(id: "4", author: "박민수", minutesAgo: 5,
+                              body: "PG사에서 회신 왔습니다. 자기네 배치 시간대(02:00~02:30)와 겹치는 구간이라고 하네요. "
+                                  + "전용 팝오버라 줄 수 제한이 없어 길어도 전부 보입니다."),
         ]
 
         let panel = HStack(alignment: .top, spacing: 24) {
-            ForEach(Array(variants.enumerated()), id: \.offset) { _, item in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(item.0)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
-                    // 실제 popover는 형제가 없으므로 이상 높이를 갖는다. 이걸 빼면 옆 패널
-                    // 높이에 맞춰 ScrollView가 늘어나 없는 여백이 있는 것처럼 보인다.
-                    IssuePreviewPopover(issueKey: item.1.key, injectedDetail: item.1)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .background(Color(red: 0.11, green: 0.11, blue: 0.13))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10)
-                            .stroke(.white.opacity(0.12), lineWidth: 0.5))
-                }
+            labeled("01-미리보기(댓글수만)") {
+                IssuePreviewPopover(issueKey: withComments.key, injectedDetail: withComments)
+            }
+            labeled("02-미리보기(댓글없음)") {
+                IssuePreviewPopover(issueKey: noComments.key, injectedDetail: noComments)
+            }
+            labeled("03-⌘클릭 댓글 팝오버") {
+                IssueCommentsPopover(issueKey: withComments.key,
+                                     injected: (total: 5, comments: commentList))
             }
         }
         .padding(28)
@@ -72,6 +58,20 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         .environment(\.colorScheme, .dark)
 
         try render(panel, named: "issue-preview-panel.png")
+    }
+
+    private func labeled(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.5))
+            content()
+                .fixedSize(horizontal: false, vertical: true)
+                .background(Color(red: 0.11, green: 0.11, blue: 0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10)
+                    .stroke(.white.opacity(0.12), lineWidth: 0.5))
+        }
     }
 
     /// 기한 초과 섹션의 펼침/접힘 두 상태를 나란히 확인한다.
@@ -146,22 +146,10 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 
-    /// 본문이 길 때 실제로 커지는지 — 화면 여유에 맞춰 상한이 정해지므로 값도 같이 남긴다.
-    func testLongDescriptionUsesEnlargedBody() throws {
-        let screen = NSScreen.main?.visibleFrame.height ?? 0
-        print("[metrics] 화면여유=\(Int(screen)) 본문최대=\(Int(CalendarPreviewMetrics.bodyMaxHeight))")
-
-        XCTAssertGreaterThan(CalendarPreviewMetrics.bodyMaxHeight, 520,
-                             "본문 상한이 이전(520)보다 커져야 한다")
-
-        // 댓글 몫은 개수에 비례해야 한다 — 짧은 댓글 하나에 본문이 크게 깎이면 안 된다.
-        let none = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 0)
-        let one = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 1)
-        let three = CalendarPreviewMetrics.bodyMaxHeight(commentCount: 3)
-        print("[metrics] 본문최대 댓글0=\(Int(none)) 댓글1=\(Int(one)) 댓글3=\(Int(three))")
-        XCTAssertGreaterThan(none, one, "댓글이 없으면 더 넉넉해야 한다")
-        XCTAssertGreaterThan(one, three, "댓글이 많을수록 본문 몫이 줄어야 한다")
-        XCTAssertGreaterThan(one, 630, "댓글 1개는 예전 일괄 차감(630)보다 넉넉해야 한다")
+    /// 본문이 길 때 상한까지 쓰는지 — 상한은 화면과 무관한 고정값이어야 한다.
+    func testLongDescriptionUsesFixedBodyCeiling() throws {
+        XCTAssertEqual(CalendarPreviewMetrics.bodyMaxHeight, 520,
+                       "본문 상한은 화면 크기와 무관한 고정값")
 
         let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
             .joined(separator: "\n")
@@ -177,9 +165,8 @@ final class IssuePreviewSnapshotTests: XCTestCase {
 
         let hosting = NSHostingView(rootView: popover)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
-        XCTAssertGreaterThan(hosting.bounds.height, 700,
-                             "긴 설명이면 팝오버가 이전 상한 근처보다 확실히 커져야 한다")
         print("[metrics] 긴 설명 팝오버 = \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height))")
+        XCTAssertLessThan(hosting.bounds.height, 800, "상한을 넘겨 자라면 안 된다")
 
         try render(popover, named: "long-description.png")
     }

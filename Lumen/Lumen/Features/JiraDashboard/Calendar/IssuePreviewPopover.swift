@@ -24,9 +24,8 @@ struct IssuePreviewPopover: View {
                     badgeText: d.status,
                     title: d.summary,
                     bodyText: d.descriptionText,
-                    bodyMaxHeight: CalendarPreviewMetrics.bodyMaxHeight(
-                        commentCount: d.recentComments.count),
-                    extraContent: { commentSection(d) },
+                    bodyMaxHeight: CalendarPreviewMetrics.bodyMaxHeight,
+                    extraContent: { commentHint(d) },
                     footer: { jiraOpenFooter }
                 )
             } else if isLoading {
@@ -64,85 +63,21 @@ struct IssuePreviewPopover: View {
         .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
     }
 
-    /// 좁은 미리보기 팝오버에서는 스레드를 페이지네이션하거나 무한스크롤하지 않는 것이 통례다.
-    /// 최신 몇 개만 보여주고 나머지는 "더 보기"로 Jira 본문에 넘긴다.
+    /// 댓글은 ⌘클릭 전용 팝오버로 분리했다. 여기엔 "있다"는 사실과 여는 방법만 남긴다 —
+    /// 설명과 댓글이 한 팝오버에서 세로를 서로 뺏던 문제를 없애기 위함.
     @ViewBuilder
-    private func commentSection(_ detail: IssueDetail) -> some View {
-        if detail.recentComments.isEmpty {
-            // 본문을 못 가져왔어도 개수는 알 수 있는 경우 — 기존처럼 개수만 노출.
-            if detail.commentCount > 0 {
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.right")
-                        .font(.system(size: 10, weight: .medium))
-                    Text("\(detail.commentCount)")
-                        .font(.system(size: 11, design: .monospaced))
-                }
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 7) {
-                Rectangle()
-                    .fill(LumenTokens.divider)
-                    .frame(height: 0.5)
-
-                HStack(spacing: 5) {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Text("댓글 \(detail.commentCount)")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                    Spacer()
-                    if hiddenCommentCount(detail) > 0 {
-                        Button {
-                            openJira(issueKey)
-                        } label: {
-                            Text("이전 \(hiddenCommentCount(detail))개 더 보기")
-                                .font(.system(size: 10.5, weight: .medium))
-                                .foregroundStyle(LumenTokens.Accent.violetSoft)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                // 최대 3개 × 3줄 클램프라 높이가 이미 유계다. 스크롤을 두면 내용이 짧아도
-                // 영역을 다 차지해 아래가 빈 공간으로 남는다.
-                VStack(alignment: .leading, spacing: 9) {
-                    ForEach(detail.recentComments) { commentRow($0) }
-                }
-            }
-        }
-    }
-
-    private func hiddenCommentCount(_ detail: IssueDetail) -> Int {
-        max(0, detail.commentCount - detail.recentComments.count)
-    }
-
-    private func commentRow(_ comment: IssueComment) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func commentHint(_ detail: IssueDetail) -> some View {
+        if detail.commentCount > 0 {
             HStack(spacing: 5) {
-                Text(comment.author)
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
-                    .lineLimit(1)
-                if let created = comment.created {
-                    Text(LumenTime.relative(created, granularity: .shortNoSuffix))
-                        .font(.system(size: 10))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 10, weight: .medium))
+                Text("댓글 \(detail.commentCount)")
+                    .font(.system(size: 11, weight: .medium))
+                Text("⌘클릭으로 보기")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.8))
             }
-            Text(comment.bodyText.isEmpty ? "(첨부만 있는 댓글)" : comment.bodyText)
-                .font(.system(size: 11))
-                .italic(comment.bodyText.isEmpty)
-                .foregroundStyle(comment.bodyText.isEmpty
-                                 ? LumenTokens.TextColor.muted
-                                 : LumenTokens.TextColor.secondary)
-                .lineSpacing(1.5)
-                .lineLimit(3)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+            .foregroundStyle(LumenTokens.TextColor.muted)
         }
     }
 

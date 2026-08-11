@@ -100,10 +100,18 @@ struct InlineSpinner: View {
 
 // MARK: - Issue row & list
 
+/// 클릭 시점의 ⌘ 여부. 이슈를 여는 지점이 목록·월간·주간·오늘 일정으로 흩어져 있어
+/// 각 호출부에서 제스처를 새로 짜는 대신 클릭 순간의 수정자 플래그를 읽는다.
+@MainActor
+var isCommandClick: Bool {
+    NSEvent.modifierFlags.contains(.command)
+}
+
 struct IssueRow: View {
     let issue: JiraIssue
     @State private var hovered = false
     @State private var showingPreview = false
+    @State private var showingComments = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -136,9 +144,15 @@ struct IssueRow: View {
         )
         .contentShape(Rectangle())
         .onHover { hovered = $0; if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-        .onTapGesture { showingPreview = true }
+        .onTapGesture {
+            if isCommandClick { showingComments = true } else { showingPreview = true }
+        }
+        .help("클릭: 미리보기 · ⌘클릭: 댓글")
         .popover(isPresented: $showingPreview, arrowEdge: .top) {
             IssuePreviewPopover(issueKey: issue.key)
+        }
+        .popover(isPresented: $showingComments, arrowEdge: .top) {
+            IssueCommentsPopover(issueKey: issue.key)
         }
     }
 

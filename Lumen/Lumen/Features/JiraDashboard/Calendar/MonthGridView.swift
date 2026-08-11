@@ -208,6 +208,8 @@ private struct WeekRow: View {
     private let topPadding: CGFloat = 22  // 날짜 숫자 자리
     /// Jira 막대 클릭 시 띄울 popover의 대상 issue key — nil이면 닫힘.
     @State private var previewingKey: String? = nil
+    /// ⌘클릭이면 설명 대신 댓글 팝오버를 띄운다.
+    @State private var previewingComments = false
     /// 셀 더블클릭 시 새 이벤트 popover의 anchor 날짜.
     @State private var newEventDate: Date? = nil
     /// 로컬 막대 클릭 시 편집 popover의 대상 이벤트.
@@ -316,6 +318,7 @@ private struct WeekRow: View {
             } else if bar.item.kind == .googleCalendar {
                 previewingEKBarID = bar.item.id
             } else if let key = bar.item.issueKey {
+                previewingComments = isCommandClick
                 previewingKey = key
             }
         } label: {
@@ -332,7 +335,11 @@ private struct WeekRow: View {
             set: { if !$0 { previewingKey = nil } }
         ), arrowEdge: .top) {
             if let key = bar.item.issueKey {
-                IssuePreviewPopover(issueKey: key)
+                if previewingComments {
+                    IssueCommentsPopover(issueKey: key)
+                } else {
+                    IssuePreviewPopover(issueKey: key)
+                }
             }
         }
         .popover(isPresented: Binding(

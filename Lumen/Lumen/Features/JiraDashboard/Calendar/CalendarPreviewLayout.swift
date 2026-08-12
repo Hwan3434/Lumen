@@ -9,9 +9,10 @@ enum CalendarPreviewMetrics {
     static let bodyMinHeight: CGFloat = 44
     /// 본문 최대 높이. 화면 크기에 따라 값이 달라지면 같은 버전인데 사람마다 다르게 보이므로
     /// 고정값으로 둔다. 이보다 긴 내용은 스크롤하거나 상세 창에서 본다.
-    static let bodyMaxHeight: CGFloat = 520
+    /// 헤더·제목·푸터가 약 161pt를 더 쓰므로 팝오버 총 높이는 이 값 + 161 근처가 된다.
+    static let bodyMaxHeight: CGFloat = 700
     /// ⌘클릭 댓글 팝오버의 목록 높이 — 세로 전부를 댓글에 쓰므로 본문과 같은 여유를 준다.
-    static let commentsPopoverMaxHeight: CGFloat = 520
+    static let commentsPopoverMaxHeight: CGFloat = 700
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.

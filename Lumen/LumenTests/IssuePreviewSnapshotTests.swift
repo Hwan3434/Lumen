@@ -148,7 +148,7 @@ final class IssuePreviewSnapshotTests: XCTestCase {
 
     /// 본문이 길 때 상한까지 쓰는지 — 상한은 화면과 무관한 고정값이어야 한다.
     func testLongDescriptionUsesFixedBodyCeiling() throws {
-        XCTAssertEqual(CalendarPreviewMetrics.bodyMaxHeight, 520,
+        XCTAssertEqual(CalendarPreviewMetrics.bodyMaxHeight, 700,
                        "본문 상한은 화면 크기와 무관한 고정값")
 
         let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
@@ -166,7 +166,7 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         let hosting = NSHostingView(rootView: popover)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         print("[metrics] 긴 설명 팝오버 = \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height))")
-        XCTAssertLessThan(hosting.bounds.height, 800, "상한을 넘겨 자라면 안 된다")
+        XCTAssertLessThan(hosting.bounds.height, 900, "상한을 넘겨 자라면 안 된다")
 
         try render(popover, named: "long-description.png")
     }

@@ -67,7 +67,7 @@ final class SearchViewModel {
             return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
 
-        if let calcResult = evaluate(query) {
+        if let calcResult = ArithmeticEvaluator.evaluate(query) {
             items.append(.calculation(expression: query, result: calcResult))
         }
 
@@ -146,20 +146,4 @@ final class SearchViewModel {
         return .currency(input: inputLabel, result: resultLabel, copyValue: copyValue)
     }
 
-    private func evaluate(_ expression: String) -> String? {
-        let cleaned = expression
-            .replacingOccurrences(of: "×", with: "*")
-            .replacingOccurrences(of: "÷", with: "/")
-            .replacingOccurrences(of: ",", with: "")
-        guard cleaned.rangeOfCharacter(from: CharacterSet(charactersIn: "0123456789.+-*/() ").inverted) == nil,
-              cleaned.rangeOfCharacter(from: .decimalDigits) != nil,
-              cleaned.rangeOfCharacter(from: CharacterSet(charactersIn: "+-*/")) != nil else { return nil }
-        guard let expr = try? NSExpression(format: cleaned),
-              let result = expr.expressionValue(with: nil, context: nil) as? NSNumber else { return nil }
-        let doubleVal = result.doubleValue
-        if doubleVal == doubleVal.rounded() && abs(doubleVal) < 1e15 {
-            return String(format: "%.0f", doubleVal)
-        }
-        return String(doubleVal)
-    }
 }

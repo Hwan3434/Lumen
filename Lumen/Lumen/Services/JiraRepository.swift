@@ -129,14 +129,13 @@ actor JiraRepository {
     }
 
     private func fetchIssueFields(cloudId: String, key: String) async throws -> (summary: String, status: String, description: String) {
-        var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)")!
-        comps.queryItems = [URLQueryItem(name: "fields", value: "summary,status,description")]
-        guard let url = comps.url else { throw URLError(.badURL) }
+        let url = try makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))",
+                              query: [URLQueryItem(name: "fields", value: "summary,status,description")])
 
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
         guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                          userInfo: [NSLocalizedDescriptionKey: String(data: data, encoding: .utf8) ?? ""])
+            throw Self.apiError(status: (resp as? HTTPURLResponse)?.statusCode ?? -1,
+                                data: data, context: "이슈 \(key)")
         }
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -156,12 +155,10 @@ actor JiraRepository {
     /// 거기서 잘라내면 "최신"이 아니게 된다. 그래서 정렬을 지정할 수 있는 전용 엔드포인트를 쓴다.
     /// 실패해도 던지지 않는다 — 댓글은 부가 정보이므로 본문 미리보기까지 막을 이유가 없다.
     private func fetchRecentComments(cloudId: String, key: String) async -> (total: Int, comments: [IssueComment]) {
-        var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)/comment")!
-        comps.queryItems = [
+        guard let url = try? makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment", query: [
             URLQueryItem(name: "orderBy", value: "-created"),
             URLQueryItem(name: "maxResults", value: "\(Self.previewCommentLimit)"),
-        ]
-        guard let url = comps.url else { return (0, []) }
+        ]) else { return (0, []) }
 
         guard let (data, resp) = try? await URLSession.shared.data(for: makeRequest(url: url)) else {
             NSLog("[Lumen] 댓글 조회 실패 (%@): 네트워크 오류", key)
@@ -204,22 +201,18 @@ actor JiraRepository {
         var startAt = 0
 
         while collected.count < limit {
-            var comps = URLComponents(string: "\(baseURL(cloudId))/issue/\(key)/comment")!
-            comps.queryItems = [
+            let url = try makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment", query: [
                 URLQueryItem(name: "orderBy", value: "created"),
                 URLQueryItem(name: "startAt", value: "\(startAt)"),
                 URLQueryItem(name: "maxResults", value: "\(pageSize)"),
-            ]
-            guard let url = comps.url else { throw URLError(.badURL) }
+            ])
 
             let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
             let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
             guard (200...299).contains(status),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
-                NSLog("[Lumen] 댓글 전체 조회 실패 (%@): http=%d", key, status)
-                throw NSError(domain: "JiraAPI", code: status,
-                              userInfo: [NSLocalizedDescriptionKey: "댓글을 불러오지 못했습니다."])
+                throw Self.apiError(status: status, data: data, context: "댓글 전체 조회 \(key)")
             }
 
             total = (json["total"] as? Int) ?? total
@@ -293,6 +286,57 @@ actor JiraRepository {
         return req
     }
 
+    /// 쿼리 파라미터를 붙인 URL을 만든다.
+    /// cloudId는 API 응답에서, 이슈 키는 사용자 데이터에서 오므로 조합이 항상 유효하다는 보장이 없다 —
+    /// 그래서 force unwrap 대신 badURL을 던진다.
+    private func makeURL(_ base: String, query items: [URLQueryItem] = []) throws -> URL {
+        guard var comps = URLComponents(string: base) else { throw URLError(.badURL) }
+        if !items.isEmpty { comps.queryItems = items }
+        guard let url = comps.url else { throw URLError(.badURL) }
+        return url
+    }
+
+    /// "ABC-123"처럼 경로에 그대로 들어가는 값의 이스케이프.
+    private func pathEscaped(_ raw: String) -> String {
+        raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
+    }
+
+    /// HTTP 실패 응답 → 사람이 읽을 수 있는 오류.
+    ///
+    /// 예전에는 응답 본문을 그대로 `NSLocalizedDescriptionKey`에 넣어서, 실패 시 Atlassian이 준
+    /// JSON 덩어리가 팝오버에 그대로 찍혔다. 원문은 로그로 남기고 UI에는 요약만 보낸다.
+    private static func apiError(status: Int, data: Data, context: String) -> NSError {
+        let raw = String(data: data.prefix(500), encoding: .utf8) ?? ""
+        NSLog("[Lumen] Jira 요청 실패 (%@): http=%d body=%@", context, status, raw)
+
+        let base: String
+        switch status {
+        case 401:       base = "Jira 인증에 실패했습니다. 이메일과 API 토큰을 확인해 주세요."
+        case 403:       base = "이 리소스를 볼 권한이 없습니다."
+        case 404:       base = "요청한 항목을 Jira에서 찾을 수 없습니다."
+        case 429:       base = "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요."
+        case 500...599: base = "Jira 서버 오류입니다 (\(status))."
+        default:        base = "Jira 요청이 실패했습니다 (\(status))."
+        }
+
+        // Atlassian이 주는 errorMessages는 대개 한 줄짜리 사람말이라 붙여주면 도움이 된다.
+        let detail = errorMessages(from: data).first
+        let message = detail.map { "\(base)\n\($0)" } ?? base
+        return NSError(domain: "JiraAPI", code: status,
+                       userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    private static func errorMessages(from data: Data) -> [String] {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        if let messages = json["errorMessages"] as? [String], !messages.isEmpty {
+            return messages
+        }
+        if let errors = json["errors"] as? [String: String], !errors.isEmpty {
+            return errors.map { "\($0.key): \($0.value)" }
+        }
+        return []
+    }
+
     private func searchIssues(cloudId: String, jql: String, maxResults: Int) async throws -> [JiraIssue] {
         let pageSize = 100
         let totalCap = min(maxResults, 1000)
@@ -300,7 +344,6 @@ actor JiraRepository {
         var nextPageToken: String?
 
         while collected.count < totalCap {
-            var comps = URLComponents(string: "\(baseURL(cloudId))/search/jql")!
             var items: [URLQueryItem] = [
                 URLQueryItem(name: "jql", value: jql),
                 URLQueryItem(name: "maxResults", value: "\(pageSize)"),
@@ -309,14 +352,12 @@ actor JiraRepository {
             if let token = nextPageToken {
                 items.append(URLQueryItem(name: "nextPageToken", value: token))
             }
-            comps.queryItems = items
-            guard let url = comps.url else { throw URLError(.badURL) }
+            let url = try makeURL("\(baseURL(cloudId))/search/jql", query: items)
 
             let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
             guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                let body = String(data: data, encoding: .utf8) ?? ""
-                throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                              userInfo: [NSLocalizedDescriptionKey: body])
+                throw Self.apiError(status: (resp as? HTTPURLResponse)?.statusCode ?? -1,
+                                    data: data, context: "이슈 검색")
             }
 
             guard
@@ -390,12 +431,10 @@ actor JiraRepository {
     }
 
     private func fetchBoardId(cloudId: String, projectKey: String) async throws -> Int? {
-        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/board")!
-        comps.queryItems = [
+        let url = try makeURL("\(agileBaseURL(cloudId))/board", query: [
             URLQueryItem(name: "projectKeyOrId", value: projectKey),
             URLQueryItem(name: "maxResults", value: "1"),
-        ]
-        guard let url = comps.url else { throw URLError(.badURL) }
+        ])
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
         guard (resp as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -406,9 +445,8 @@ actor JiraRepository {
     }
 
     private func fetchActiveSprint(cloudId: String, boardId: Int, projKey: String) async throws -> SprintInfo? {
-        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/board/\(boardId)/sprint")!
-        comps.queryItems = [URLQueryItem(name: "state", value: "active")]
-        guard let url = comps.url else { throw URLError(.badURL) }
+        let url = try makeURL("\(agileBaseURL(cloudId))/board/\(boardId)/sprint",
+                              query: [URLQueryItem(name: "state", value: "active")])
         let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
         guard (resp as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -427,12 +465,10 @@ actor JiraRepository {
     }
 
     private func fetchSprintIssueCounts(cloudId: String, sprintId: Int) async throws -> (Int, Int) {
-        var comps = URLComponents(string: "\(agileBaseURL(cloudId))/sprint/\(sprintId)/issue")!
-        comps.queryItems = [
+        let url = try makeURL("\(agileBaseURL(cloudId))/sprint/\(sprintId)/issue", query: [
             URLQueryItem(name: "fields", value: "status"),
             URLQueryItem(name: "maxResults", value: "200"),
-        ]
-        guard let url = comps.url else { throw URLError(.badURL) }
+        ])
         let (data, _) = try await URLSession.shared.data(for: makeRequest(url: url))
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let issues = json["issues"] as? [[String: Any]]

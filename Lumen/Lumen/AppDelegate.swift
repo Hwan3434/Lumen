@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppResourceMonitor.resetTrace()
         AppResourceMonitor.trace("applicationDidFinishLaunching:start")
 
+        LumenStorage.purgeRetiredFilesIfNeeded()
+
         let translator = TranslatorFeature()
         FeatureRegistry.shared.register(translator)
         AppResourceMonitor.trace("feature_registered: Translator")

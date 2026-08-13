@@ -20,12 +20,18 @@ final class AppResourceMonitor {
         timestamp: Date(), memoryMB: 0, cpuPercent: 0, threadCount: 0
     )
 
-    // 원형 버퍼 — 5초 간격 × 720 = 1시간
     private(set) var history: [ResourceSnapshot] = []
     private let capacity = 720
-    private let interval: TimeInterval = 5
+
+    /// 패널이 떠 있을 때의 샘플링 간격 — 실시간 그래프가 움직여야 하므로 촘촘하게.
+    private let foregroundInterval: TimeInterval = 5
+    /// 패널이 닫혀 있을 때의 간격. 메뉴바 상주 앱이라 이 타이머는 앱 수명 내내 돈다.
+    /// 백그라운드에서 5초마다 task_threads()를 두 번씩 부를 이유는 없다 —
+    /// 이때 필요한 건 실시간성이 아니라 누수 추세 감지뿐이라 1분이면 충분하다.
+    private let backgroundInterval: TimeInterval = 60
 
     private var timer: Timer?
+    private var isForeground = false
     private let cores: Int = ProcessInfo.processInfo.activeProcessorCount
 
     /// 코어 수 (UI에서 CPU% 스케일 표시용)
@@ -36,14 +42,29 @@ final class AppResourceMonitor {
     func start() {
         guard timer == nil else { return }
         sampleAndStore()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            self?.sampleAndStore()
-        }
+        scheduleTimer()
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
+    }
+
+    /// 모니터 패널이 열리고 닫힐 때 호출 — 샘플링 간격을 전환한다.
+    func setForeground(_ foreground: Bool) {
+        guard isForeground != foreground else { return }
+        isForeground = foreground
+        guard timer != nil else { return }
+        if foreground { sampleAndStore() }   // 패널을 열자마자 최신 값이 보이도록
+        scheduleTimer()
+    }
+
+    private func scheduleTimer() {
+        timer?.invalidate()
+        let interval = isForeground ? foregroundInterval : backgroundInterval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.sampleAndStore()
+        }
     }
 
     private func sampleAndStore() {

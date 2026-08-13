@@ -48,8 +48,11 @@ struct ClipboardItem: Identifiable, Equatable {
         return "[알 수 없는 항목]"
     }
 
-    private static var iconCache: [String: NSImage] = [:]
+    /// 아이콘 캐시는 그리는 쪽(뷰)에서만 쓰므로 메인 액터에 묶어 둔다.
+    /// 격리 없는 static var면 다른 스레드에서 닿는 순간 데이터 레이스가 된다.
+    @MainActor private static var iconCache: [String: NSImage] = [:]
 
+    @MainActor
     var sourceAppIcon: NSImage? {
         guard let bundleID = sourceAppBundleID else { return nil }
         if let cached = Self.iconCache[bundleID] { return cached }

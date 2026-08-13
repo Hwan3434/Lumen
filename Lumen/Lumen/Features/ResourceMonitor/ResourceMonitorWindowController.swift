@@ -37,4 +37,13 @@ final class ResourceMonitorWindowController: PanelWindowController {
         let y = frame.midY - size.height / 2
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
     }
+
+    // 실시간 그래프가 보이는 동안만 촘촘히 샘플링한다. 닫혀 있을 땐 추세 감지용 저빈도로.
+    override func didShow(_ panel: KeyablePanel) {
+        AppResourceMonitor.shared.setForeground(true)
+    }
+
+    override func willHide() {
+        AppResourceMonitor.shared.setForeground(false)
+    }
 }

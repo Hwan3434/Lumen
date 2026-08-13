@@ -13,7 +13,14 @@ final class EventKitService {
     static let shared = EventKitService()
     private static let logger = Logger(subsystem: "com.jh.Lumen", category: "EventKitService")
 
-    private let store = EKEventStore()
+    /// EKEventStore는 Sendable이 아니지만 조회는 스레드 안전하고, 여기서 만든 EKEvent를
+    /// 다른 스레드로 넘기지 않는다(백그라운드에서 값 타입으로 변환한 뒤에만 메인으로 보낸다).
+    /// Swift 6 격리 검사에 이 의도를 명시한다.
+    private nonisolated(unsafe) let store = EKEventStore()
+
+    /// 진행 중인 조회. `.EKEventStoreChanged`가 연달아 오면 조회가 겹치는데, 완료 순서는
+    /// 보장되지 않아 오래된 결과가 최신 결과를 덮어쓸 수 있다. 새 조회 전에 이전 것을 취소한다.
+    private var fetchTask: Task<Void, Never>?
     private(set) var events: [ExternalCalendarEvent] = []
     private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
     /// 여러 strip이 동일 인스턴스를 구독해 한 strip의 토글이 즉시 다른 strip에 반영되도록 @Observable로 노출.
@@ -66,18 +73,25 @@ final class EventKitService {
         }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendars)
         let eventStore = self.store
-        Task.detached(priority: .userInitiated) {
+
+        fetchTask?.cancel()
+        fetchTask = Task.detached(priority: .userInitiated) {
             let matched = eventStore.events(matching: predicate)
+            guard !Task.isCancelled else { return }
+
             var seenOccurrences: Set<EventOccurrenceKey> = []
             let uniqueMatches = matched.filter { event in
                 seenOccurrences.insert(EventOccurrenceKey(event)).inserted
             }
             let uniqueEvents = uniqueMatches.compactMap(ExternalCalendarEvent.init(event:))
             let duplicateCount = matched.count - uniqueMatches.count
+
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 if duplicateCount > 0 {
                     Self.logger.warning("Removed \(duplicateCount, privacy: .public) duplicate EventKit occurrence(s)")
                 }
+                // 싱글턴이라 self를 캡처할 필요가 없다 — 캡처하면 Swift 6에서 격리 위반이 된다.
                 EventKitService.shared.events = uniqueEvents
             }
         }

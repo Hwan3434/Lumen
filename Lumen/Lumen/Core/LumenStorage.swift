@@ -84,4 +84,27 @@ enum LumenStorage {
         guard let data = try? encoder.encode(value) else { return }
         try? data.write(to: url(for: slot), options: .atomic)
     }
+
+    // MARK: - 제거된 기능이 남긴 파일 정리
+
+    /// 더 이상 쓰이지 않는 파일 목록. Slot에서 빠졌기 때문에 아무도 안 지우고 계속 남는다.
+    /// 이름을 명시적으로 적는다 — 디렉터리를 훑어서 "모르는 파일"을 지우는 방식은
+    /// 다음에 새 파일을 추가할 때 그걸 지워버릴 수 있어 위험하다.
+    private static let retiredFiles = [
+        "jsonl_cache.json",   // Antigravity 사용량 집계 (기능 제거됨, 수 MB까지 자람)
+    ]
+
+    private static let didPurgeKey = "didPurgeRetiredFilesV1"
+
+    /// 앱 시작 시 1회 — 제거된 기능이 남긴 파일을 삭제한다. 플래그로 멱등.
+    static func purgeRetiredFilesIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: didPurgeKey) else { return }
+        for name in retiredFiles {
+            let target = baseURL.appendingPathComponent(name)
+            guard FileManager.default.fileExists(atPath: target.path) else { continue }
+            try? FileManager.default.removeItem(at: target)
+        }
+        defaults.set(true, forKey: didPurgeKey)
+    }
 }

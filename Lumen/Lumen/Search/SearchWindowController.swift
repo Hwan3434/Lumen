@@ -8,6 +8,10 @@ final class SearchWindowController: PanelWindowController {
         let isFirstShow = panel == nil
         AppResourceMonitor.trace("search:show:enter(firstShow=\(isFirstShow))")
         super.show()
+        // 메뉴바 상주 앱이라 몇 주씩 안 끄는 일이 흔하다. 앱 시작 때 한 번만 확인하면
+        // 그동안 환율이 계속 낡은 채로 남으므로, 검색창을 열 때마다 다시 확인한다.
+        // (24시간 이내면 즉시 리턴이라 비용은 사실상 없다.)
+        CurrencyService.shared.refreshIfStale()
         AppResourceMonitor.trace("search:show:exit")
     }
 

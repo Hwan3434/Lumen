@@ -25,6 +25,9 @@ struct IssuePreviewPopover: View {
                     title: d.summary,
                     bodyText: d.descriptionText,
                     bodyMaxHeight: CalendarPreviewMetrics.bodyMaxHeight,
+                    // 로딩 상태와 같은 높이 — popover는 뜬 뒤에 못 커지므로 상태가 바뀌어도
+                    // 크기가 같아야 본문이 잘리지 않는다. CalendarPreviewMetrics 주석 참고.
+                    reservedHeight: CalendarPreviewMetrics.reservedHeight,
                     extraContent: { commentHint(d) },
                     footer: { jiraOpenFooter }
                 )
@@ -33,7 +36,8 @@ struct IssuePreviewPopover: View {
             } else if let msg = errorMessage {
                 errorView(msg)
             } else {
-                Color.clear.frame(width: CalendarPreviewMetrics.width, height: 100)
+                Color.clear.frame(width: CalendarPreviewMetrics.width,
+                                  height: CalendarPreviewMetrics.reservedHeight)
             }
         }
         .task { await load() }
@@ -46,7 +50,8 @@ struct IssuePreviewPopover: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(LumenTokens.TextColor.muted)
         }
-        .frame(width: CalendarPreviewMetrics.width, height: 160)
+        .frame(width: CalendarPreviewMetrics.width,
+               height: CalendarPreviewMetrics.reservedHeight)
     }
 
     private func errorView(_ msg: String) -> some View {
@@ -58,9 +63,12 @@ struct IssuePreviewPopover: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(LumenTokens.ErrorTone.title)
                 .lineLimit(3)
+            Spacer(minLength: 0)
         }
         .padding(14)
-        .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
+        .frame(width: CalendarPreviewMetrics.width,
+               height: CalendarPreviewMetrics.reservedHeight,
+               alignment: .topLeading)
     }
 
     /// 댓글은 ⌘클릭 전용 팝오버로 분리했다. 여기엔 "있다"는 사실과 여는 방법만 남긴다 —

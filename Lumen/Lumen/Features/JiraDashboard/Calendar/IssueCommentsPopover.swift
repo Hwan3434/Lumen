@@ -23,6 +23,7 @@ struct IssueCommentsPopover: View {
                     .foregroundStyle(LumenTokens.ErrorTone.title)
                     .lineLimit(3)
                     .padding(EdgeInsets(top: 12, leading: 14, bottom: 16, trailing: 14))
+                Spacer(minLength: 0)
             } else if isLoading && comments.isEmpty {
                 HStack(spacing: 8) {
                     InlineSpinner()
@@ -32,6 +33,7 @@ struct IssueCommentsPopover: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
+                Spacer(minLength: 0)
             } else if comments.isEmpty {
                 Text("댓글 없음")
                     .font(.system(size: 11.5))
@@ -39,6 +41,7 @@ struct IssueCommentsPopover: View {
                     .foregroundStyle(LumenTokens.TextColor.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(EdgeInsets(top: 10, leading: 14, bottom: 16, trailing: 14))
+                Spacer(minLength: 0)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
@@ -46,12 +49,15 @@ struct IssueCommentsPopover: View {
                     }
                     .padding(EdgeInsets(top: 10, leading: 14, bottom: 14, trailing: 14))
                 }
-                .frame(maxHeight: CalendarPreviewMetrics.commentsPopoverMaxHeight)
+                .frame(maxHeight: .infinity)
             }
 
             footer
         }
-        .frame(width: CalendarPreviewMetrics.width)
+        // 댓글도 .task로 뒤늦게 채워지므로 처음부터 최종 높이를 잡아둔다 —
+        // popover는 표시된 뒤에 커지지 않는다. CalendarPreviewMetrics.reservedHeight 주석 참고.
+        .frame(width: CalendarPreviewMetrics.width,
+               height: CalendarPreviewMetrics.reservedHeight)
         .task { await load() }
     }
 

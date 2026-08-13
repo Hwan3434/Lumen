@@ -14,33 +14,27 @@ import AppKit
 @MainActor
 final class PopoverPresentationSizeTests: XCTestCase {
 
-    /// 응답이 늦게 와도 미리보기는 예약 높이 그대로 — 이게 깨지면 본문이 잘려 보인다.
-    func testPreviewKeepsReservedHeightWhenDetailArrivesLate() throws {
-        let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
-            .joined(separator: "\n")
-        let detail = IssueDetail.mock(key: "ABC-2001", summary: "긴 설명 렌더링 확인", status: "진행중",
-                                      description: long, total: 3, comments: [])
+    /// 내용이 나중에 커져도 미리보기는 예약 높이 그대로 — 이게 깨지면 본문이 잘려 보인다.
+    ///
+    /// 주입값을 nil로 두면 실제 Jira로 요청이 나가므로(`fetchIssueDetail`에는 설정 여부 가드가 없다),
+    /// 짧은 내용 → 긴 내용 교체로 "표시 후 내용이 커지는" 상황만 재현한다.
+    func testPreviewKeepsReservedHeightWhenBodyGrows() throws {
+        let short = IssueDetail.mock(key: "ABC-2001", summary: "제목", status: "진행중",
+                                     description: "한 줄.", total: 0, comments: [])
+        let long = IssueDetail.mock(
+            key: "ABC-2001", summary: "긴 설명 렌더링 확인", status: "진행중",
+            description: (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
+                .joined(separator: "\n"),
+            total: 3, comments: [])
 
-        let size = try presentThenFill(name: "popover-preview-late-detail.png") { filled in
-            IssuePreviewPopover(issueKey: detail.key, injectedDetail: filled ? detail : nil)
+        let size = try presentThenFill(name: "popover-preview-grown.png") { filled in
+            IssuePreviewPopover(issueKey: long.key, injectedDetail: filled ? long : short)
         }
 
-        XCTAssertEqual(size.after.height, CalendarPreviewMetrics.reservedHeight, accuracy: 1,
-                       "본문 도착 후 높이가 예약값과 달라졌다 — popover는 뜬 뒤 못 커지므로 잘린다")
         XCTAssertEqual(size.before.height, size.after.height, accuracy: 1,
-                       "로딩 상태와 본문 상태의 높이가 같아야 한다")
-    }
-
-    /// 짧은 설명도 같은 높이 — 예약 방식의 대가(아래가 빔)를 명시적으로 박아둔다.
-    func testShortDescriptionAlsoUsesReservedHeight() throws {
-        let detail = IssueDetail.mock(key: "PPAI-77", summary: "온보딩 화면 카피 최종 검토",
-                                      status: "할 일",
-                                      description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
-                                      total: 0, comments: [])
-        let size = try presentThenFill(name: "popover-preview-short.png") { filled in
-            IssuePreviewPopover(issueKey: detail.key, injectedDetail: filled ? detail : nil)
-        }
-        XCTAssertEqual(size.after.height, CalendarPreviewMetrics.reservedHeight, accuracy: 1)
+                       "짧은 상태와 긴 상태의 높이가 같아야 한다 (예약 높이의 존재 이유)")
+        XCTAssertGreaterThanOrEqual(size.after.height, CalendarPreviewMetrics.reservedHeight,
+                                    "예약한 높이만큼 확보되지 않았다 — 긴 본문이 잘린다")
     }
 
     /// ⌘클릭 댓글 팝오버도 `.task`로 뒤늦게 채워지므로 같은 보장이 필요하다.
@@ -52,11 +46,17 @@ final class PopoverPresentationSizeTests: XCTestCase {
                                   + "길이가 길어져도 잘리지 않고 보여야 합니다.")
         }
         let size = try presentThenFill(name: "popover-comments.png") { filled in
+            // 이 팝오버는 주입값을 `.task`에서 state로 옮기므로, 값만 바꾸면 다시 읽지 않는다.
+            // .id로 뷰를 새로 만들어 "댓글이 뒤늦게 도착"을 실제로 재현한다.
             IssueCommentsPopover(issueKey: "ABC-1421",
-                                 injected: filled ? (total: 12, comments: comments) : nil)
+                                 injected: filled ? (total: 12, comments: comments)
+                                                  : (total: 12, comments: Array(comments.prefix(1))))
+                .id(filled)
         }
-        XCTAssertEqual(size.after.height, CalendarPreviewMetrics.reservedHeight, accuracy: 1,
-                       "댓글이 도착해도 로딩 높이에 갇히면 안 된다")
+        XCTAssertEqual(size.before.height, size.after.height, accuracy: 1,
+                       "댓글이 도착해도 처음 높이에 갇히면 안 된다")
+        XCTAssertGreaterThanOrEqual(size.after.height, CalendarPreviewMetrics.reservedHeight,
+                                    "예약한 높이만큼 확보되지 않았다 — 댓글이 잘린다")
     }
 
     /// 반대 방향 보장 — 값이 이미 있는 캘린더 이벤트 미리보기까지 예약 높이를 쓰면 안 된다.
@@ -106,6 +106,8 @@ final class PopoverPresentationSizeTests: XCTestCase {
         return Sizes(before: before, after: after)
     }
 
+    /// 반환값은 popover **창**의 contentView 크기 — SwiftUI content보다 화살표·여백만큼(약 26pt) 크다.
+    /// 그래서 예약 높이와는 `>=`로 비교한다.
     private func popoverSize(of window: NSWindow) throws -> NSSize {
         let popover = try XCTUnwrap((window.childWindows ?? []).first {
             String(describing: type(of: $0)).contains("Popover")

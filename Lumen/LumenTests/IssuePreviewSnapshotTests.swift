@@ -146,7 +146,10 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 
-    /// 본문이 길 때 상한까지 쓰는지 — 상한은 화면과 무관한 고정값이어야 한다.
+    /// 본문이 길 때 예약 높이를 정확히 쓰는지 — 화면 크기와 무관한 고정값이어야 한다.
+    ///
+    /// 예약 높이 자체가 유지되는지(= 늦게 도착한 본문이 잘리지 않는지)는 실제 popover를 띄우는
+    /// `PopoverPresentationSizeTests`가 본다. 여기선 레이아웃 치수만 확인한다.
     func testLongDescriptionUsesFixedBodyCeiling() throws {
         XCTAssertEqual(CalendarPreviewMetrics.bodyMaxHeight, 700,
                        "본문 상한은 화면 크기와 무관한 고정값")
@@ -156,18 +159,20 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         let detail = IssueDetail.mock(key: "ABC-2001", summary: "긴 설명 렌더링 확인",
                                       status: "진행중", description: long, total: 0, comments: [])
 
+        let bare = NSHostingView(rootView: IssuePreviewPopover(issueKey: detail.key,
+                                                               injectedDetail: detail))
+        let size = bare.fittingSize
+        print("[metrics] 긴 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
+        XCTAssertEqual(size.height, CalendarPreviewMetrics.reservedHeight, accuracy: 1,
+                       "예약 높이를 그대로 써야 한다 — 더 크면 13인치에서 넘치고, 작으면 본문이 잘린다")
+        XCTAssertLessThan(size.height, 900, "13인치 화면을 넘기면 안 된다")
+
         let popover = IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
             .fixedSize(horizontal: false, vertical: true)
             .background(Color(red: 0.11, green: 0.11, blue: 0.13))
             .padding(24)
             .background(Color(red: 0.05, green: 0.05, blue: 0.06))
             .environment(\.colorScheme, .dark)
-
-        let hosting = NSHostingView(rootView: popover)
-        hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
-        print("[metrics] 긴 설명 팝오버 = \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height))")
-        XCTAssertLessThan(hosting.bounds.height, 900, "상한을 넘겨 자라면 안 된다")
-
         try render(popover, named: "long-description.png")
     }
 

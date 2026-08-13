@@ -102,6 +102,16 @@ final class NoteWindowController: PanelWindowController {
         }
     }
 
+    /// 패널을 내릴 때 대기 중인 편집을 확정한다 — 디바운스가 끝나기 전에 앱이 죽어도 남도록.
+    override func willHide() {
+        viewModel?.flushPendingWrites()
+    }
+
+    /// 앱 종료 경로 (NoteFeature.teardown). 패널을 한 번도 안 열었으면 viewModel 자체가 없다.
+    func flushPendingWrites() {
+        viewModel?.flushPendingWrites()
+    }
+
     override func didCreatePanel(_ panel: KeyablePanel) {
         let frame = NSScreen.underMouse.visibleFrame
         let size = Self.panelSize

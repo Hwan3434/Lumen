@@ -25,4 +25,9 @@ final class NoteFeature: BuiltInFeature {
     func activate() {
         windowController.toggle()
     }
+
+    /// 앱 종료 시 FeatureRegistry.teardownAll()이 부른다 — 디바운스 대기 중인 편집을 잃지 않도록.
+    func teardown() {
+        windowController.flushPendingWrites()
+    }
 }

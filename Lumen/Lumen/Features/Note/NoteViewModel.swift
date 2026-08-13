@@ -72,10 +72,15 @@ final class NotesViewModel {
     private let diskQueue = DispatchQueue(label: "com.lumen.note.disk", qos: .utility)
     private var orderSaveWorkItem: DispatchWorkItem?
 
-    private let notesDir: URL = LumenStorage.url(for: .notesDir)
+    private let notesDir: URL
 
-    init() {
-        migrateLegacyIfNeeded()
+    /// 기본값은 실제 저장 위치. 테스트가 사용자의 진짜 노트를 건드리지 않도록 주입 가능하게 열어둔다.
+    init(notesDir: URL = LumenStorage.url(for: .notesDir)) {
+        self.notesDir = notesDir
+        // 0.x 단일 노트 마이그레이션은 실제 저장 위치를 쓸 때만 의미가 있다.
+        if notesDir == LumenStorage.url(for: .notesDir) {
+            migrateLegacyIfNeeded()
+        }
         loadFromDisk()
         if notes.isEmpty {
             createNewNote(activate: true)
@@ -201,6 +206,25 @@ final class NotesViewModel {
         if !isPreview { editFocusToken &+= 1 }
     }
 
+    /// 종료 직전 호출 — 디바운스 대기 중인 편집과 순서 변경을 **동기로** 디스크에 내린다.
+    ///
+    /// 평소 저장 경로는 1초 디바운스 + 백그라운드 큐라, 타이핑 직후 앱이 종료되면
+    /// 대기 중인 work item도 큐에 떠 있던 쓰기도 프로세스와 함께 사라진다.
+    /// 여기서만은 큐를 거치지 않고 바로 쓴다.
+    func flushPendingWrites() {
+        commitDraftNow(synchronously: true)
+
+        orderSaveWorkItem?.cancel()
+        orderSaveWorkItem = nil
+        if let data = try? JSONEncoder().encode(notes.map { $0.id }) {
+            try? data.write(to: orderFileURL, options: .atomic)
+        }
+
+        // 앞서 비동기로 큐에 넣어둔 본문 쓰기가 아직 남아 있을 수 있다.
+        // 직렬 큐라 빈 블록을 sync로 밀어 넣으면 그 앞의 작업이 모두 끝난 뒤에 돌아온다.
+        diskQueue.sync {}
+    }
+
     /// keystroke 디바운스: 1초 후 draft를 notes 배열에 반영하고 디스크에 쓴다.
     private func scheduleCommitAndSave() {
         saveStatus = .editing
@@ -213,13 +237,14 @@ final class NotesViewModel {
     }
 
     /// draft → notes 배열 커밋 + 디스크 저장 + saved flash. 이미 동일하면 무시.
-    private func commitDraftNow() {
+    /// `synchronously`면 백그라운드 큐를 거치지 않고 바로 쓴다 (종료 직전 경로).
+    private func commitDraftNow(synchronously: Bool = false) {
         saveWorkItem?.cancel()
         guard let id = selectedID,
               let idx = notes.firstIndex(where: { $0.id == id }),
               notes[idx].text != activeText else { return }
         notes[idx].text = activeText
-        writeToDisk(notes[idx])
+        writeToDisk(notes[idx], async: !synchronously)
         saveStatus = .saved
         flashSavedReset()
     }

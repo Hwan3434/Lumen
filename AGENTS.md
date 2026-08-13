@@ -10,7 +10,8 @@
   - `Lumen/Lumen/DesignSystem`: 디자인 토큰 (`LumenTokens`), 커스텀 컴포넌트 (`LumenChrome`, `LumenInput`).
   - `Lumen/Lumen/Features`: 번역, 메모, 클립보드, 설정창 화면 구성 요소.
   - `Lumen/Lumen/Search`: 메인 검색 창 뷰 및 사용량 정보 패널 (`UsagePanelView`).
-  - `Lumen/Lumen/Services`: 백그라운드 데이터 수집 서비스 (`AntigravityUsageService`, `OpenAIService`, `JiraService`).
+  - `Lumen/Lumen/Services`: 데이터 수집·가공 서비스 (`JiraService`/`JiraRepository`, `ClipboardManager`, `CurrencyService`, `AppIndexer`).
+  - 번역은 외부 API가 아니라 Apple 온디바이스 `Translation` 프레임워크를 씁니다 (`TranslatorViewModel`).
 
 ## 2. 코드 스타일 및 구현 규칙
 - **SwiftUI & State**: `@Observable` 매크로와 `Observation` 프레임워크를 기반으로 상태를 관리합니다. 불필요한 `@StateObject` 또는 `@ObservedObject` 사용을 피하십시오.

@@ -150,9 +150,9 @@ final class IssuePreviewSnapshotTests: XCTestCase {
     ///
     /// 예약 높이 자체가 유지되는지(= 늦게 도착한 본문이 잘리지 않는지)는 실제 popover를 띄우는
     /// `PopoverPresentationSizeTests`가 본다. 여기선 레이아웃 치수만 확인한다.
-    func testLongDescriptionUsesFixedBodyCeiling() throws {
-        XCTAssertEqual(CalendarPreviewMetrics.bodyMaxHeight, 700,
-                       "본문 상한은 화면 크기와 무관한 고정값")
+    func testLongDescriptionStopsAtTheCeiling() throws {
+        XCTAssertEqual(CalendarPreviewMetrics.maxPopoverHeight, 550,
+                       "상한은 화면 크기와 무관한 고정값")
 
         let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
             .joined(separator: "\n")
@@ -163,9 +163,8 @@ final class IssuePreviewSnapshotTests: XCTestCase {
                                                                injectedDetail: detail))
         let size = bare.fittingSize
         print("[metrics] 긴 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
-        XCTAssertEqual(size.height, CalendarPreviewMetrics.reservedHeight, accuracy: 1,
-                       "예약 높이를 그대로 써야 한다 — 더 크면 13인치에서 넘치고, 작으면 본문이 잘린다")
-        XCTAssertLessThan(size.height, 900, "13인치 화면을 넘기면 안 된다")
+        XCTAssertEqual(size.height, CalendarPreviewMetrics.maxPopoverHeight, accuracy: 1,
+                       "긴 본문은 상한에서 멈추고 그 안에서 스크롤돼야 한다")
 
         let popover = IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
             .fixedSize(horizontal: false, vertical: true)
@@ -176,28 +175,17 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         try render(popover, named: "long-description.png")
     }
 
-    /// 상세 창 — 설명 전문 + 댓글 스레드 전체. 팝오버와 달리 높이 상한이 없다.
-    func testRenderIssueDetailWindow() throws {
-        let detail = IssueDetail.mock(
-            key: "ABC-1421",
-            summary: "결제 모듈 타임아웃 재현 및 원인 분석",
-            status: "진행중",
-            description: (1...12).map { "설명 \($0)번째 문단 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
-                .joined(separator: "\n"),
-            total: 7,
-            comments: [])
-        let comments = (1...7).map { i in
-            IssueComment.mock(id: "\(i)", author: ["김철수", "홍길동", "이영희"][i % 3],
-                              minutesAgo: (8 - i) * 240,
-                              body: i == 4 ? "" : "댓글 \(i)번 — 확인했습니다. 재현 조건과 로그를 함께 남깁니다. "
-                                  + "길이가 길어져도 상세 창에서는 잘리지 않고 전부 보여야 합니다.")
-        }
-
-        let view = IssueDetailView(issueKey: detail.key, injected: (detail, comments))
-            .frame(width: 640, height: 780)
-            .environment(\.colorScheme, .dark)
-
-        try render(view, named: "issue-detail-window.png")
+    /// 설명이 짧으면 그만큼만 — 상한은 상한일 뿐 예약이 아니다.
+    func testShortDescriptionStaysSmall() throws {
+        let detail = IssueDetail.mock(key: "PPAI-77", summary: "온보딩 화면 카피 최종 검토",
+                                      status: "할 일",
+                                      description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
+                                      total: 0, comments: [])
+        let bare = NSHostingView(rootView: IssuePreviewPopover(issueKey: detail.key,
+                                                               injectedDetail: detail))
+        let size = bare.fittingSize
+        print("[metrics] 짧은 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
+        XCTAssertLessThan(size.height, 250, "짧은 내용에 큰 창이 뜨면 안 된다")
     }
 
     // MARK: - Rendering

@@ -213,9 +213,35 @@ private struct AgendaRow: View {
             )
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showingPreview, arrowEdge: .trailing) {
+        // 이슈는 조회를 마친 뒤에 떠야 크기가 내용에 맞는다(IssuePopoverPresenter 참고).
+        // 캘린더 이벤트·스프린트는 이미 값이 있으므로 바로 띄운다.
+        .popover(isPresented: Binding(
+            get: { showingPreview && !isIssueItem },
+            set: { if !$0 { showingPreview = false } }
+        ), arrowEdge: .trailing) {
             previewPopover
         }
+        .issuePreviewPopover(
+            issueKey: isIssueItem ? item.issueKey : nil,
+            isPresented: Binding(
+                get: { showingPreview && isIssueItem && !showingComments },
+                set: { if !$0 { showingPreview = false } }
+            ),
+            arrowEdge: .trailing
+        )
+        .issueCommentsPopover(
+            issueKey: isIssueItem ? item.issueKey : nil,
+            isPresented: Binding(
+                get: { showingPreview && isIssueItem && showingComments },
+                set: { if !$0 { showingPreview = false } }
+            ),
+            arrowEdge: .trailing
+        )
+    }
+
+    /// Jira 이슈 행인지 — 로컬 일정은 issueKey가 있어도 이슈가 아니다.
+    private var isIssueItem: Bool {
+        item.issueKey != nil && item.kind != .local
     }
 
     private var barColor: Color {
@@ -253,13 +279,7 @@ private struct AgendaRow: View {
 
     @ViewBuilder
     private var previewPopover: some View {
-        if let key = item.issueKey, item.kind != .local {
-            if showingComments {
-                IssueCommentsPopover(issueKey: key)
-            } else {
-                IssuePreviewPopover(issueKey: key)
-            }
-        } else if item.kind == .googleCalendar {
+        if item.kind == .googleCalendar {
             ekEventPreview
         } else {
             // 스프린트나 로컬 — 간단 정보만.

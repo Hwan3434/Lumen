@@ -13,18 +13,23 @@ struct IssueCommentsPopover: View {
     @State private var errorMessage: String?
     @State private var isLoading = true
 
+    /// 주입값은 `.task`(첫 렌더 이후에 도는)를 기다리지 않고 바로 그린다.
+    /// 팝오버는 **첫 프레임의 크기로 고정**되므로, 여기서 한 박자 늦으면 목록이 다 차 있어도
+    /// 창은 로딩 크기에 갇힌다.
+    private var shownComments: [IssueComment] { injected?.comments ?? comments }
+    private var shownTotal: Int { injected?.total ?? total }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
-            if let msg = errorMessage, comments.isEmpty {
+            if let msg = errorMessage, shownComments.isEmpty {
                 Text(msg)
                     .font(.system(size: 11.5))
                     .foregroundStyle(LumenTokens.ErrorTone.title)
                     .lineLimit(3)
                     .padding(EdgeInsets(top: 12, leading: 14, bottom: 16, trailing: 14))
-                Spacer(minLength: 0)
-            } else if isLoading && comments.isEmpty {
+            } else if isLoading && shownComments.isEmpty {
                 HStack(spacing: 8) {
                     InlineSpinner()
                     Text("댓글 불러오는 중…")
@@ -33,31 +38,27 @@ struct IssueCommentsPopover: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
-                Spacer(minLength: 0)
-            } else if comments.isEmpty {
+            } else if shownComments.isEmpty {
                 Text("댓글 없음")
                     .font(.system(size: 11.5))
                     .italic()
                     .foregroundStyle(LumenTokens.TextColor.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(EdgeInsets(top: 10, leading: 14, bottom: 16, trailing: 14))
-                Spacer(minLength: 0)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        ForEach(comments) { row($0) }
+                        ForEach(shownComments) { row($0) }
                     }
                     .padding(EdgeInsets(top: 10, leading: 14, bottom: 14, trailing: 14))
                 }
-                .frame(maxHeight: .infinity)
+                .frame(maxHeight: CalendarPreviewMetrics.commentsPopoverMaxHeight)
             }
-
-            footer
         }
-        // 댓글도 .task로 뒤늦게 채워지므로 처음부터 최종 높이를 잡아둔다 —
-        // popover는 표시된 뒤에 커지지 않는다. CalendarPreviewMetrics.reservedHeight 주석 참고.
-        .frame(width: CalendarPreviewMetrics.width,
-               height: CalendarPreviewMetrics.reservedHeight)
+        // 내용만큼만 차지하고, 상한을 넘으면 목록이 스크롤된다.
+        // 이 상한이 의미를 가지려면 데이터가 있는 채로 떠야 한다 — IssuePopoverPresenter 참고.
+        .frame(width: CalendarPreviewMetrics.width)
+        .frame(maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
         .task { await load() }
     }
 
@@ -69,10 +70,10 @@ struct IssueCommentsPopover: View {
             Text(issueKey)
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text("댓글 \(total)")
+            Text("댓글 \(shownTotal)")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(LumenTokens.TextColor.secondary)
-            if isLoading && !comments.isEmpty {
+            if isLoading && !shownComments.isEmpty {
                 InlineSpinner(size: 10)
             }
             Spacer()
@@ -105,31 +106,6 @@ struct IssueCommentsPopover: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }
-    }
-
-    private var footer: some View {
-        HStack(spacing: 8) {
-            Spacer()
-            Button { openIssueDetailWindow(issueKey) } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "macwindow")
-                        .font(.system(size: 10, weight: .semibold))
-                    Text("창으로 열기")
-                        .font(.system(size: 11.5, weight: .medium))
-                }
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color.white.opacity(0.04))
-                        .overlay(RoundedRectangle(cornerRadius: 5)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5))
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(EdgeInsets(top: 4, leading: 14, bottom: 10, trailing: 14))
     }
 
     private func load() async {

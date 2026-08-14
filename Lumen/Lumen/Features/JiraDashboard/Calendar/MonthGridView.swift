@@ -330,18 +330,15 @@ private struct WeekRow: View {
             .frame(width: width)
         }
         .buttonStyle(.plain)
-        .popover(isPresented: Binding(
-            get: { previewingKey != nil && previewingKey == bar.item.issueKey },
+        // 조회를 마친 뒤에 뜬다 — 팝오버는 표시 시점 크기로 고정되므로.
+        .issuePreviewPopover(issueKey: bar.item.issueKey, isPresented: Binding(
+            get: { !previewingComments && previewingKey != nil && previewingKey == bar.item.issueKey },
             set: { if !$0 { previewingKey = nil } }
-        ), arrowEdge: .top) {
-            if let key = bar.item.issueKey {
-                if previewingComments {
-                    IssueCommentsPopover(issueKey: key)
-                } else {
-                    IssuePreviewPopover(issueKey: key)
-                }
-            }
-        }
+        ))
+        .issueCommentsPopover(issueKey: bar.item.issueKey, isPresented: Binding(
+            get: { previewingComments && previewingKey != nil && previewingKey == bar.item.issueKey },
+            set: { if !$0 { previewingKey = nil } }
+        ))
         .popover(isPresented: Binding(
             get: { editingEvent != nil && editingEvent.flatMap { matchingBarID(eventID: $0.id) } == bar.item.id },
             set: { if !$0 { editingEvent = nil } }

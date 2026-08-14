@@ -260,18 +260,15 @@ struct TimelineView: View {
             .frame(width: width)
         }
         .buttonStyle(.plain)
-        .popover(isPresented: Binding(
-            get: { previewingKey != nil && previewingKey == item.issueKey },
+        // 조회를 마친 뒤에 뜬다 — 팝오버는 표시 시점 크기로 고정되므로.
+        .issuePreviewPopover(issueKey: item.issueKey, isPresented: Binding(
+            get: { !previewingComments && previewingKey != nil && previewingKey == item.issueKey },
             set: { if !$0 { previewingKey = nil } }
-        ), arrowEdge: .top) {
-            if let key = item.issueKey {
-                if previewingComments {
-                    IssueCommentsPopover(issueKey: key)
-                } else {
-                    IssuePreviewPopover(issueKey: key)
-                }
-            }
-        }
+        ))
+        .issueCommentsPopover(issueKey: item.issueKey, isPresented: Binding(
+            get: { previewingComments && previewingKey != nil && previewingKey == item.issueKey },
+            set: { if !$0 { previewingKey = nil } }
+        ))
         .popover(isPresented: Binding(
             get: { editingEvent != nil && editingEvent.flatMap { "local-\($0.id.uuidString)" } == item.id },
             set: { if !$0 { editingEvent = nil } }

@@ -164,6 +164,7 @@ final class JiraService {
 
         do {
             data = try await repository.fetchDashboard(projectKeys: projectKeys)
+            invalidateIssueCaches()
             isLoading = false
         } catch {
             errorMessage = error.networkErrorMessage
@@ -171,12 +172,40 @@ final class JiraService {
         }
     }
 
-    func fetchIssueDetail(key: String) async throws -> IssueDetail {
-        try await repository.fetchIssueDetail(key: key)
+    // MARK: - 이슈 상세 / 댓글
+
+    /// 미리보기 팝오버는 **데이터를 받은 뒤에** 뜬다(팝오버는 표시된 뒤 크기가 안 바뀌므로).
+    /// 그래서 클릭과 표시 사이에 네트워크 왕복이 그대로 노출된다 —
+    /// 짧게라도 캐시해 두면 같은 이슈를 다시 열 때는 즉시 뜬다.
+    private static let detailCacheTTL: TimeInterval = 180
+
+    private var detailCache: [String: (value: IssueDetail, at: Date)] = [:]
+    private var commentsCache: [String: (value: (total: Int, comments: [IssueComment]), at: Date)] = [:]
+
+    func fetchIssueDetail(key: String, allowCached: Bool = true) async throws -> IssueDetail {
+        if allowCached, let hit = detailCache[key],
+           Date().timeIntervalSince(hit.at) < Self.detailCacheTTL {
+            return hit.value
+        }
+        let detail = try await repository.fetchIssueDetail(key: key)
+        detailCache[key] = (detail, Date())
+        return detail
     }
 
-    /// 상세 창용 — 댓글 스레드 전체.
-    func fetchAllComments(key: String) async throws -> (total: Int, comments: [IssueComment]) {
-        try await repository.fetchAllComments(key: key)
+    /// 댓글 스레드 전체.
+    func fetchAllComments(key: String, allowCached: Bool = true) async throws -> (total: Int, comments: [IssueComment]) {
+        if allowCached, let hit = commentsCache[key],
+           Date().timeIntervalSince(hit.at) < Self.detailCacheTTL {
+            return hit.value
+        }
+        let page = try await repository.fetchAllComments(key: key)
+        commentsCache[key] = (page, Date())
+        return page
+    }
+
+    /// 대시보드를 새로 받으면 이슈 내용도 바뀌었을 수 있으므로 같이 버린다.
+    func invalidateIssueCaches() {
+        detailCache.removeAll()
+        commentsCache.removeAll()
     }
 }

@@ -7,23 +7,21 @@ enum CalendarPreviewMetrics {
     /// 본문(설명/메모) 스크롤 영역의 최소 높이. ScrollView가 0으로 붕괴하지 않을 만큼만 준다 —
     /// 이걸 키우면 설명이 짧은 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
     static let bodyMinHeight: CGFloat = 44
-    /// 본문 최대 높이. 화면 크기에 따라 값이 달라지면 같은 버전인데 사람마다 다르게 보이므로
-    /// 고정값으로 둔다. 이보다 긴 내용은 스크롤하거나 상세 창에서 본다.
-    static let bodyMaxHeight: CGFloat = 700
-    /// ⌘클릭 댓글 팝오버의 목록 높이 — 세로 전부를 댓글에 쓰므로 본문과 같은 여유를 준다.
-    static let commentsPopoverMaxHeight: CGFloat = 700
-    /// 헤더·제목·푸터 등 본문 밖 크롬이 쓰는 높이. 아래 예약 높이를 잡는 데만 쓴다.
-    static let chromeHeight: CGFloat = 161
-    /// 내용이 네트워크로 뒤늦게 채워지는 팝오버가 **뜰 때부터** 잡아두는 총 높이.
+    /// 팝오버 전체 높이 상한. 내용이 짧으면 그만큼만 차지하고, 넘어가면 본문이 스크롤된다.
     ///
-    /// macOS SwiftUI `.popover`는 표시되는 순간 크기가 고정되고, 그 뒤 내용이 커져도 창이 따라
-    /// 자라지 않는다(내부에서 창을 강제로 늘려도 SwiftUI가 되돌린다). 미리보기는 항상 로딩
-    /// 상태로 먼저 뜨므로, 예약해 두지 않으면 본문이 도착해도 로딩 크기(약 160pt)에 잘린 채
-    /// 남는다 — 본문 상한을 아무리 올려도 앱에서는 계속 작게 보이던 원인이다.
-    ///
-    /// 그래서 로딩·에러·본문 상태가 모두 이 높이를 쓴다. 설명이 짧으면 아래가 비지만,
-    /// 길 때 잘려서 안 보이는 것보다는 낫다는 판단.
-    static let reservedHeight: CGFloat = bodyMaxHeight + chromeHeight
+    /// 주의: macOS SwiftUI `.popover`는 **표시되는 순간 크기가 고정**되고 그 뒤 내용이 커져도
+    /// 창이 따라 자라지 않는다(내부에서 강제로 늘려도 SwiftUI가 되돌린다). 그래서 이 상한이
+    /// 의미를 가지려면 팝오버가 뜨는 시점에 이미 내용이 있어야 한다 —
+    /// 로딩 상태로 먼저 띄우면 상한과 무관하게 로딩 크기(약 160pt)에 갇힌다.
+    /// 조회를 먼저 하고 띄우는 책임은 `IssuePopoverPresenter`에 있다.
+    static let maxPopoverHeight: CGFloat = 550
+    /// 스크롤 영역의 상한. 전체 상한과 같은 값을 준다 —
+    /// 헤더·제목·푸터가 쓰는 높이를 여기서 미리 빼면 그 추정이 틀리는 만큼 세로를 버리게 된다
+    /// (161로 잡았을 때 실제 크롬은 113이라 팝오버가 502에서 멈췄다).
+    /// 최종 절단은 레이아웃 바깥의 `maxPopoverHeight`가 하고, 스크롤 영역은 남는 만큼 가져간다.
+    static let bodyMaxHeight: CGFloat = maxPopoverHeight
+    /// ⌘클릭 댓글 팝오버의 목록 높이 — 위와 같은 이유로 전체 상한과 같다.
+    static let commentsPopoverMaxHeight: CGFloat = maxPopoverHeight
 }
 
 /// IssuePreviewPopover · EKEventPreviewPopover가 공유하는 미리보기 레이아웃.
@@ -45,10 +43,6 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
     /// 본문 스크롤 영역의 최대 높이. 아래에 댓글 같은 추가 컨텐츠가 붙는 호출자는
     /// 이 값을 줄여 팝오버 전체 높이를 억제한다.
     var bodyMaxHeight: CGFloat = CalendarPreviewMetrics.bodyMaxHeight
-    /// 지정하면 내용과 무관하게 이 총 높이를 차지하고, 본문이 남는 세로를 전부 먹는다.
-    /// 내용이 늦게 도착하는 호출자(= Jira 미리보기)만 쓴다 — popover가 표시 후에는 못 커지므로.
-    /// nil이면 예전처럼 내용만큼만 차지한다(EKEvent 미리보기처럼 값이 이미 있는 경우).
-    var reservedHeight: CGFloat? = nil
     /// 본문 아래 추가 컨텐츠 (예: 댓글 수). 없으면 EmptyView.
     @ViewBuilder var extraContent: () -> Body
     /// footer 영역 — 외부 열기 버튼 등. 없으면 EmptyView.
@@ -100,23 +94,19 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .textSelection(.enabled)
                     }
-                    // 높이를 예약한 팝오버에서는 본문이 남는 세로를 전부 먹어 푸터를 바닥에 붙인다.
                     .frame(minHeight: CalendarPreviewMetrics.bodyMinHeight,
-                           maxHeight: reservedHeight == nil ? bodyMaxHeight : .infinity)
+                           maxHeight: bodyMaxHeight)
                 }
 
                 extraContent()
-
-                // 본문이 없으면 늘어날 게 없으므로 빈 공간을 아래로 몰아 푸터를 바닥에 붙인다.
-                if reservedHeight != nil, bodyText?.isEmpty ?? true {
-                    Spacer(minLength: 0)
-                }
             }
             .padding(14)
 
             footer()
         }
-        .frame(width: CalendarPreviewMetrics.width, height: reservedHeight, alignment: .top)
+        .frame(width: CalendarPreviewMetrics.width)
+        // 메타 행이 많은 호출자(캘린더 이벤트)는 크롬만으로도 두꺼워질 수 있어 전체로도 한 번 막는다.
+        .frame(maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
     }
 
     private var header: some View {
@@ -161,7 +151,6 @@ extension CalendarPreviewLayout where Body == EmptyView {
         self.metaRows = metaRows
         self.bodyText = bodyText
         self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
-        self.reservedHeight = nil
         self.extraContent = { EmptyView() }
         self.footer = footer
     }
@@ -184,7 +173,6 @@ extension CalendarPreviewLayout where Footer == EmptyView {
         self.metaRows = metaRows
         self.bodyText = bodyText
         self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
-        self.reservedHeight = nil
         self.extraContent = extraContent
         self.footer = { EmptyView() }
     }
@@ -206,7 +194,6 @@ extension CalendarPreviewLayout where Body == EmptyView, Footer == EmptyView {
         self.metaRows = metaRows
         self.bodyText = bodyText
         self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
-        self.reservedHeight = nil
         self.extraContent = { EmptyView() }
         self.footer = { EmptyView() }
     }

@@ -148,12 +148,8 @@ struct IssueRow: View {
             if isCommandClick { showingComments = true } else { showingPreview = true }
         }
         .help("클릭: 미리보기 · ⌘클릭: 댓글")
-        .popover(isPresented: $showingPreview, arrowEdge: .top) {
-            IssuePreviewPopover(issueKey: issue.key)
-        }
-        .popover(isPresented: $showingComments, arrowEdge: .top) {
-            IssueCommentsPopover(issueKey: issue.key)
-        }
+        .issuePreviewPopover(issueKey: issue.key, isPresented: $showingPreview)
+        .issueCommentsPopover(issueKey: issue.key, isPresented: $showingComments)
     }
 
     private var textColor: Color {

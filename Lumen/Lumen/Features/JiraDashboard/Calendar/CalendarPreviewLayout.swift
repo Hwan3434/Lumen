@@ -112,9 +112,7 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
 
     private var header: some View {
         HStack(spacing: LumenTokens.Space.inline) {
-            Circle()
-                .fill(accentColor)
-                .frame(width: 8, height: 8)
+            LumenDot(color: accentColor)
             Text(accentLabel)
                 .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
                 .foregroundStyle(P.inkMuted)
@@ -197,13 +195,7 @@ struct PopoverLoadingView: View {
     var text: String = "불러오고 있어요"
 
     var body: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("rotate-cw")
-                .foregroundStyle(P.inkFaint)
-            Text(text)
-                .lumenText(.label, weight: .regular)
-                .foregroundStyle(P.inkMuted)
-        }
+        LumenEmptyState(icon: "rotate-cw", text: text)
         .frame(width: CalendarPreviewMetrics.width, height: 160)
         .background(P.surfaceRaised)
     }

@@ -18,15 +18,11 @@ struct HiddenAppsSettingsTab: View {
                     if hiddenApps.isEmpty {
                         emptyState
                     } else {
-                        VStack(spacing: 0) {
-                            ForEach(Array(hiddenApps.enumerated()), id: \.element.id) { idx, app in
-                                if idx > 0 { LumenHairline() }
-                                HiddenAppRow(app: app) {
-                                    manager.unhide(app.id)
-                                }
+                        LumenList(hiddenApps) { app in
+                            HiddenAppRow(app: app) {
+                                manager.unhide(app.id)
                             }
                         }
-                        .lumenCard()
                     }
                     Text("검색창에서 앱 위에 마우스를 올리면 오른쪽에 숨기기 버튼이 나타나요. 숨긴 앱은 여기서 되돌리기 전까지 검색 결과에 보이지 않아요.")
                         .lumenText(.caption)

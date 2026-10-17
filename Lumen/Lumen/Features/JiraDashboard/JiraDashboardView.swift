@@ -171,20 +171,16 @@ struct FilterChip: View {
     let label: String
     let color: Color
     @Binding var isOn: Bool
-    /// false면 색 점 생략.
-    var showDot: Bool = true
 
     var body: some View {
         Button {
             isOn.toggle()
         } label: {
             HStack(spacing: LumenTokens.Space.s1 + 2) {
-                if showDot {
-                    Circle()
-                        .strokeBorder(color, lineWidth: 2)
-                        .background(Circle().fill(isOn ? color : .clear))
-                        .frame(width: 10, height: 10)
-                }
+                Circle()
+                    .strokeBorder(color, lineWidth: 2)
+                    .background(Circle().fill(isOn ? color : .clear))
+                    .frame(width: 10, height: 10)
                 Text(label)
                     .lumenText(.label)
                     .foregroundStyle(isOn ? P.ink : P.inkFaint)

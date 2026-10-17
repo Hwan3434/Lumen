@@ -249,10 +249,18 @@ enum LumenFont {
         return NSFont(descriptor: desc, size: size) ?? .systemFont(ofSize: size)
     }
 
+    @MainActor private static var lineSpacingCache: [LumenTextStyle: CGFloat] = [:]
+
     /// Still 행간(lineHeight)을 맞추려면 글꼴 자체 높이를 뺀 나머지를 lineSpacing으로 준다.
+    /// 모든 Text의 body에서 불리므로 스타일별로 한 번만 계산한다.
     static func extraLineSpacing(_ style: LumenTextStyle) -> CGFloat {
-        let f = nsFont(family: style.isMono ? "Geist Mono" : "SUIT Variable", size: style.size)
-        return max(0, style.lineHeight - (f.ascender - f.descender + f.leading))
+        MainActor.assumeIsolated {
+            if let cached = lineSpacingCache[style] { return cached }
+            let f = nsFont(family: style.isMono ? "Geist Mono" : "SUIT Variable", size: style.size)
+            let spacing = max(0, style.lineHeight - (f.ascender - f.descender + f.leading))
+            lineSpacingCache[style] = spacing
+            return spacing
+        }
     }
 
     private static func font(family: String, size: CGFloat, weight: LumenWeight) -> Font {

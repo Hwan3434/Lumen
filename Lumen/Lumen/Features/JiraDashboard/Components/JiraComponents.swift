@@ -11,9 +11,7 @@ struct ProjectChip: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s1 + 2) {
-            Circle()
-                .fill(jiraProjectColor(key))
-                .frame(width: 8, height: 8)
+            LumenDot(color: jiraProjectColor(key))
             Text(key)
                 .lumenText(.caption, weight: .semibold)
                 .foregroundStyle(P.inkMuted)
@@ -91,8 +89,6 @@ struct DueLabel: View {
 
 /// 진행 중 표시. Still은 반복 애니메이션을 쓰지 않으므로 정적인 아이콘으로 둔다.
 struct InlineSpinner: View {
-    var size: CGFloat = 16
-
     var body: some View {
         LumenIcon("rotate-cw", size: .small)
             .foregroundStyle(P.inkFaint)
@@ -235,14 +231,7 @@ private struct IssueListItems: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lumenCard()
         } else {
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { idx, issue in
-                    if idx > 0 { LumenHairline() }
-                    IssueRow(issue: issue)
-                }
-            }
-            .padding(LumenTokens.Space.s1)
-            .lumenCard()
+            LumenList(items, inset: LumenTokens.Space.s1) { IssueRow(issue: $0) }
         }
     }
 }
@@ -309,13 +298,7 @@ enum JiraSectionKey {
 
 struct JiraFullPanelLoading: View {
     var body: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("rotate-cw", size: .large)
-                .foregroundStyle(P.inkFaint)
-            Text("Jira 데이터를 불러오고 있어요")
-                .lumenText(.body)
-                .foregroundStyle(P.inkMuted)
-        }
+        LumenEmptyState(icon: "rotate-cw", text: "Jira 데이터를 불러오고 있어요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -339,13 +322,7 @@ struct JiraFullPanelError: View {
 
 struct JiraFullPanelEmpty: View {
     var body: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("inbox", size: .large)
-                .foregroundStyle(P.inkFaint)
-            Text("보여줄 데이터가 없어요")
-                .lumenText(.body)
-                .foregroundStyle(P.inkMuted)
-        }
+        LumenEmptyState(icon: "inbox", text: "보여줄 데이터가 없어요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -415,9 +392,7 @@ struct LegendDot: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s1 + 2) {
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
+            LumenDot(color: color)
             Text(label)
                 .lumenText(.caption)
                 .foregroundStyle(P.inkMuted)

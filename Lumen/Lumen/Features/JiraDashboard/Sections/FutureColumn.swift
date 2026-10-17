@@ -81,14 +81,7 @@ struct FutureColumn: View {
                 title: "활성 에픽",
                 count: epics.count
             ) {
-                VStack(spacing: 0) {
-                    ForEach(Array(epics.enumerated()), id: \.element.id) { idx, epic in
-                        if idx > 0 { LumenHairline() }
-                        EpicRow(epic: epic)
-                    }
-                }
-                .padding(LumenTokens.Space.s1)
-                .lumenCard()
+                LumenList(epics, inset: LumenTokens.Space.s1) { EpicRow(epic: $0) }
             }
         }
     }
@@ -101,7 +94,7 @@ struct BacklogBox: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
             HStack(spacing: LumenTokens.Space.s1 + 2) {
-                Circle().fill(jiraProjectColor(key)).frame(width: 8, height: 8)
+                LumenDot(color: jiraProjectColor(key))
                 Text(jiraProjectDisplayName(key))
                     .lumenText(.caption)
                     .foregroundStyle(P.inkFaint)

@@ -61,13 +61,7 @@ struct ResourceMonitorView: View {
                 .padding(.horizontal, LumenTokens.Space.s4)
                 .lumenCard()
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(recent.enumerated()), id: \.element.id) { idx, a in
-                        if idx > 0 { LumenHairline() }
-                        anomalyRow(a)
-                    }
-                }
-                .lumenCard()
+                LumenList(recent) { anomalyRow($0) }
             }
         }
     }
@@ -197,7 +191,7 @@ struct ResourceMonitorView: View {
                     .monospacedDigit()
                     .foregroundStyle(P.inkFaint)
             }
-            MiniAreaChart(values: values, maxValue: max, color: P.chart1)
+            MiniAreaChart(values: values, maxValue: max)
                 .frame(height: 96)
         }
     }
@@ -223,7 +217,7 @@ struct ResourceMonitorView: View {
 struct MiniAreaChart: View {
     let values: [Double]
     let maxValue: Double
-    let color: Color
+    private let color = LumenTokens.Palette.chart1
 
     var body: some View {
         GeometryReader { geo in
@@ -256,9 +250,7 @@ struct MiniAreaChart: View {
                         pts.dropFirst().forEach { p.addLine(to: $0) }
                     }.stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
+                    LumenDot(color: color)
                         .position(pts.last!)
                 }
             }

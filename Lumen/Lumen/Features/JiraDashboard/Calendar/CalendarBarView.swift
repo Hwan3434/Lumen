@@ -27,9 +27,7 @@ struct CalendarBarView: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s1) {
-            Circle()
-                .fill(spec.color)
-                .frame(width: 8, height: 8)
+            LumenDot(color: spec.color)
             if let prefix = spec.timePrefix {
                 Text(prefix)
                     .font(LumenFont.mono(LumenTextStyle.caption.size))

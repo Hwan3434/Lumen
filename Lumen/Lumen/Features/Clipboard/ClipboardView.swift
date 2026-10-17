@@ -123,14 +123,8 @@ struct ClipboardView: View {
     }
 
     private var listEmptyState: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("search", size: .large)
-                .foregroundStyle(P.inkFaint)
-            Text(viewModel.query.isEmpty ? "아직 복사한 항목이 없어요" : "찾는 항목이 없어요")
-                .lumenText(.label, weight: .regular)
-                .foregroundStyle(P.inkMuted)
-                .multilineTextAlignment(.center)
-        }
+        LumenEmptyState(icon: "search",
+                        text: viewModel.query.isEmpty ? "아직 복사한 항목이 없어요" : "찾는 항목이 없어요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(LumenTokens.Space.pad)
     }
@@ -178,13 +172,7 @@ struct ClipboardView: View {
     }
 
     private var previewEmpty: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("clipboard-list", size: .large)
-                .foregroundStyle(P.inkFaint)
-            Text("항목을 고르면 여기에 미리 보여요")
-                .lumenText(.label, weight: .regular)
-                .foregroundStyle(P.inkMuted)
-        }
+        LumenEmptyState(icon: "clipboard-list", text: "항목을 고르면 여기에 미리 보여요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -353,25 +341,20 @@ private struct ClipboardPreview: View {
         }
 
         if let urls = item.fileURLs, !urls.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(urls.enumerated()), id: \.element) { idx, url in
-                    if idx > 0 { LumenHairline() }
-                    HStack(spacing: LumenTokens.Space.s3) {
-                        LumenIcon("file")
-                            .foregroundStyle(P.inkMuted)
-                        Text(url.lastPathComponent)
-                            .font(LumenFont.mono(LumenTextStyle.label.size))
-                            .foregroundStyle(P.ink)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.vertical, LumenTokens.Space.s3)
-                    .padding(.horizontal, LumenTokens.Space.s4)
+            LumenList(data: urls, id: \.self) { url in
+                HStack(spacing: LumenTokens.Space.s3) {
+                    LumenIcon("file")
+                        .foregroundStyle(P.inkMuted)
+                    Text(url.lastPathComponent)
+                        .font(LumenFont.mono(LumenTextStyle.label.size))
+                        .foregroundStyle(P.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
                 }
+                .padding(.vertical, LumenTokens.Space.s3)
+                .padding(.horizontal, LumenTokens.Space.s4)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .lumenCard()
         }
 
         if let text = item.text, !text.isEmpty {

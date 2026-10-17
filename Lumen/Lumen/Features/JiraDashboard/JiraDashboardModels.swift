@@ -40,7 +40,6 @@ enum JiraStatusKey {
     }
 
     var fg: Color { tone.color }
-    var bg: Color { tone.soft }
 }
 
 /// 우선순위 → 상태 톤. 높음 계열은 danger/warning, 낮음 계열은 무채색.

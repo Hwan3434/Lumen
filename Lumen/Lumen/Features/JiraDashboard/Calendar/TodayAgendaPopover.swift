@@ -57,13 +57,7 @@ struct TodayAgendaPopover: View {
     }
 
     private var empty: some View {
-        VStack(spacing: LumenTokens.Space.stack) {
-            LumenIcon("calendar-check", size: .large)
-                .foregroundStyle(P.inkFaint)
-            Text("오늘은 일정이 없어요")
-                .lumenText(.label, weight: .regular)
-                .foregroundStyle(P.inkMuted)
-        }
+        LumenEmptyState(icon: "calendar-check", text: "오늘은 일정이 없어요")
         .frame(maxWidth: .infinity)
         .padding(.vertical, LumenTokens.Space.s6)
     }
@@ -172,9 +166,7 @@ private struct AgendaRow: View {
             showingPreview = true
         } label: {
             HStack(alignment: .top, spacing: LumenTokens.Space.s3) {
-                Circle()
-                    .fill(barColor)
-                    .frame(width: 8, height: 8)
+                LumenDot(color: barColor)
                     .padding(.top, 8)
                 VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
                     Text(item.title)

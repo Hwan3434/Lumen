@@ -42,7 +42,8 @@ struct LumenIcon: View {
 
 struct LumenButtonStyle: ButtonStyle {
     enum Variant { case primary, secondary, ghost, danger }
-    enum Size { case small, regular, large }
+    /// `icon`은 안쪽 여백 없이 라벨 크기 그대로 — IconButton 전용.
+    enum Size { case small, regular, large, icon }
 
     var variant: Variant = .secondary
     var size: Size = .regular
@@ -63,6 +64,7 @@ struct LumenButtonStyle: ButtonStyle {
             case .small: (6, 12)
             case .regular: (10, 16)
             case .large: (14, 24)
+            case .icon: (0, 0)
             }
             configuration.label
                 .lumenText(.label, weight: .semibold)
@@ -115,18 +117,9 @@ struct LumenIconButton: View {
             LumenIcon(icon)
                 .frame(width: 40, height: 40)
         }
-        .buttonStyle(IconStyle(variant: variant))
+        .buttonStyle(LumenButtonStyle(variant: variant, size: .icon))
         .accessibilityLabel(label)
         .help(label)
-    }
-
-    private struct IconStyle: ButtonStyle {
-        let variant: LumenButtonStyle.Variant
-        func makeBody(configuration: Configuration) -> some View {
-            LumenButtonStyle(variant: variant).makeBody(configuration: configuration)
-                .padding(.vertical, -10)
-                .padding(.horizontal, -16)
-        }
     }
 }
 
@@ -327,26 +320,34 @@ struct LumenListRowStyle: ButtonStyle {
 // MARK: - Switch
 
 /// 즉시 적용되는 켜고 끄기. 트랙 52 × 32, 손잡이 26.
+/// 줄 전체가 버튼이라 라벨을 눌러도 바뀌고, 키보드(스페이스)와 VoiceOver에서는 스위치로 읽힌다.
 struct LumenSwitchStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: LumenTokens.Space.s3) {
-            configuration.label
-                .lumenText(.body)
-                .foregroundStyle(P.ink)
-            Spacer(minLength: 0)
-            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                Capsule()
-                    .fill(configuration.isOn ? P.brand : P.borderStrong)
-                    .frame(width: 52, height: 32)
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 26, height: 26)
-                    .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
-                    .padding(3)
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(spacing: LumenTokens.Space.s3) {
+                configuration.label
+                    .lumenText(.body)
+                    .foregroundStyle(P.ink)
+                Spacer(minLength: 0)
+                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                    Capsule()
+                        .fill(configuration.isOn ? P.brand : P.borderStrong)
+                        .frame(width: 52, height: 32)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 26, height: 26)
+                        .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
+                        .padding(3)
+                }
+                .animation(LumenTokens.Motion.easeMove(), value: configuration.isOn)
             }
-            .animation(LumenTokens.Motion.easeMove(), value: configuration.isOn)
-            .onTapGesture { configuration.isOn.toggle() }
-            .accessibilityAddTraits(.isButton)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
         }
     }
 }
@@ -357,7 +358,6 @@ struct LumenSwitchStyle: ToggleStyle {
 /// 포커스 시 테두리 `brand` + 바깥 3px `brand-soft` 번짐.
 struct LumenFieldChrome: ViewModifier {
     var focused: Bool
-    var error: Bool = false
 
     func body(content: Content) -> some View {
         let shape = LumenShape.rect(LumenTokens.Radius.md)
@@ -365,11 +365,11 @@ struct LumenFieldChrome: ViewModifier {
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
             .background(P.bg, in: shape)
-            .overlay(shape.strokeBorder(error ? P.danger : (focused ? P.brand : P.borderStrong), lineWidth: 1))
+            .overlay(shape.strokeBorder(focused ? P.brand : P.borderStrong, lineWidth: 1))
             .background {
                 if focused {
                     LumenShape.rect(LumenTokens.Radius.md + 3)
-                        .fill(error ? P.dangerSoft : P.brandSoft)
+                        .fill(P.brandSoft)
                         .padding(-3)
                 }
             }
@@ -378,7 +378,69 @@ struct LumenFieldChrome: ViewModifier {
 }
 
 extension View {
-    func lumenFieldChrome(focused: Bool, error: Bool = false) -> some View {
-        modifier(LumenFieldChrome(focused: focused, error: error))
+    func lumenFieldChrome(focused: Bool) -> some View {
+        modifier(LumenFieldChrome(focused: focused))
+    }
+}
+
+// MARK: - List
+
+/// 같은 종류 항목을 세로로 묶는 그룹. Card와 같은 표면에 항목 사이 1px `border-subtle`.
+/// 줄에 마우스 올림 배경이 있으면 `inset`으로 카드 테두리와 띄운다.
+struct LumenList<Data: RandomAccessCollection, ID: Hashable, Row: View>: View {
+    let data: Data
+    let id: KeyPath<Data.Element, ID>
+    var inset: CGFloat = 0
+    @ViewBuilder let row: (Data.Element) -> Row
+
+    var body: some View {
+        let firstID = data.first?[keyPath: id]
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(data, id: id) { element in
+                if element[keyPath: id] != firstID { LumenHairline() }
+                row(element)
+            }
+        }
+        .padding(inset)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .lumenCard()
+    }
+}
+
+extension LumenList where Data.Element: Identifiable, ID == Data.Element.ID {
+    init(_ data: Data, inset: CGFloat = 0, @ViewBuilder row: @escaping (Data.Element) -> Row) {
+        self.init(data: data, id: \.id, inset: inset, row: row)
+    }
+}
+
+// MARK: - Empty state
+
+/// 화면이나 영역이 비었거나 불러오는 중일 때의 안내. 아이콘 24 + 한 문장, 가운데 정렬.
+struct LumenEmptyState: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        VStack(spacing: LumenTokens.Space.stack) {
+            LumenIcon(icon, size: .large)
+                .foregroundStyle(P.inkFaint)
+            Text(text)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.inkMuted)
+                .multilineTextAlignment(.center)
+        }
+    }
+}
+
+// MARK: - Dot
+
+/// 계열 색 표식(지름 8). 차트 범례, 프로젝트·캘린더 구분처럼 색으로 계열을 알릴 때만 쓴다.
+struct LumenDot: View {
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
     }
 }

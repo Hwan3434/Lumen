@@ -198,7 +198,7 @@ struct TranslatorView: View {
 
             historyFooter
         }
-        .background(P.surface)
+        .background(P.panelSurface)
     }
 
     private var historyFooter: some View {

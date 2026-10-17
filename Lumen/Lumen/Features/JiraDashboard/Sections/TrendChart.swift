@@ -94,7 +94,7 @@ struct TrendChart: View {
         }
         .padding(.horizontal, LumenTokens.Space.pad)
         .padding(.vertical, LumenTokens.Space.s4)
-        .background(P.surface)
+        .background(P.panelSurface)
         .overlay(alignment: .top) { LumenHairline() }
     }
 

@@ -149,7 +149,7 @@ private struct NotesSidebar: View {
             .frame(maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity)
-        .background(P.surface)
+        .background(P.panelSurface)
     }
 
     private var sidebarHeader: some View {

@@ -397,7 +397,7 @@ private struct ClipboardPreview: View {
                     .padding(.vertical, LumenTokens.Space.s3)
                 }
             }
-            .background(P.surface)
+            .background(P.panelSurface)
         }
     }
 

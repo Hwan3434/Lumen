@@ -3,6 +3,8 @@ import AppKit
 import EventKit
 import Combine
 
+private typealias P = LumenTokens.Palette
+
 // 타임라인 = 주간 뷰. 한 단위 = 1주(7컬럼). 다일 task는 그 주 안에서 *하나의 긴 막대*.
 // 같은 task가 주 경계를 넘으면 각 주에서 잘려 막대가 두 개 그려진다 (월간 그리드와 동일 정책).
 //
@@ -32,8 +34,8 @@ struct TimelineView: View {
     private static let cal = Calendar.current
     private let halfRangeWeeks: Int = 13   // ±3개월
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-    private let dayHeaderHeight: CGFloat = 44
-    private let laneHeight: CGFloat = 22
+    private let dayHeaderHeight: CGFloat = 64
+    private let laneHeight: CGFloat = 26
     private let laneSpacing: CGFloat = 3
     /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
     private let maxLanesVisible: Int = 999
@@ -59,12 +61,12 @@ struct TimelineView: View {
                     }
                     .onChange(of: resetToTodayToken) { _, _ in
                         anchorDate = Date()
-                        withAnimation(.easeOut(duration: 0.25)) {
+                        withAnimation(LumenTokens.Motion.easeMove()) {
                             scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
                         }
                     }
                     .onChange(of: anchorDate) { _, _ in
-                        withAnimation(.easeOut(duration: 0.25)) {
+                        withAnimation(LumenTokens.Motion.easeMove()) {
                             scrollProxy.scrollTo(weekKey(currentWeekStart()), anchor: .leading)
                         }
                     }
@@ -80,29 +82,20 @@ struct TimelineView: View {
     // MARK: - Header
 
     private var weekHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LumenTokens.Space.s4) {
             Text(weekLabel)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .frame(minWidth: 110, alignment: .leading)
+                .lumenText(.title3)
+                .foregroundStyle(P.ink)
+                .frame(minWidth: 140, alignment: .leading)
 
             Button("오늘") {
                 anchorDate = Date()
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(LumenTokens.Accent.violetSoft)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-            )
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
 
             CalendarVisibilityStrip(showLocal: $showLocal, disabledProjectKeys: $disabledProjectKeys, showGoogleCalendar: showGoogleCalendar)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, LumenTokens.Space.s4)
     }
 
     private var weekLabel: String {
@@ -133,7 +126,7 @@ struct TimelineView: View {
                 }
             }
             .frame(height: dayHeaderHeight)
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
+            LumenHairline()
 
             ScrollView(.vertical, showsIndicators: false) {
                 // 막대 layer + 격자
@@ -148,8 +141,9 @@ struct TimelineView: View {
                     ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
                         if let count = layout.overflowByCol[col] {
                             Text("+\(count)")
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                .foregroundStyle(LumenTokens.TextColor.muted)
+                                .lumenText(.caption, weight: .medium)
+                                .monospacedDigit()
+                                .foregroundStyle(P.inkFaint)
                                 .padding(.leading, CGFloat(col) * dayWidth + 4)
                                 .padding(.top, CGFloat(maxLanesVisible) * (laneHeight + laneSpacing) + 4)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -168,31 +162,31 @@ struct TimelineView: View {
         let isToday = Self.cal.isDate(day, inSameDayAs: today)
         let isFirstOfMonth = (Self.cal.component(.day, from: day) == 1)
         let holidayName = KoreanHolidays.name(for: day)
-        return VStack(spacing: 1) {
-            HStack(spacing: 4) {
+        return VStack(spacing: 0) {
+            HStack(spacing: LumenTokens.Space.s1) {
                 if isFirstOfMonth {
                     Text(monthShort(day))
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        .lumenText(.caption, weight: .semibold)
+                        .foregroundStyle(P.inkMuted)
                 }
                 Text(weekdays[(weekday - 1) % 7])
-                    .font(.system(size: 10, weight: .medium))
+                    .lumenText(.caption, weight: .medium)
                     .foregroundStyle(holidayName != nil
-                                     ? LumenTokens.CalendarTone.holiday
+                                     ? P.danger
                                      : CalendarDateUtils.weekdayColor(for: day))
             }
             Text(dayLabel(day))
-                .font(.system(size: 12, weight: isToday ? .bold : .regular,
-                              design: .monospaced))
+                .lumenText(.label, weight: isToday ? .bold : .regular)
+                .monospacedDigit()
                 .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
             if let name = holidayName {
                 Text(name)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(LumenTokens.CalendarTone.holiday)
+                    .lumenText(.caption)
+                    .foregroundStyle(P.danger)
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, LumenTokens.Space.s1)
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
@@ -208,9 +202,9 @@ struct TimelineView: View {
 
     /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본. (MonthGridView와 같은 정책)
     private func dayNumberColor(isToday: Bool, holidayName: String?) -> Color {
-        if isToday { return LumenTokens.Accent.amber }
-        if holidayName != nil { return LumenTokens.CalendarTone.holiday }
-        return LumenTokens.TextColor.primary
+        if isToday { return P.brand }
+        if holidayName != nil { return P.danger }
+        return P.ink
     }
 
     private func gridLines(days: [Date], dayWidth: CGFloat, height: CGFloat) -> some View {
@@ -220,12 +214,10 @@ struct TimelineView: View {
                 let isWeekend = (weekday == 1 || weekday == 7)
                 let isToday = Self.cal.isDate(day, inSameDayAs: today)
                 Rectangle()
-                    .fill(isToday
-                          ? LumenTokens.Accent.amber.opacity(0.06)
-                          : (isWeekend ? Color.white.opacity(0.015) : Color.clear))
+                    .fill(isToday ? P.brandSoft : (isWeekend ? P.surface : Color.clear))
                     .frame(width: dayWidth, height: height)
                     .overlay(alignment: .leading) {
-                        Rectangle().fill(LumenTokens.divider).frame(width: 0.5, height: height)
+                        Rectangle().fill(P.borderSubtle).frame(width: 1, height: height)
                     }
             }
         }
@@ -254,7 +246,7 @@ struct TimelineView: View {
         } label: {
             CalendarBarView(
                 spec: item.barSpec(),
-                cornerRadius: 4,
+                cornerRadius: LumenTokens.Radius.xs,
                 height: laneHeight - 2
             )
             .frame(width: width)

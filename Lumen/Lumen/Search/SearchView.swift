@@ -10,11 +10,11 @@ struct SearchView: View {
 
     var body: some View {
         ZStack {
-            LumenGlassBackground(radius: LumenTokens.Radius.window)
+            LumenPanelBackground()
             mainPanel
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
         .alert(
             "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
             isPresented: Binding(
@@ -31,20 +31,19 @@ struct SearchView: View {
                 pendingHide = nil
             }
         } message: { _ in
-            Text("검색 결과에서 더 이상 보이지 않습니다.\nSettings → 숨긴 앱에서 언제든 되돌릴 수 있습니다.")
+            Text("검색 결과에 더 이상 보이지 않아요. 설정의 [숨긴 앱]에서 언제든 되돌릴 수 있어요.")
         }
     }
 
     private var mainPanel: some View {
         VStack(spacing: 0) {
             searchInput
-            // Quick row가 빈 상태일 땐 search input의 자체 hairline 하나만
+            // Quick row가 빈 상태일 땐 search input의 자체 구분선 하나만
             // 보이고 results 위에 또 그어지지 않도록 — quick row가 있는 경우에만
             // 그 아래 구분선을 둔다.
             if !viewModel.features.isEmpty {
                 quickRow
                 LumenHairline()
-                    .padding(.horizontal, 18)
             }
             resultsList
             footer
@@ -56,50 +55,36 @@ struct SearchView: View {
     private var searchInput: some View {
         LumenInputField(
             text: $viewModel.query,
-            placeholder: "앱 검색, 명령 실행, 계산, 환율…",
-            fontSize: 18,
+            placeholder: "앱 검색, 명령 실행, 계산, 환율",
+            fontSize: LumenTextStyle.bodyLarge.size,
             leading: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft.opacity(0.85))
+                LumenIcon("search", size: .large)
+                    .foregroundStyle(LumenTokens.Palette.inkMuted)
             },
             trailing: { LumenKbd(label: "⌘K") }
         )
-        .padding(.horizontal, 18)
-        .frame(height: 56)
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .frame(height: 64)
         .overlay(alignment: .bottom) { LumenHairline() }
     }
 
     // MARK: - Quick row (built-in features)
 
     private var quickRow: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
             LumenSectionLabel(text: "빠른 실행")
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.top, LumenTokens.Space.s4)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: LumenTokens.Space.inline) {
                     ForEach(viewModel.features, id: \.name) { feature in
                         quickCard(feature: feature)
                     }
                 }
-                .padding(.leading, 18)
-                .padding(.trailing, 36)
-                .padding(.bottom, 4)
+                .padding(.horizontal, LumenTokens.Space.pad)
             }
-            .mask(
-                // 우측 끝 24px 페이드 — quick row가 가로 스크롤 가능하다는 시그널.
-                LinearGradient(
-                    stops: [
-                        .init(color: .black, location: 0),
-                        .init(color: .black, location: 0.92),
-                        .init(color: .clear, location: 1.0),
-                    ],
-                    startPoint: .leading, endPoint: .trailing
-                )
-            )
-            .padding(.bottom, 12)
+            .padding(.bottom, LumenTokens.Space.s4)
         }
     }
 
@@ -108,33 +93,18 @@ struct SearchView: View {
             onDismiss()
             feature.activate()
         } label: {
-            VStack(spacing: 6) {
-                Image(systemName: feature.iconName)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+            VStack(spacing: LumenTokens.Space.inline) {
+                LumenIcon(feature.iconName, size: .large)
+                    .foregroundStyle(LumenTokens.Palette.inkMuted)
                 Text(feature.name)
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                    .lumenText(.caption)
+                    .foregroundStyle(LumenTokens.Palette.ink)
                     .lineLimit(1)
             }
-            .frame(width: 76, height: 64)
-            .background(
-                RoundedRectangle(cornerRadius: LumenTokens.Radius.card)
-                    .fill(LumenTokens.BG.card)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: LumenTokens.Radius.card)
-                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-            )
-            // Inner top highlight to give the card a subtle bevel.
-            .overlay(
-                RoundedRectangle(cornerRadius: LumenTokens.Radius.card)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 0.5)
-                    .blendMode(.plusLighter)
-                    .padding(0.5)
-            )
+            .frame(width: 96, height: 80)
+            .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LumenListRowStyle())
     }
 
     // MARK: - Results
@@ -142,23 +112,23 @@ struct SearchView: View {
     private var resultsList: some View {
         VStack(alignment: .leading, spacing: 0) {
             LumenSectionLabel(text: resultsHeaderLabel)
-                .padding(.horizontal, 18)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.top, LumenTokens.Space.s4)
+                .padding(.bottom, LumenTokens.Space.inline)
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 1) {
+                    LazyVStack(spacing: 0) {
                         ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, item in
                             resultRow(item: item, index: index)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, LumenTokens.Space.inline)
+                    .padding(.bottom, LumenTokens.Space.inline)
                 }
                 .scrollIndicators(.hidden)
                 .onChange(of: viewModel.selectedIndex) { _, newValue in
-                    withAnimation(.easeOut(duration: 0.4)) {
+                    withAnimation(LumenTokens.Motion.easeMove()) {
                         if let item = viewModel.results[safe: newValue] {
                             proxy.scrollTo(item.id, anchor: .center)
                         }
@@ -186,35 +156,13 @@ struct SearchView: View {
         Button {
             viewModel.selectedIndex = index
         } label: {
-            ZStack(alignment: .leading) {
-                rowBackground(isSelected: isSelected)
-                if isSelected {
-                    // Amber left stripe — only on selected row.
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(LumenTokens.Accent.amber)
-                        .frame(width: 2)
-                        .padding(.vertical, 6)
-                        .padding(.leading, 4)
-                        .shadow(color: LumenTokens.Accent.amberDim, radius: 4, x: 0, y: 0)
-                }
-                rowContent(item: item, isSelected: isSelected)
-                    .padding(.leading, 12)
-                    .padding(.trailing, 10)
-            }
-            .frame(height: 36)
-            .contentShape(Rectangle())
+            rowContent(item: item, isSelected: isSelected)
+                .padding(.vertical, 14)
+                .padding(.horizontal, LumenTokens.Space.s4)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(PressableRowStyle(isSelected: isSelected))
+        .buttonStyle(LumenListRowStyle(isSelected: isSelected))
         .id(item.id)
-    }
-
-    private func rowBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-            .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)
-            .overlay(
-                RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-                    .stroke(isSelected ? LumenTokens.Accent.amber.opacity(0.18) : .clear, lineWidth: 0.5)
-            )
     }
 
     @ViewBuilder
@@ -226,68 +174,10 @@ struct SearchView: View {
             }
 
         case .calculation(let expr, let result):
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile)
-                        .fill(LumenTokens.Accent.amber.opacity(0.15))
-                    Image(systemName: "equal")
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundStyle(LumenTokens.Accent.amber)
-                }
-                .frame(width: 24, height: 24)
-
-                HStack(spacing: 8) {
-                    Text(expr)
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Text(result)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.primary)
-                }
-                Spacer(minLength: 8)
-                HStack(spacing: 4) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("복사")
-                        .font(.system(size: 11))
-                }
-                .foregroundStyle(LumenTokens.Accent.amber)
-            }
+            ConversionRow(icon: "equal", input: expr, result: result, isSelected: isSelected)
 
         case .currency(let input, let result, _):
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile)
-                        .fill(LumenTokens.Accent.violet.opacity(0.15))
-                    Image(systemName: "dollarsign.arrow.circlepath")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                }
-                .frame(width: 24, height: 24)
-
-                HStack(spacing: 8) {
-                    Text(input)
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Text(result)
-                        .font(.system(size: 14, weight: .medium, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.primary)
-                }
-                Spacer(minLength: 8)
-                HStack(spacing: 4) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("복사")
-                        .font(.system(size: 11))
-                }
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-            }
+            ConversionRow(icon: "circle-dollar-sign", input: input, result: result, isSelected: isSelected)
         }
     }
 
@@ -312,28 +202,42 @@ struct SearchView: View {
     }
 }
 
-// MARK: - Badge
+// MARK: - Rows
 
-/// 검색 결과 행 우측의 "APP" 배지. 현재 Search는 앱 항목만 배지를 다는데,
-/// 다른 종류(snippet/web 등) 결과 타입이 늘어나면 multi-tone Badge 컴포넌트로
-/// 확장하면 된다.
-private struct AppBadge: View {
+/// 계산·환율 결과 행: 입력 → 결과, 오른쪽에 복사 안내.
+private struct ConversionRow: View {
+    let icon: String
+    let input: String
+    let result: String
+    let isSelected: Bool
+
     var body: some View {
-        Text("APP")
-            .font(.system(size: 9.5, weight: .medium))
-            .tracking(0.4)
-            .foregroundStyle(LumenTokens.Accent.violetSoft)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(LumenTokens.Accent.violet.opacity(0.10))
-            )
+        HStack(spacing: LumenTokens.Space.s3) {
+            LumenIcon(icon)
+                .foregroundStyle(LumenTokens.Palette.inkMuted)
+            HStack(spacing: LumenTokens.Space.inline) {
+                Text(input)
+                    .font(LumenFont.mono(LumenTextStyle.label.size))
+                    .foregroundStyle(LumenTokens.Palette.inkMuted)
+                LumenIcon("arrow-right", size: .small)
+                    .foregroundStyle(LumenTokens.Palette.inkFaint)
+                Text(result)
+                    .font(LumenFont.mono(LumenTextStyle.body.size, .medium))
+                    .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+            }
+            .lineLimit(1)
+            Spacer(minLength: LumenTokens.Space.inline)
+            HStack(spacing: LumenTokens.Space.s1) {
+                LumenIcon("copy", size: .small)
+                Text("복사").lumenText(.label, weight: .regular)
+            }
+            .foregroundStyle(LumenTokens.Palette.inkFaint)
+        }
     }
 }
 
-/// 앱 결과 행. 호버 시 우측 끝에 작은 X 버튼이 페이드인 — 클릭하면 onHide 콜백.
-/// X 버튼 영역에서는 행 자체의 selection이 트리거되지 않도록 stop-propagation.
+/// 앱 결과 행. 호버 시 우측 끝에 숨기기 버튼이 페이드인 — 클릭하면 onHide 콜백.
+/// 버튼 영역에서는 행 자체의 selection이 트리거되지 않도록 stop-propagation.
 private struct AppRowContent: View {
     let appItem: AppItem
     let isSelected: Bool
@@ -342,53 +246,27 @@ private struct AppRowContent: View {
     @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LumenTokens.Space.s3) {
             Image(nsImage: appItem.icon)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 24, height: 24)
-                .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.appTile))
             Text(appItem.name)
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
+                .lumenText(.body, weight: isSelected ? .semibold : .medium)
+                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer(minLength: 8)
+            Spacer(minLength: LumenTokens.Space.inline)
             if hovered {
-                HideButton(action: onHide)
+                LumenIconButton(icon: "eye-off", label: "검색 결과에서 숨기기", action: onHide)
+                    .padding(.vertical, -8)
                     .transition(.opacity)
             } else {
-                AppBadge()
+                LumenBadge(text: "앱")
             }
         }
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovered)
+        .animation(LumenTokens.Motion.easeOut(LumenTokens.Motion.fast), value: hovered)
     }
 }
-
-private struct HideButton: View {
-    let action: () -> Void
-    @State private var pressed = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "eye.slash")
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-                .frame(width: 22, height: 22)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(pressed ? LumenTokens.Accent.amber.opacity(0.16) : Color.white.opacity(0.04))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-        .help("검색 결과에서 숨기기")
-        .onHover { pressed = $0 }
-    }
-}
-

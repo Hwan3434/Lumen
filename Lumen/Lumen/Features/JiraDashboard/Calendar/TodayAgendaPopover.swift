@@ -1,6 +1,8 @@
 import EventKit
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 /// 메뉴바 클릭 시 뜨는 오늘 일정 미리보기.
 /// Jira(스프린트/에픽/태스크) + 로컬 이벤트 + EKEvent를 한 곳에 모아 종일/시간 그룹으로 보여준다.
 struct TodayAgendaPopover: View {
@@ -9,74 +11,62 @@ struct TodayAgendaPopover: View {
     var body: some View {
         let items = todaysItems
         let groups = grouped(items: items)
-        return ZStack(alignment: .top) {
-            LumenGlassBackground(radius: 12)
-            VStack(alignment: .leading, spacing: 0) {
-                header(count: items.count)
+        return VStack(alignment: .leading, spacing: 0) {
+            header(count: items.count)
 
-                if groups.allDay.isEmpty && groups.timed.isEmpty {
-                    Spacer()
-                    empty
-                    Spacer()
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            if !groups.timed.isEmpty {
-                                section(title: "시간 일정", items: groups.timed)
-                            }
-                            if !groups.allDay.isEmpty {
-                                section(title: "종일 / 마감", items: groups.allDay)
-                            }
+            if groups.allDay.isEmpty && groups.timed.isEmpty {
+                Spacer()
+                empty
+                Spacer()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: LumenTokens.Space.group) {
+                        if !groups.timed.isEmpty {
+                            section(title: "시간 일정", items: groups.timed)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 14)
-                        .padding(.top, 4)
+                        if !groups.allDay.isEmpty {
+                            section(title: "종일 · 마감", items: groups.allDay)
+                        }
                     }
-                    .frame(maxHeight: 400)
+                    .padding(.horizontal, LumenTokens.Space.s4)
+                    .padding(.bottom, LumenTokens.Space.s4)
                 }
             }
         }
-        .frame(width: 320)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(width: 380, height: 520, alignment: .top)
+        .background(P.surfaceRaised)
+        .clipShape(LumenShape.rect(LumenTokens.Radius.lg))
+        .overlay(LumenShape.rect(LumenTokens.Radius.lg).strokeBorder(P.borderSubtle, lineWidth: 1))
     }
 
     private func header(count: Int) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "calendar")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
+        HStack(spacing: LumenTokens.Space.inline) {
+            LumenIcon("calendar")
+                .foregroundStyle(P.inkMuted)
             Text(Self.headerLabel)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.primary)
+                .lumenText(.body, weight: .semibold)
+                .foregroundStyle(P.ink)
             Spacer()
             Text(count == 0 ? "" : "\(count)개")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+                .lumenText(.caption)
+                .monospacedDigit()
+                .foregroundStyle(P.inkFaint)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .padding(.vertical, LumenTokens.Space.s4)
     }
 
     private var empty: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "calendar.badge.checkmark")
-                .font(.system(size: 22))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            Text("오늘 일정이 없습니다")
-                .font(.system(size: 12))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-        }
+        LumenEmptyState(icon: "calendar-check", text: "오늘은 일정이 없어요")
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .padding(.vertical, LumenTokens.Space.s6)
     }
 
     private func section(title: String, items: [CalendarItem]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-                .textCase(.uppercase)
-            VStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.inline) {
+            LumenSectionLabel(text: title)
+                .padding(.horizontal, LumenTokens.Space.inline)
+            VStack(spacing: 0) {
                 ForEach(items, id: \.id) { item in
                     AgendaRow(item: item)
                 }
@@ -175,19 +165,17 @@ private struct AgendaRow: View {
             showingComments = isCommandClick
             showingPreview = true
         } label: {
-            HStack(alignment: .top, spacing: 9) {
-                Circle()
-                    .fill(barColor)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 4)
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top, spacing: LumenTokens.Space.s3) {
+                LumenDot(color: barColor)
+                    .padding(.top, 8)
+                VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
                     Text(item.title)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(item.isDone ? LumenTokens.TextColor.muted : LumenTokens.TextColor.primary)
-                        .strikethrough(item.isDone, color: LumenTokens.TextColor.muted)
+                        .lumenText(.body, weight: .medium)
+                        .foregroundStyle(item.isDone ? P.inkFaint : P.ink)
+                        .strikethrough(item.isDone, color: P.inkFaint)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    HStack(spacing: 4) {
+                    HStack(spacing: LumenTokens.Space.s1) {
                         Text(timeLabel)
                         if let loc = item.location, !loc.isEmpty {
                             Text("·")
@@ -195,24 +183,16 @@ private struct AgendaRow: View {
                                 .lineLimit(1)
                         }
                     }
-                    .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .lumenText(.caption)
+                    .foregroundStyle(P.inkFaint)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.vertical, LumenTokens.Space.s3)
+            .padding(.horizontal, LumenTokens.Space.inline)
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white.opacity(0.02))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LumenListRowStyle())
         // 이슈는 조회를 마친 뒤에 떠야 크기가 내용에 맞는다(IssuePopoverPresenter 참고).
         // 캘린더 이벤트·스프린트는 이미 값이 있으므로 바로 띄운다.
         .popover(isPresented: Binding(
@@ -250,8 +230,8 @@ private struct AgendaRow: View {
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "h:mm a"
+        f.locale = Locale(identifier: "ko_KR")
+        f.dateFormat = "a h:mm"
         return f
     }()
 

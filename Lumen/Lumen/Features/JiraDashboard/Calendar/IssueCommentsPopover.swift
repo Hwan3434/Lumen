@@ -1,5 +1,7 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 /// ⌘클릭 전용 — 댓글만 보는 popover.
 /// 기본 미리보기는 설명을 위한 자리라 둘을 한 팝오버에 넣으면 서로 높이를 뺏는다.
 /// 여기선 스레드 전체를 받아 세로를 전부 댓글에 쓴다.
@@ -24,33 +26,32 @@ struct IssueCommentsPopover: View {
             header
 
             if let msg = errorMessage, shownComments.isEmpty {
-                Text(msg)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(LumenTokens.ErrorTone.title)
-                    .lineLimit(3)
-                    .padding(EdgeInsets(top: 12, leading: 14, bottom: 16, trailing: 14))
+                LumenBanner(tone: .danger, title: "댓글을 불러오지 못했어요", message: msg)
+                    .padding([.horizontal, .bottom], LumenTokens.Space.pad)
             } else if isLoading && shownComments.isEmpty {
-                HStack(spacing: 8) {
+                HStack(spacing: LumenTokens.Space.inline) {
                     InlineSpinner()
-                    Text("댓글 불러오는 중…")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    Text("댓글을 불러오고 있어요")
+                        .lumenText(.label, weight: .regular)
+                        .foregroundStyle(P.inkMuted)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
+                .padding(.vertical, LumenTokens.Space.pad)
             } else if shownComments.isEmpty {
-                Text("댓글 없음")
-                    .font(.system(size: 11.5))
-                    .italic()
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                Text("댓글이 없어요")
+                    .lumenText(.label, weight: .regular)
+                    .foregroundStyle(P.inkFaint)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(EdgeInsets(top: 10, leading: 14, bottom: 16, trailing: 14))
+                    .padding([.horizontal, .bottom], LumenTokens.Space.pad)
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(shownComments) { row($0) }
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(shownComments.enumerated()), id: \.element.id) { idx, comment in
+                            if idx > 0 { LumenHairline().padding(.vertical, LumenTokens.Space.s3) }
+                            row(comment)
+                        }
                     }
-                    .padding(EdgeInsets(top: 10, leading: 14, bottom: 14, trailing: 14))
+                    .padding([.horizontal, .bottom], LumenTokens.Space.pad)
                 }
                 .frame(maxHeight: CalendarPreviewMetrics.commentsPopoverMaxHeight)
             }
@@ -59,49 +60,47 @@ struct IssueCommentsPopover: View {
         // 이 상한이 의미를 가지려면 데이터가 있는 채로 떠야 한다 — IssuePopoverPresenter 참고.
         .frame(width: CalendarPreviewMetrics.width)
         .frame(maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
+        .background(P.surfaceRaised)
         .task { await load() }
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+        HStack(spacing: LumenTokens.Space.inline) {
+            LumenIcon("messages-square", size: .small)
+                .foregroundStyle(P.inkMuted)
             Text(issueKey)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text("댓글 \(shownTotal)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
+                .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
+                .foregroundStyle(P.inkMuted)
+            Text("댓글 \(shownTotal)개")
+                .lumenText(.label, weight: .semibold)
+                .foregroundStyle(P.ink)
             if isLoading && !shownComments.isEmpty {
-                InlineSpinner(size: 10)
+                InlineSpinner()
             }
             Spacer()
         }
-        .padding(EdgeInsets(top: 12, leading: 14, bottom: 8, trailing: 14))
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .padding(.top, LumenTokens.Space.pad)
+        .padding(.bottom, LumenTokens.Space.stack)
     }
 
     private func row(_ comment: IssueComment) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
+            HStack(spacing: LumenTokens.Space.inline) {
                 Text(comment.author)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
+                    .lumenText(.label, weight: .semibold)
+                    .foregroundStyle(P.ink)
                     .lineLimit(1)
                 if let created = comment.created {
                     Text(LumenTime.relative(created, granularity: .shortNoSuffix))
-                        .font(.system(size: 10))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
                 }
             }
             // 전용 팝오버라 줄 수를 제한하지 않는다 — 잘려서 다시 창을 여는 일이 없도록.
             Text(comment.bodyText.isEmpty ? "(첨부만 있는 댓글)" : comment.bodyText)
-                .font(.system(size: 11.5))
-                .italic(comment.bodyText.isEmpty)
-                .foregroundStyle(comment.bodyText.isEmpty
-                                 ? LumenTokens.TextColor.muted
-                                 : LumenTokens.TextColor.secondary)
-                .lineSpacing(2)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(comment.bodyText.isEmpty ? P.inkFaint : P.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)

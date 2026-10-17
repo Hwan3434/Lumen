@@ -7,8 +7,9 @@ enum JiraRoute: Int {
     case calendarWeek = 2
 }
 
-/// JiraStatusCategory(데이터 분류) → 디자인 토큰(fg/bg) 매핑.
-/// UI에서 직접 categoryKey 문자열을 쓰지 않도록 이 한 곳에서 색을 결정한다.
+/// JiraStatusCategory(데이터 분류) → Still 상태 톤 매핑.
+/// UI에서 직접 categoryKey 문자열을 쓰지 않도록 이 한 곳에서 톤을 결정한다.
+/// 할 일 = 분류(무채색), 진행 중 = info, 완료 = success. 상태에 brand는 쓰지 않는다.
 enum JiraStatusKey {
     case todo, inProgress, done, undefined
 
@@ -21,30 +22,32 @@ enum JiraStatusKey {
         }
     }
 
-    var fg: Color {
+    var tone: LumenTone {
         switch self {
-        case .todo, .undefined: return LumenTokens.JiraStatusTone.todoFg
-        case .inProgress:       return LumenTokens.JiraStatusTone.inProgressFg
-        case .done:             return LumenTokens.JiraStatusTone.completedFg
+        case .todo, .undefined: return .category
+        case .inProgress:       return .info
+        case .done:             return .success
         }
     }
 
-    var bg: Color {
+    /// 상태는 색만으로 구분하지 않도록 아이콘을 함께 붙인다.
+    var icon: String {
         switch self {
-        case .todo, .undefined: return LumenTokens.JiraStatusTone.todoBg
-        case .inProgress:       return LumenTokens.JiraStatusTone.inProgressBg
-        case .done:             return LumenTokens.JiraStatusTone.completedBg
+        case .todo, .undefined: return "circle-dashed"
+        case .inProgress:       return "circle-play"
+        case .done:             return "circle-check"
         }
     }
+
+    var fg: Color { tone.color }
 }
 
-func jiraPriorityColor(_ priority: String) -> Color {
+/// 우선순위 → 상태 톤. 높음 계열은 danger/warning, 낮음 계열은 무채색.
+func jiraPriorityTone(_ priority: String) -> LumenTone? {
     switch priority {
-    case "Highest": return LumenTokens.JiraPriorityTone.highest
-    case "High":    return LumenTokens.JiraPriorityTone.high
-    case "Low":     return LumenTokens.JiraPriorityTone.low
-    case "Lowest":  return LumenTokens.JiraPriorityTone.lowest
-    default:        return LumenTokens.JiraPriorityTone.medium
+    case "Highest": return .danger
+    case "High":    return .warning
+    default:        return nil
     }
 }
 
@@ -53,10 +56,10 @@ enum JiraDueTone {
 
     var color: Color {
         switch self {
-        case .past:   return LumenTokens.ErrorTone.icon
-        case .today:  return LumenTokens.Accent.amber
-        case .future: return LumenTokens.TextColor.muted
-        case .done:   return LumenTokens.TextColor.muted.opacity(0.55)
+        case .past:   return LumenTokens.Palette.danger
+        case .today:  return LumenTokens.Palette.warning
+        case .future: return LumenTokens.Palette.inkMuted
+        case .done:   return LumenTokens.Palette.inkFaint
         }
     }
 }
@@ -69,7 +72,7 @@ func jiraDueTone(_ date: Date, isDone: Bool) -> JiraDueTone {
 }
 
 func jiraProjectColor(_ key: String) -> Color {
-    Constants.jiraProjects.first { $0.key == key }?.color ?? LumenTokens.Accent.violetSoft
+    Constants.jiraProjects.first { $0.key == key }?.color ?? LumenTokens.Palette.chartOther
 }
 
 func jiraProjectDisplayName(_ key: String) -> String {

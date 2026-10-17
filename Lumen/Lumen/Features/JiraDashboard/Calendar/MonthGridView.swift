@@ -3,6 +3,8 @@ import AppKit
 import EventKit
 import Combine
 
+private typealias P = LumenTokens.Palette
+
 // 월간 캘린더 — iCalendar 스타일 무한 스크롤.
 // ±3개월(=약 26주)의 주들을 LazyVStack으로 이어 붙이고, 각 주 위에 막대(bar) layer를 깔아
 // 다일 task가 셀 경계에서 끊기지 않고 하나의 막대로 표현되게 한다.
@@ -20,7 +22,7 @@ struct MonthGridView: View {
     var resetToTodayToken: Int = 0
 
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-    private let weekRowHeight: CGFloat = 110
+    private let weekRowHeight: CGFloat = 140
     /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 "+N" 으로.
     private let maxLanesPerWeek: Int = 4
 
@@ -54,11 +56,11 @@ struct MonthGridView: View {
     // MARK: - Header
 
     private var monthHeader: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LumenTokens.Space.s4) {
             Text(monthLabel)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .frame(minWidth: 110, alignment: .leading)
+                .lumenText(.title3)
+                .foregroundStyle(P.ink)
+                .frame(minWidth: 140, alignment: .leading)
                 .contentTransition(.numericText())
 
             Button("오늘") {
@@ -66,20 +68,11 @@ struct MonthGridView: View {
                 visibleAnchor = today
                 scrollTarget = today
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(LumenTokens.Accent.violetSoft)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-            )
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
 
             CalendarVisibilityStrip(showLocal: $showLocal, disabledProjectKeys: $disabledProjectKeys, showGoogleCalendar: showGoogleCalendar)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, LumenTokens.Space.s4)
     }
 
     private var monthLabel: String {
@@ -98,20 +91,19 @@ struct MonthGridView: View {
         HStack(spacing: 0) {
             ForEach(Array(weekdays.enumerated()), id: \.offset) { idx, w in
                 Text(w)
-                    .font(.system(size: 11, weight: .medium))
+                    .lumenText(.caption, weight: .medium)
                     .foregroundStyle(weekdayColor(idx))
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, LumenTokens.Space.inline)
     }
 
     /// weekdayRow는 날짜 없이 0~6 인덱스만 가지므로 idx 기반 분기를 그대로 둔다 (Date 기반 helper 부적합).
     private func weekdayColor(_ index: Int) -> Color {
-        if index == 0 { return LumenTokens.CalendarTone.sunday }
-        if index == 6 { return LumenTokens.Accent.violetSoft }
-        return LumenTokens.TextColor.muted
+        if index == 0 { return P.danger }
+        if index == 6 { return P.info }
+        return P.inkMuted
     }
 
     // MARK: - Scroll body
@@ -130,8 +122,6 @@ struct MonthGridView: View {
                         .id(weekKey(weekStart))
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
                 .scrollTargetLayout()
             }
             .onScrollGeometryChange(for: Date.self) { geo in
@@ -153,13 +143,13 @@ struct MonthGridView: View {
                 // 부모가 token을 증가시키면 오늘로 부드럽게 점프.
                 let target = CalendarDateUtils.startOfWeek(of: Date())
                 visibleAnchor = target
-                withAnimation(.easeOut(duration: 0.25)) {
+                withAnimation(LumenTokens.Motion.easeMove()) {
                     proxy.scrollTo(weekKey(target), anchor: .center)
                 }
             }
             .onChange(of: scrollTarget) { _, newTarget in
                 guard let target = newTarget else { return }
-                withAnimation(.easeOut(duration: 0.25)) {
+                withAnimation(LumenTokens.Motion.easeMove()) {
                     proxy.scrollTo(weekKey(target), anchor: .center)
                 }
                 scrollTarget = nil
@@ -203,9 +193,9 @@ private struct WeekRow: View {
     let weekStart: Date
     let layout: WeekLayout
     let today: Date
-    private let laneHeight: CGFloat = 18
+    private let laneHeight: CGFloat = 22
     private let laneSpacing: CGFloat = 2
-    private let topPadding: CGFloat = 22  // 날짜 숫자 자리
+    private let topPadding: CGFloat = 28  // 날짜 숫자 자리
     /// Jira 막대 클릭 시 띄울 popover의 대상 issue key — nil이면 닫힘.
     @State private var previewingKey: String? = nil
     /// ⌘클릭이면 설명 대신 댓글 팝오버를 띄운다.
@@ -240,9 +230,10 @@ private struct WeekRow: View {
                 ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
                     if let n = layout.overflowByCol[col] {
                         Text("+\(n)")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .padding(.horizontal, 3)
+                            .lumenText(.caption, weight: .medium)
+                            .monospacedDigit()
+                            .foregroundStyle(P.inkFaint)
+                            .padding(.horizontal, LumenTokens.Space.s1)
                             .padding(.leading, CGFloat(col) * cellW + 4)
                             .padding(.top, topPadding + CGFloat(4) * (laneHeight + laneSpacing) + 1)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -259,38 +250,33 @@ private struct WeekRow: View {
         let isFirstOfMonth = (dayNum == 1)
         let holidayName = KoreanHolidays.name(for: day)
 
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: LumenTokens.Space.s1) {
                 if isFirstOfMonth {
                     Text(monthDayLabel(day))
-                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(holidayName != nil ? LumenTokens.CalendarTone.holiday : LumenTokens.Accent.violetSoft)
+                        .lumenText(.caption, weight: .semibold)
+                        .monospacedDigit()
+                        .foregroundStyle(dayNumberColor(day: day, isToday: isToday, holidayName: holidayName))
                 } else {
                     Text("\(dayNum)")
-                        .font(.system(size: 11, weight: isToday ? .bold : .regular,
-                                      design: .monospaced))
+                        .lumenText(.caption, weight: isToday ? .bold : .regular)
+                        .monospacedDigit()
                         .foregroundStyle(dayNumberColor(day: day, isToday: isToday, holidayName: holidayName))
                 }
                 if let name = holidayName {
                     Text(name)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(LumenTokens.CalendarTone.holiday)
+                        .lumenText(.caption)
+                        .foregroundStyle(P.danger)
                         .lineLimit(1)
                 }
                 Spacer()
             }
             Spacer(minLength: 0)
         }
-        .padding(4)
+        .padding(6)
         .frame(width: cellWidth, height: cellHeight, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(isToday ? LumenTokens.Accent.amber.opacity(0.06) : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .stroke(LumenTokens.divider, lineWidth: 0.5)
-        )
+        .background(isToday ? P.brandSoft : .clear)
+        .overlay(Rectangle().strokeBorder(P.borderSubtle, lineWidth: 0.5))
         .contentShape(Rectangle())
         // 셀 빈 영역 더블클릭 → 그 날짜로 새 이벤트 popover.
         // 막대(Button)가 그 위에 있으면 막대가 hit-test 우선이라 그 영역은 빠진다.
@@ -324,7 +310,7 @@ private struct WeekRow: View {
         } label: {
             CalendarBarView(
                 spec: bar.item.barSpec(),
-                cornerRadius: 3,
+                cornerRadius: LumenTokens.Radius.xs,
                 height: laneHeight - 2
             )
             .frame(width: width)
@@ -387,8 +373,8 @@ private struct WeekRow: View {
 
     /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본.
     private func dayNumberColor(day: Date, isToday: Bool, holidayName: String?) -> Color {
-        if isToday { return LumenTokens.Accent.amber }
-        if holidayName != nil { return LumenTokens.CalendarTone.holiday }
-        return LumenTokens.TextColor.primary
+        if isToday { return P.brand }
+        if holidayName != nil { return P.danger }
+        return P.ink
     }
 }

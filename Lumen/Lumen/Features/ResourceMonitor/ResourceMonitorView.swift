@@ -1,76 +1,85 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 struct ResourceMonitorView: View {
     private var monitor: AppResourceMonitor { AppResourceMonitor.shared }
     private var store: ResourceAnomalyStore { ResourceAnomalyStore.shared }
     @State private var traceOn = AppResourceMonitor.isTraceEnabled
 
     var body: some View {
-        ZStack {
-            Color(red: 0.09, green: 0.09, blue: 0.12).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 12) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.group) {
                 header
                 currentStatsRow
-                chartSection(title: "메모리 (MB)", color: .blue,  values: memoryValues, max: max(memoryValues.max() ?? 1, 100))
-                chartSection(title: "CPU %",      color: .orange, values: cpuValues,    max: max(cpuValues.max() ?? 1, Double(monitor.coreCount) * 100))
-                chartSection(title: "스레드",      color: .green,  values: threadValues, max: max(threadValues.max() ?? 1, 20))
+                chartSection(title: "메모리", unit: "MB", values: memoryValues, max: max(memoryValues.max() ?? 1, 100))
+                chartSection(title: "CPU", unit: "%", values: cpuValues, max: max(cpuValues.max() ?? 1, Double(monitor.coreCount) * 100))
+                chartSection(title: "스레드", unit: "개", values: threadValues, max: max(threadValues.max() ?? 1, 20))
                 anomalySection
-                Spacer(minLength: 0)
             }
-            .padding(16)
+            .padding(LumenTokens.Space.s6)
         }
-        .frame(width: 560, height: 680)
+        .scrollIndicators(.hidden)
+        .frame(width: 720, height: 860)
+        .background(P.bg)
     }
 
     // MARK: - Anomalies
 
     private var anomalySection: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle").font(.system(size: 10)).foregroundColor(.yellow.opacity(0.8))
-                Text("감지된 특이사항").font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            HStack(spacing: LumenTokens.Space.inline) {
+                Text("감지된 특이사항")
+                    .lumenText(.title3)
+                    .foregroundStyle(P.ink)
                 Spacer()
-                Text("총 \(store.anomalies.count)건 저장")
-                    .font(.system(size: 9)).foregroundColor(.gray.opacity(0.5))
+                Text("\(store.anomalies.count)건 저장")
+                    .lumenText(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(P.inkFaint)
                 if !store.anomalies.isEmpty {
                     Button("지우기") { store.clear() }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 9))
-                        .foregroundColor(.blue.opacity(0.7))
+                        .buttonStyle(LumenButtonStyle(variant: .ghost, size: .small))
                 }
             }
             let recent = store.recent(6)
             if recent.isEmpty {
-                Text("이상 없음 · baseline 확립 후 감지 시작 (~60초)")
-                    .font(.system(size: 10)).foregroundColor(.gray.opacity(0.5))
-                    .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 8)
-            } else {
-                VStack(spacing: 1) {
-                    ForEach(recent) { a in anomalyRow(a) }
+                HStack(spacing: LumenTokens.Space.s3) {
+                    LumenIcon("circle-check")
+                        .foregroundStyle(P.success)
+                    VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
+                        Text("이상 없어요")
+                            .lumenText(.body, weight: .medium)
+                            .foregroundStyle(P.ink)
+                        Text("기준값을 잡은 뒤(약 60초) 감지를 시작해요.")
+                            .lumenText(.caption)
+                            .foregroundStyle(P.inkFaint)
+                    }
+                    Spacer()
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .padding(.vertical, 14)
+                .padding(.horizontal, LumenTokens.Space.s4)
+                .lumenCard()
+            } else {
+                LumenList(recent) { anomalyRow($0) }
             }
         }
     }
 
     private func anomalyRow(_ a: ResourceAnomaly) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(severityColor(a.severity)).frame(width: 5, height: 5)
-            Text(kindLabel(a.kind))
-                .font(.system(size: 9, weight: .medium))
-                .foregroundColor(severityColor(a.severity).opacity(0.9))
-                .frame(width: 52, alignment: .leading)
+        HStack(spacing: LumenTokens.Space.s3) {
+            LumenBadge(text: kindLabel(a.kind), tone: a.severity == .alert ? .danger : .warning)
             Text(a.message)
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.8))
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.ink)
                 .lineLimit(1)
             Spacer()
             Text(relativeTime(a.timestamp))
-                .font(.system(size: 9))
-                .foregroundColor(.gray.opacity(0.6))
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
         }
-        .padding(.horizontal, 8).padding(.vertical, 5)
-        .background(Color.white.opacity(0.03))
+        .padding(.vertical, LumenTokens.Space.s3)
+        .padding(.horizontal, LumenTokens.Space.s4)
     }
 
     private func kindLabel(_ k: ResourceAnomaly.Kind) -> String {
@@ -80,13 +89,6 @@ struct ResourceMonitorView: View {
         case .memoryGrowth: return "메모리증가"
         case .memorySpike:  return "메모리점프"
         case .threadGrowth: return "스레드증가"
-        }
-    }
-
-    private func severityColor(_ s: ResourceAnomaly.Severity) -> Color {
-        switch s {
-        case .alert:   return .red.opacity(0.85)
-        case .warning: return .orange.opacity(0.85)
         }
     }
 
@@ -103,27 +105,29 @@ struct ResourceMonitorView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "gauge.with.dots.needle.67percent")
-                .font(.system(size: 14)).foregroundColor(.orange.opacity(0.85))
-            Text("리소스 모니터").font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
-            Spacer()
-
-            Toggle("trace 로그", isOn: Binding(
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            HStack(spacing: LumenTokens.Space.inline) {
+                LumenIcon("gauge", size: .large)
+                    .foregroundStyle(P.inkMuted)
+                Text("리소스 모니터")
+                    .lumenText(.title2)
+                    .foregroundStyle(P.ink)
+                Spacer()
+            }
+            Text("\(monitor.history.count)개 샘플 · 5초 간격")
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
+            Toggle(isOn: Binding(
                 get: { traceOn },
                 set: {
                     traceOn = $0
                     AppResourceMonitor.isTraceEnabled = $0
                 }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .font(.system(size: 10))
-            .foregroundColor(.gray)
-            .help("메모리 구간 델타를 ~/Library/Logs/Lumen/memory_trace.log 에 기록. 끄면 런타임 비용 0.")
-
-            Text("\(monitor.history.count) samples · 5s 간격")
-                .font(.system(size: 10)).foregroundColor(.gray.opacity(0.6))
+            )) {
+                Text("추적 로그 기록")
+            }
+            .toggleStyle(LumenSwitchStyle())
+            .help("메모리 구간 델타를 ~/Library/Logs/Lumen/memory_trace.log 에 기록해요. 끄면 런타임 비용이 없어요.")
         }
     }
 
@@ -131,45 +135,64 @@ struct ResourceMonitorView: View {
 
     private var currentStatsRow: some View {
         let c = monitor.current
-        return HStack(spacing: 8) {
-            statBox(title: "메모리", value: String(format: "%.0f", c.memoryMB), unit: "MB", color: .blue)
-            statBox(title: "CPU",    value: String(format: "%.1f", c.cpuPercent), unit: "% (\(monitor.coreCount)c)", color: cpuColor(c.cpuPercent))
-            statBox(title: "스레드", value: "\(c.threadCount)", unit: "", color: .green)
+        return HStack(spacing: LumenTokens.Space.group) {
+            statBox(title: "메모리", value: String(format: "%.0f", c.memoryMB), unit: "MB")
+            statBox(title: "CPU", value: String(format: "%.1f", c.cpuPercent), unit: "% (\(monitor.coreCount)코어)",
+                    warning: cpuLevel(c.cpuPercent))
+            statBox(title: "스레드", value: "\(c.threadCount)", unit: "개")
         }
     }
 
-    private func statBox(title: String, value: String, unit: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 10)).foregroundColor(.gray)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value).font(.system(size: 22, weight: .bold)).foregroundColor(.white)
+    private func statBox(title: String, value: String, unit: String, warning: LumenTone? = nil) -> some View {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            HStack {
+                Text(title)
+                    .lumenText(.caption)
+                    .foregroundStyle(P.inkFaint)
+                Spacer()
+                if let warning {
+                    LumenBadge(text: warning == .danger ? "높음" : "주의", tone: warning)
+                }
+            }
+            HStack(alignment: .firstTextBaseline, spacing: LumenTokens.Space.s1) {
+                Text(value)
+                    .lumenText(.title2)
+                    .monospacedDigit()
+                    .foregroundStyle(P.ink)
                 if !unit.isEmpty {
-                    Text(unit).font(.system(size: 10)).foregroundColor(.gray)
+                    Text(unit)
+                        .lumenText(.label, weight: .regular)
+                        .foregroundStyle(P.inkMuted)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(color.opacity(0.08))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(color.opacity(0.25), lineWidth: 0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(LumenTokens.Space.pad)
+        .lumenCard()
     }
 
     // MARK: - Chart
 
-    private func chartSection(title: String, color: Color, values: [Double], max: Double) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+    private func chartSection(title: String, unit: String, values: [Double], max: Double) -> some View {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .lumenText(.label)
+                    .foregroundStyle(P.inkMuted)
                 Spacer()
                 if let last = values.last {
-                    Text(String(format: "%.1f", last)).font(.system(size: 10)).foregroundColor(.white.opacity(0.7))
+                    Text("\(String(format: "%.1f", last))\(unit)")
+                        .lumenText(.label)
+                        .monospacedDigit()
+                        .foregroundStyle(P.ink)
                 }
-                Text("최대 \(String(format: "%.0f", max))")
-                    .font(.system(size: 9)).foregroundColor(.gray.opacity(0.5))
+                Text("최대 \(String(format: "%.0f", max))\(unit)")
+                    .lumenText(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(P.inkFaint)
             }
-            MiniAreaChart(values: values, maxValue: max, color: color)
-                .frame(height: 70)
+            MiniAreaChart(values: values, maxValue: max)
+                .frame(height: 96)
         }
     }
 
@@ -179,20 +202,22 @@ struct ResourceMonitorView: View {
     private var cpuValues: [Double]    { monitor.history.map(\.cpuPercent) }
     private var threadValues: [Double] { monitor.history.map { Double($0.threadCount) } }
 
-    private func cpuColor(_ pct: Double) -> Color {
+    /// CPU가 높으면 상태 배지로 알린다(색만으로 구분하지 않음).
+    private func cpuLevel(_ pct: Double) -> LumenTone? {
         let cores = Double(monitor.coreCount)
-        if pct > cores * 30 { return .red.opacity(0.9) }
-        if pct > cores * 10 { return .orange }
-        return .green.opacity(0.8)
+        if pct > cores * 30 { return .danger }
+        if pct > cores * 10 { return .warning }
+        return nil
     }
 }
 
 // MARK: - MiniAreaChart
 
+/// 단일 계열 선 차트. 가로 격자선만, 선 굵기 2, 마지막 점 지름 8, 영역은 단색 옅은 바탕.
 struct MiniAreaChart: View {
     let values: [Double]
     let maxValue: Double
-    let color: Color
+    private let color = LumenTokens.Palette.chart1
 
     var body: some View {
         GeometryReader { geo in
@@ -202,12 +227,12 @@ struct MiniAreaChart: View {
 
             ZStack {
                 Path { p in
-                    for frac in [0.25, 0.5, 0.75] {
+                    for frac in [0.0, 0.25, 0.5, 0.75] {
                         let y = size.height * (1 - frac)
                         p.move(to: CGPoint(x: 0, y: y))
                         p.addLine(to: CGPoint(x: size.width, y: y))
                     }
-                }.stroke(Color.white.opacity(0.04), lineWidth: 0.5)
+                }.stroke(LumenTokens.Palette.chartGrid, lineWidth: 1)
 
                 if count > 1 {
                     let pts = points(size: size, range: range)
@@ -218,19 +243,14 @@ struct MiniAreaChart: View {
                         p.addLine(to: CGPoint(x: pts.last!.x, y: size.height))
                         p.closeSubpath()
                     }
-                    .fill(LinearGradient(
-                        colors: [color.opacity(0.35), color.opacity(0.02)],
-                        startPoint: .top, endPoint: .bottom
-                    ))
+                    .fill(LumenTokens.Palette.brandSoft)
 
                     Path { p in
                         p.move(to: pts[0])
                         pts.dropFirst().forEach { p.addLine(to: $0) }
-                    }.stroke(color.opacity(0.9), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round))
+                    }.stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
-                    Circle()
-                        .fill(color)
-                        .frame(width: 4, height: 4)
+                    LumenDot(color: color)
                         .position(pts.last!)
                 }
             }

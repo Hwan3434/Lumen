@@ -4,7 +4,7 @@ import Carbon.HIToolbox
 final class ClipboardFeature: BuiltInFeature {
     let name = "클립보드"
     let featureDescription = "클립보드 히스토리"
-    let iconName = "doc.on.clipboard"
+    let iconName = "clipboard-list"
     let searchKeywords = ["clipboard", "클립보드", "복사", "붙여넣기", "paste"]
 
     let windowController = ClipboardWindowController()

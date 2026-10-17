@@ -12,7 +12,7 @@ import SwiftUI
 enum LumenToast {
     @MainActor private static var controller: ToastController?
 
-    static func show(text: String, swatch: NSColor? = nil, duration: TimeInterval = 1.2) {
+    static func show(text: String, swatch: NSColor? = nil, duration: TimeInterval = 2) {
         Task { @MainActor in
             let ctrl = controller ?? ToastController()
             controller = ctrl
@@ -44,7 +44,8 @@ private final class ToastController {
                 panel.orderFrontRegardless()
             }
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.12
+                ctx.duration = LumenTokens.Motion.slow
+                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.32, 0.72, 0, 1)
                 panel.animator().alphaValue = 1
             }
         }
@@ -58,7 +59,8 @@ private final class ToastController {
     private func dismiss() {
         guard let panel else { return }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.18
+            ctx.duration = LumenTokens.Motion.base
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.5, 0, 0.75, 0)
             panel.animator().alphaValue = 0
         }, completionHandler: {
             // 완료 시점에 새 present()가 alpha=1로 되돌렸으면 숨기지 않는다.
@@ -79,7 +81,7 @@ private final class ToastController {
         p.level = .statusBar
         p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         p.backgroundColor = .clear
-        p.hasShadow = true
+        p.hasShadow = false
         p.isOpaque = false
         p.isReleasedWhenClosed = false
         p.ignoresMouseEvents = true
@@ -100,35 +102,25 @@ private struct ToastBody: View {
     let swatch: Color?
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LumenTokens.Space.inline) {
             if let swatch {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                LumenShape.rect(LumenTokens.Radius.xs)
                     .fill(swatch)
-                    .frame(width: 16, height: 16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
-                    )
+                    .frame(width: 20, height: 20)
+                    .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+            } else {
+                LumenIcon("circle-check").foregroundStyle(LumenTokens.Palette.success)
             }
             Text(text)
-                .font(.system(size: 12.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.primary)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(LumenTokens.Palette.ink)
         }
-        .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(
-            ZStack {
-                LumenTokens.BG.windowSolid.opacity(0.92)
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.5)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(LumenTokens.strokeStrong, lineWidth: 0.5)
-        )
+        .padding(.horizontal, 16)
+        .background(LumenTokens.Palette.surfaceRaised, in: Capsule())
+        .overlay(Capsule().strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+        .lumenElevation(2, radius: LumenTokens.Radius.full)
+        .padding(LumenTokens.Space.s5)
         .fixedSize()
     }
 }

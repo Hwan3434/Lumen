@@ -3,7 +3,7 @@ import SwiftUI
 import Carbon.HIToolbox
 
 final class JiraDashboardWindowController: PanelWindowController {
-    private static let panelSize = NSSize(width: 1160, height: 840)
+    private static let panelSize = NSSize(width: 1320, height: 860)
 
     override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(

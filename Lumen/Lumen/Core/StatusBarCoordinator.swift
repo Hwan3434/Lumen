@@ -107,7 +107,9 @@ final class StatusBarItemHandle: NSObject {
     }
 
     private func applyIcon(to item: NSStatusItem) {
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibility)
+        // Lucide 아이콘이 우선. 날짜 숫자 아이콘("17.square.fill")처럼 Lucide에 없는 것만 SF Symbol로 그린다.
+        let image = LumenIcon.nsImage(symbolName, accessibility: accessibility)
+            ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibility)
         image?.isTemplate = true
         item.button?.image = image
         item.button?.imagePosition = titleText.isEmpty ? .imageOnly : .imageLeft

@@ -3,7 +3,7 @@ import AppKit
 final class TranslatorFeature: BuiltInFeature {
     let name = "AI 번역"
     let featureDescription = "한국어 ↔ 영어 번역"
-    let iconName = "textformat.abc"
+    let iconName = "languages"
     let searchKeywords = ["번역", "translate", "translation", "ai"]
 
     var isEnabled: Bool {

@@ -13,6 +13,7 @@ protocol BuiltInFeature: AnyObject {
     var searchKeywords: [String] { get }
     var isEnabled: Bool { get }
     var showInDefaultList: Bool { get }
+    /// Lucide 아이콘 이름 (Assets.xcassets/Icons 의 `lucide-<이름>`).
     var iconName: String { get }
     var hotkeys: [HotkeySpec] { get }
 
@@ -32,7 +33,7 @@ extension BuiltInFeature {
     var hotkeys: [HotkeySpec] { [] }
     var isEnabled: Bool { true }
     var showInDefaultList: Bool { true }
-    var iconName: String { "star.fill" }
+    var iconName: String { "star" }
 
     func attachStatusBar(_ coordinator: StatusBarCoordinator) {}
 }

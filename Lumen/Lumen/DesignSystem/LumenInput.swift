@@ -6,7 +6,7 @@ import AppKit
 struct LumenInputField<Leading: View, Trailing: View>: View {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 18
+    var fontSize: CGFloat = LumenTextStyle.bodyLarge.size
     var monospaced: Bool = false
     var onSubmit: (() -> Void)? = nil
 
@@ -14,7 +14,7 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: LumenTokens.Space.s3) {
             leading()
             TintedTextField(
                 text: $text,
@@ -23,6 +23,9 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
                 monospaced: monospaced,
                 onSubmit: onSubmit
             )
+            // SUIT는 한글 글리프가 높아 NSTextField 기본 높이로는 입력 중 윗부분이 잘린다.
+            // 글꼴 줄 높이만큼 칸을 확보하고, 셀이 그 안에서 세로 가운데에 그린다.
+            .frame(height: ceil(fontSize * 1.6))
             trailing()
         }
     }
@@ -36,7 +39,7 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
 struct LumenTextArea: View {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 17
+    var fontSize: CGFloat = LumenTextStyle.body.size
     var monospaced: Bool = false
     /// 변화가 감지될 때마다 NSTextView를 first responder로 만든다. 0은 "no-op".
     /// 호출자는 단조 증가 카운터를 넘기면 된다 — 같은 값으로 머무르면 포커스 변화 없음.
@@ -99,7 +102,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.textContainerInset = NSSize(width: 0, height: 0)
-        textView.insertionPointColor = NSColor(LumenTokens.Accent.violetSoft)
+        textView.insertionPointColor = NSColor(LumenTokens.Palette.brand)
         textView.autoresizingMask = [.width]
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -142,13 +145,11 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = monospaced
-            ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            : NSFont.systemFont(ofSize: fontSize)
+        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
         textView.font = font
-        textView.textColor = NSColor(LumenTokens.TextColor.primary)
+        textView.textColor = NSColor(LumenTokens.Palette.ink)
         textView.placeholderString = placeholder
-        textView.placeholderColor = NSColor(LumenTokens.TextColor.placeholder)
+        textView.placeholderColor = NSColor(LumenTokens.Palette.inkFaint)
         textView.placeholderFont = font
     }
 
@@ -213,7 +214,7 @@ private final class PlaceholderTextView: NSTextView {
 private struct TintedTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 13
+    var fontSize: CGFloat = LumenTextStyle.body.size
     var monospaced: Bool = false
     var onSubmit: (() -> Void)? = nil
 
@@ -221,6 +222,9 @@ private struct TintedTextField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSTextField {
         let tf = NSTextField()
+        tf.cell = CenteredTextFieldCell(textCell: "")
+        tf.isEditable = true
+        tf.isSelectable = true
         tf.delegate = context.coordinator
         tf.isBordered = false
         tf.drawsBackground = false
@@ -250,18 +254,18 @@ private struct TintedTextField: NSViewRepresentable {
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = monospaced
-            ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            : NSFont.systemFont(ofSize: fontSize)
+        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
         tf.font = font
-        tf.textColor = NSColor(LumenTokens.TextColor.primary)
+        tf.textColor = NSColor(LumenTokens.Palette.ink)
 
-        let placeholderColor = NSColor(LumenTokens.TextColor.placeholder)
+        let placeholderColor = NSColor(LumenTokens.Palette.inkFaint)
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: placeholderColor,
             .font: font,
         ]
-        tf.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: attrs)
+        (tf.cell as? CenteredTextFieldCell)?.centeredPlaceholder =
+            NSAttributedString(string: placeholder, attributes: attrs)
+        tf.needsDisplay = true
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
@@ -291,5 +295,51 @@ private struct TintedTextField: NSViewRepresentable {
         let fontSize: CGFloat
         let monospaced: Bool
         let placeholder: String
+    }
+}
+
+/// 칸 높이가 글자보다 클 때 글자와 편집기(field editor)를 세로 가운데에 놓는 셀.
+private final class CenteredTextFieldCell: NSTextFieldCell {
+    /// 표준 placeholder 속성에 넣으면 편집기가 칸 위쪽에 한 번 더 그리므로 셀이 따로 들고 그린다.
+    var centeredPlaceholder: NSAttributedString?
+
+    private func centered(_ rect: NSRect) -> NSRect {
+        var r = super.drawingRect(forBounds: rect)
+        let textHeight = cellSize(forBounds: rect).height
+        if textHeight < r.height {
+            r.origin.y += (r.height - textHeight) / 2
+            r.size.height = textHeight
+        }
+        return r
+    }
+
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        centered(rect)
+    }
+
+    override func titleRect(forBounds rect: NSRect) -> NSRect {
+        centered(rect)
+    }
+
+    /// 기본 셀은 안내 문구를 칸 위쪽에 붙여 그리므로, 비어 있을 때는 입력 글자와 같은 자리에 직접 그린다.
+    override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+        guard stringValue.isEmpty, let placeholder = centeredPlaceholder else {
+            super.drawInterior(withFrame: cellFrame, in: controlView)
+            return
+        }
+        let r = centered(cellFrame)
+        // 편집기 글자와 맞추려고 줄 앞 여백(lineFragmentPadding, 2pt)만큼 민다.
+        placeholder.draw(in: r.insetBy(dx: 2, dy: 0))
+    }
+
+    override func edit(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                       delegate: Any?, event: NSEvent?) {
+        super.edit(withFrame: centered(rect), in: controlView, editor: textObj, delegate: delegate, event: event)
+    }
+
+    override func select(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                         delegate: Any?, start selStart: Int, length selLength: Int) {
+        super.select(withFrame: centered(rect), in: controlView, editor: textObj, delegate: delegate,
+                     start: selStart, length: selLength)
     }
 }

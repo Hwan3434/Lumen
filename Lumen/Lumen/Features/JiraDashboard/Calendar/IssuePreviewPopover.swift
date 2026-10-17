@@ -40,27 +40,19 @@ struct IssuePreviewPopover: View {
     }
 
     private var loadingView: some View {
-        VStack(spacing: 10) {
-            ProgressView().controlSize(.small)
-            Text("불러오는 중…")
-                .font(.system(size: 11.5))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-        }
-        .frame(width: CalendarPreviewMetrics.width, height: 160)
+        PopoverLoadingView()
     }
 
     private func errorView(_ msg: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
             Text(issueKey)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text(msg)
-                .font(.system(size: 11.5))
-                .foregroundStyle(LumenTokens.ErrorTone.title)
-                .lineLimit(3)
+                .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
+                .foregroundStyle(LumenTokens.Palette.inkMuted)
+            LumenBanner(tone: .danger, title: "이슈를 불러오지 못했어요", message: msg)
         }
-        .padding(14)
+        .padding(LumenTokens.Space.pad)
         .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
+        .background(LumenTokens.Palette.surfaceRaised)
     }
 
     /// 댓글은 ⌘클릭 전용 팝오버로 분리했다. 여기엔 "있다"는 사실과 여는 방법만 남긴다 —
@@ -68,16 +60,15 @@ struct IssuePreviewPopover: View {
     @ViewBuilder
     private func commentHint(_ detail: IssueDetail) -> some View {
         if detail.commentCount > 0 {
-            HStack(spacing: 5) {
-                Image(systemName: "bubble.left.and.bubble.right")
-                    .font(.system(size: 10, weight: .medium))
-                Text("댓글 \(detail.commentCount)")
-                    .font(.system(size: 11, weight: .medium))
-                Text("⌘클릭으로 보기")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.8))
+            HStack(spacing: LumenTokens.Space.s1 + 2) {
+                LumenIcon("messages-square", size: .small)
+                Text("댓글 \(detail.commentCount)개")
+                    .lumenText(.label)
+                Text("⌘클릭하면 볼 수 있어요")
+                    .lumenText(.caption)
+                    .foregroundStyle(LumenTokens.Palette.inkFaint)
             }
-            .foregroundStyle(LumenTokens.TextColor.muted)
+            .foregroundStyle(LumenTokens.Palette.inkMuted)
         }
     }
 
@@ -87,34 +78,18 @@ struct IssuePreviewPopover: View {
     }
 
     private var jiraOpenFooter: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LumenTokens.Space.inline) {
             Spacer()
             Button {
                 openJira(issueKey)
             } label: {
-                HStack(spacing: 5) {
-                    Text("Jira에서 열기")
-                        .font(.system(size: 11.5, weight: .medium))
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 10, weight: .semibold))
-                }
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(LumenTokens.Accent.violet.opacity(0.22))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(LumenTokens.Accent.violet.opacity(0.45), lineWidth: 0.5)
-                        )
-                )
+                Label { Text("Jira에서 열기") } icon: { LumenIcon("external-link", size: .small) }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
-        .padding(.top, 4)
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .padding(.bottom, LumenTokens.Space.s4)
+        .background(LumenTokens.Palette.surfaceRaised)
     }
 
     private func load() async {

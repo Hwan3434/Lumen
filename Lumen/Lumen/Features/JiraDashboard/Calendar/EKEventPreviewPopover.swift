@@ -20,7 +20,7 @@ struct EKEventPreviewPopover: View {
         var rows: [CalendarPreviewLayout<EmptyView, EmptyView>.MetaRow] = []
         rows.append(.init(icon: "clock", text: timeText))
         if let location = event.location, !location.isEmpty {
-            rows.append(.init(icon: "mappin.and.ellipse", text: location))
+            rows.append(.init(icon: "map-pin", text: location))
         }
         if let url = event.urlString {
             rows.append(.init(icon: "link", text: url))
@@ -34,24 +34,24 @@ struct EKEventPreviewPopover: View {
         if event.isAllDay {
             let f = DateFormatter()
             f.locale = Locale(identifier: "ko_KR")
-            f.dateFormat = "yyyy.MM.dd (E)"
+            f.dateFormat = "yyyy. M. d (E)"
             // EKEvent.endDate는 종일 이벤트의 다음날 00:00이라 -1일.
             let endInclusive = cal.date(byAdding: .day, value: -1, to: event.endDate) ?? start
             if cal.isDate(start, inSameDayAs: endInclusive) {
                 return "\(f.string(from: start)) · 종일"
             }
-            return "\(f.string(from: start)) → \(f.string(from: endInclusive)) · 종일"
+            return "\(f.string(from: start)) – \(f.string(from: endInclusive)) · 종일"
         }
         let dayF = DateFormatter()
         dayF.locale = Locale(identifier: "ko_KR")
-        dayF.dateFormat = "yyyy.MM.dd (E)"
+        dayF.dateFormat = "yyyy. M. d (E)"
         let timeF = DateFormatter()
         timeF.locale = Locale(identifier: "ko_KR")
-        timeF.dateFormat = "HH:mm"
+        timeF.dateFormat = "a h:mm"
         let end = event.endDate
         if cal.isDate(start, inSameDayAs: end) {
             return "\(dayF.string(from: start)) \(timeF.string(from: start)) – \(timeF.string(from: end))"
         }
-        return "\(dayF.string(from: start)) \(timeF.string(from: start)) → \(dayF.string(from: end)) \(timeF.string(from: end))"
+        return "\(dayF.string(from: start)) \(timeF.string(from: start)) – \(dayF.string(from: end)) \(timeF.string(from: end))"
     }
 }

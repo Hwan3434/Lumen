@@ -2,6 +2,8 @@ import AppKit
 import EventKit
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 /// 월간/주간 헤더 [오늘] 옆에 가로로 깔리는 캘린더 토글 스트립.
 /// 권한이 없거나 연동 토글이 꺼져있으면 안내 + 액션 버튼만 인라인으로 표시.
 struct CalendarVisibilityStrip: View {
@@ -19,10 +21,10 @@ struct CalendarVisibilityStrip: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: LumenTokens.Space.inline) {
                 FilterChip(
                     label: "내 이벤트",
-                    color: LumenTokens.TextColor.secondary,
+                    color: CalendarItemKind.local.color,
                     isOn: $showLocal
                 )
 
@@ -89,13 +91,12 @@ struct CalendarVisibilityStrip: View {
 
     @ViewBuilder
     private var inlineEmptyState: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+        HStack(spacing: LumenTokens.Space.inline) {
+            LumenIcon("calendar-off", size: .small)
+                .foregroundStyle(P.inkFaint)
             Text(emptyTitle)
-                .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
 
             if iCalEnabled, authStatus != .fullAccess {
                 pillButton("권한 요청") {
@@ -116,28 +117,18 @@ struct CalendarVisibilityStrip: View {
     }
 
     private func pillButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-        }
-        .buttonStyle(.plain)
+        Button(title, action: action)
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
     }
 
     private var emptyTitle: String {
-        if !iCalEnabled { return "iCal 연동 꺼짐 (설정 > Jira)" }
+        if !iCalEnabled { return "iCal 연동이 꺼져 있어요 (설정 > Jira)" }
         switch authStatus {
-        case .notDetermined: return "캘린더 권한 미요청"
-        case .denied, .restricted: return "캘린더 권한 거부됨"
-        case .writeOnly: return "캘린더 읽기 권한 없음"
-        case .fullAccess: return "표시할 캘린더 없음"
-        @unknown default: return "캘린더 표시 불가"
+        case .notDetermined: return "캘린더 권한을 아직 요청하지 않았어요"
+        case .denied, .restricted: return "캘린더 권한이 거부됐어요"
+        case .writeOnly: return "캘린더를 읽을 권한이 없어요"
+        case .fullAccess: return "보여줄 캘린더가 없어요"
+        @unknown default: return "캘린더를 보여줄 수 없어요"
         }
     }
 }

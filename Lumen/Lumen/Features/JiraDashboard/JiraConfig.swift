@@ -20,8 +20,11 @@ extension Constants {
     /// 비워두면 사용자가 Settings에서 명시적으로 등록할 때까지 대시보드는 빈 상태.
     static let defaultJiraProjectKeys: [String] = []
 
-    /// 프로젝트 색상은 등록 순서에 따라 palette에서 순환 할당된다.
-    static let jiraProjectPalette: [Color] = [.cyan, .purple, .orange, .green, .pink, .yellow, .teal, .red]
+    /// 프로젝트 색상은 등록 순서대로 Still 차트 범주 색(chart-1~5)을 받는다.
+    /// 다섯을 넘는 프로젝트는 모두 `chartOther`.
+    static func jiraProjectColor(at idx: Int) -> Color {
+        LumenTokens.Palette.chartCategories[safe: idx] ?? LumenTokens.Palette.chartOther
+    }
 
     /// 대시보드/서비스가 참조하는 실제 프로젝트 목록.
     /// CredentialsStore(= UserDefaults)의 key 배열과 별칭 매핑 기준으로 매번 생성된다.
@@ -33,7 +36,7 @@ extension Constants {
             JiraProject(
                 key: key,
                 name: names[key] ?? "",
-                color: jiraProjectPalette[idx % jiraProjectPalette.count]
+                color: jiraProjectColor(at: idx)
             )
         }
     }

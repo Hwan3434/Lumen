@@ -19,9 +19,13 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
         super.init()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        let image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "Lumen")
-        image?.isTemplate = true
-        statusItem.button?.image = image
+        // Still 심볼(놓인 돌 + 비어 있는 점). 메뉴바는 한 가지 색이라 점을 비워 둔 템플릿을 쓴다.
+        if let symbol = (NSImage(named: "StillSymbol")?.copy() as? NSImage) {
+            symbol.size = NSSize(width: 17, height: 13)
+            symbol.isTemplate = true
+            symbol.accessibilityDescription = "Lumen"
+            statusItem.button?.image = symbol
+        }
 
         menu.delegate = self
         statusItem.menu = menu
@@ -67,10 +71,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
             )
             item.target = self
             item.representedObject = feature
-            if let img = NSImage(systemSymbolName: feature.iconName, accessibilityDescription: feature.name) {
-                img.isTemplate = true
-                item.image = img
-            }
+            item.image = LumenIcon.nsImage(feature.iconName, accessibility: feature.name)
             menu.addItem(item)
         }
 

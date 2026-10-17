@@ -2,21 +2,23 @@ import SwiftUI
 import MarkdownUI
 import UniformTypeIdentifiers
 
+private typealias P = LumenTokens.Palette
+
 struct NoteView: View {
     @State var viewModel = NotesViewModel()
 
     var body: some View {
         ZStack {
-            LumenGlassBackground(radius: LumenTokens.Radius.window)
+            LumenPanelBackground()
             HStack(spacing: 0) {
                 NotesSidebar(viewModel: viewModel)
-                    .frame(width: 200)
-                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                    .frame(width: 240)
+                Rectangle().fill(P.borderSubtle).frame(width: 1)
                 mainPane
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
     }
 
     // MARK: - Main pane
@@ -36,17 +38,13 @@ struct NoteView: View {
             // 평상시 헤더 빈 공간 드래그로 윈도우 이동. 콘텐츠는 위에 겹쳐 hit-test 우선권 잡게.
             WindowDragArea()
             HStack {
-                HStack(spacing: 12) {
-                    Image(systemName: "note.text")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
+                HStack(spacing: LumenTokens.Space.s3) {
+                    LumenIcon("sticky-note")
+                        .foregroundStyle(P.inkMuted)
                     Text(activeTitle)
-                        .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(LumenTokens.TextColor.primary)
+                        .lumenText(.body, weight: .semibold)
+                        .foregroundStyle(P.ink)
                         .lineLimit(1)
-                    Rectangle()
-                        .fill(LumenTokens.divider)
-                        .frame(width: 1, height: 12)
                     SaveStatusView(state: viewModel.saveStatus)
                 }
                 .allowsHitTesting(false)
@@ -55,9 +53,9 @@ struct NoteView: View {
                     viewModel.togglePreview()
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, LumenTokens.Space.pad)
         }
-        .frame(height: 44)
+        .frame(height: 56)
     }
 
     private var activeTitle: String {
@@ -82,8 +80,8 @@ struct NoteView: View {
                             return .handled
                         })
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 20)
+                        .padding(.horizontal, LumenTokens.Space.s6)
+                        .padding(.vertical, LumenTokens.Space.pad)
                 }
                 .scrollIndicators(.hidden)
             }
@@ -99,17 +97,16 @@ struct NoteView: View {
                 get: { viewModel.activeText },
                 set: { viewModel.draftDidChange($0) }
             ),
-            placeholder: "여기에 메모… 마크다운 지원",
-            fontSize: 13,
-            monospaced: true,
+            placeholder: "메모를 적어 보세요. 마크다운을 쓸 수 있어요.",
+            fontSize: LumenTextStyle.body.size,
             focusToken: viewModel.isPreview ? 0 : viewModel.editFocusToken,
             caretRestoreToken: viewModel.caretRestoreToken,
             caretRestoreLocation: viewModel.caretRestoreLocation,
             onCaretChange: { viewModel.recordCaret($0) }
         )
         .id(viewModel.selectedID ?? "")
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, LumenTokens.Space.s6)
+        .padding(.vertical, LumenTokens.Space.pad)
     }
 
     private var footer: some View {
@@ -133,7 +130,7 @@ private struct NotesSidebar: View {
             sidebarHeader
             LumenHairline()
             ScrollView {
-                VStack(spacing: 1) {
+                VStack(spacing: 0) {
                     ForEach(Array(viewModel.notes.enumerated()), id: \.element.id) { index, note in
                         DraggableSidebarRow(
                             note: note,
@@ -145,45 +142,31 @@ private struct NotesSidebar: View {
                     // 마지막 row 아래 빈 공간 — 드랍하면 리스트 끝에 끼워넣음.
                     TrailingDropZone(viewModel: viewModel, draggingID: $draggingID)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 6)
+                .padding(LumenTokens.Space.inline)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .scrollIndicators(.hidden)
             .frame(maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity)
-        .background(LumenTokens.BG.sidePanel)
+        .background(P.surface)
     }
 
     private var sidebarHeader: some View {
         ZStack {
             WindowDragArea()
-            HStack(spacing: 8) {
-                Text("노트")
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.4)
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+            HStack(spacing: LumenTokens.Space.inline) {
+                LumenSectionLabel(text: "노트")
                     .allowsHitTesting(false)
                 Spacer(minLength: 0)
-                Button {
+                LumenIconButton(icon: "plus", label: "새 노트 (⌘N)") {
                     viewModel.createNewNote(activate: true)
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                        .frame(width: 22, height: 22)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                        )
                 }
-                .buttonStyle(.plain)
-                .help("새 노트 (⌘N)")
             }
-            .padding(.horizontal, 12)
+            .padding(.leading, LumenTokens.Space.s4)
+            .padding(.trailing, LumenTokens.Space.inline)
         }
-        .frame(height: 44)
+        .frame(height: 56)
     }
 }
 
@@ -217,7 +200,7 @@ private struct DraggableSidebarRow: View {
                 onSelect: {},
                 onDelete: {}
             )
-            .frame(width: 188)
+            .frame(width: 224)
             .opacity(0.85)
         }
         .onDrop(of: [.text], delegate: NoteReorderDelegate(
@@ -303,68 +286,36 @@ private struct SidebarRow: View {
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
+                HStack(spacing: LumenTokens.Space.inline) {
                     Text(note.displayTitle)
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                        .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
+                        .lumenText(.body, weight: isSelected ? .semibold : .medium)
+                        .foregroundStyle(isSelected ? P.brand : P.ink)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    // hover 시 같은 자리에 trash 버튼이 덮어 그려진다.
+                    // hover 시 같은 자리에 삭제 버튼이 덮어 그려진다.
                     if !isHovering, index < 9 {
-                        Text("⌘\(index + 1)")
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .padding(.horizontal, 3)
-                            .frame(minWidth: 18, minHeight: 13)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 2)
-                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                            )
+                        LumenKbd(label: "⌘\(index + 1)")
                     }
                     if isHovering, canDelete {
-                        Button(action: onDelete) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(LumenTokens.TextColor.muted)
-                                .frame(width: 18, height: 13)
-                        }
-                        .buttonStyle(.plain)
-                        .help("노트 삭제")
+                        LumenIconButton(icon: "trash-2", label: "노트 삭제", action: onDelete)
+                            .padding(.vertical, -10)
                     }
                 }
                 if !note.preview.isEmpty {
                     Text(note.preview)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 7)
+            .padding(.vertical, LumenTokens.Space.s3)
+            .padding(.horizontal, LumenTokens.Space.s3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onHover { isHovering = $0 }
-            .background(
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(isSelected ? LumenTokens.Accent.amber.opacity(0.18) : .clear, lineWidth: 0.5)
-                    )
-            )
-            .overlay(alignment: .leading) {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(LumenTokens.Accent.amber)
-                        .frame(width: 2)
-                        .padding(.vertical, 4)
-                        .padding(.leading, 1)
-                        .shadow(color: LumenTokens.Accent.amberDim, radius: 4)
-                }
-            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LumenListRowStyle(isSelected: isSelected))
     }
 }
 
@@ -374,35 +325,22 @@ private struct SaveStatusView: View {
     let state: NotesViewModel.SaveStatus
 
     var body: some View {
-        HStack(spacing: 7) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 6, height: 6)
-                .shadow(color: glow ? dotColor : .clear, radius: 4)
+        HStack(spacing: LumenTokens.Space.s1) {
+            if case .saved = state {
+                LumenIcon("circle-check", size: .small)
+                    .foregroundStyle(P.success)
+            }
             Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
         }
-    }
-
-    private var dotColor: Color {
-        switch state {
-        case .resting: return Color.white.opacity(0.18)
-        case .editing: return LumenTokens.Accent.violetSoft
-        case .saved:   return LumenTokens.Accent.violet
-        }
-    }
-
-    private var glow: Bool {
-        if case .saved = state { return true }
-        return false
     }
 
     private var label: String {
         switch state {
         case .resting: return "자동 저장"
-        case .editing: return "편집 중…"
-        case .saved:   return "저장됨"
+        case .editing: return "편집 중"
+        case .saved:   return "저장했어요"
         }
     }
 }
@@ -414,47 +352,18 @@ private struct ModeToggle: View {
     var onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Button(action: onToggle) {
-                HStack(spacing: 0) {
-                    segment(icon: "pencil", label: "편집", active: !isPreview)
-                    segment(icon: "eye", label: "미리보기", active: isPreview)
-                }
-                .padding(2)
-                .background(
-                    Capsule().fill(LumenTokens.BG.card)
+        HStack(spacing: LumenTokens.Space.inline) {
+            LumenSegmentedControl(
+                items: [
+                    .init(value: false, label: "편집", icon: "pencil"),
+                    .init(value: true, label: "미리보기", icon: "eye"),
+                ],
+                selection: Binding(
+                    get: { isPreview },
+                    set: { if $0 != isPreview { onToggle() } }
                 )
-                .overlay(
-                    Capsule().stroke(LumenTokens.strokeStrong, lineWidth: 0.5)
-                )
-            }
-            .buttonStyle(.plain)
-
-            Text("⌘⇧E")
-                .font(.system(size: 10.5, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+            )
+            LumenKbd(label: "⌘⇧E")
         }
-    }
-
-    private func segment(icon: String, label: String, active: Bool) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: active ? .semibold : .regular))
-                .foregroundStyle(active ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.muted)
-            Text(label)
-                .font(.system(size: 11.5, weight: active ? .medium : .regular))
-                .foregroundStyle(active ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 24)
-        .background(
-            Capsule()
-                .fill(active ? LumenTokens.Accent.violet.opacity(0.16) : .clear)
-                .overlay(
-                    Capsule()
-                        .stroke(active ? LumenTokens.Accent.violetSoft.opacity(0.35) : .clear, lineWidth: 0.5)
-                )
-                .shadow(color: active ? LumenTokens.Accent.violet.opacity(0.18) : .clear, radius: 6)
-        )
     }
 }

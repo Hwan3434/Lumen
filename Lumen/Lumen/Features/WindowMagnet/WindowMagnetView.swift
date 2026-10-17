@@ -1,54 +1,55 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 struct WindowMagnetView: View {
     @State var viewModel = WindowMagnetViewModel()
     let onSelect: (WindowMagnetManager.Direction, CGFloat) -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "rectangle.split.2x1")
-                    .foregroundColor(.purple)
-                    .font(.system(size: 16))
-                Text("윈도우 크기 선택")
-                    .foregroundColor(.white)
-                    .font(.system(size: 18))
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
+        ZStack {
+            LumenPanelBackground()
+            VStack(spacing: 0) {
+                HStack(spacing: LumenTokens.Space.inline) {
+                    LumenIcon("columns-2")
+                        .foregroundStyle(P.inkMuted)
+                    Text("창 크기 선택")
+                        .lumenText(.body, weight: .semibold)
+                        .foregroundStyle(P.ink)
+                    Spacer()
+                }
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .frame(height: 56)
 
-            Divider().background(Color.gray.opacity(0.3))
+                LumenHairline()
 
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(Array(viewModel.options.enumerated()), id: \.offset) { index, option in
-                        HStack(spacing: 8) {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.options.enumerated()), id: \.offset) { index, option in
+                            let selected = index == viewModel.selectedIndex
                             Text(option.label)
-                                .foregroundColor(.white)
-                                .font(.system(size: 14))
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(index == viewModel.selectedIndex ? Color.blue.opacity(0.3) : Color.clear)
-                        .cornerRadius(5)
-                        .padding(.horizontal, 6)
-                        .onTapGesture(count: 2) {
-                            viewModel.selectedIndex = index
-                            onSelect(viewModel.selectedOption.direction, viewModel.selectedOption.ratio)
-                        }
-                        .onTapGesture {
-                            viewModel.selectedIndex = index
+                                .lumenText(.body, weight: selected ? .semibold : .medium)
+                                .foregroundStyle(selected ? P.brand : P.ink)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, LumenTokens.Space.s4)
+                                .background(selected ? P.brandSoft : .clear, in: LumenShape.rect(LumenTokens.Radius.md))
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) {
+                                    viewModel.selectedIndex = index
+                                    onSelect(viewModel.selectedOption.direction, viewModel.selectedOption.ratio)
+                                }
+                                .onTapGesture {
+                                    viewModel.selectedIndex = index
+                                }
                         }
                     }
+                    .padding(LumenTokens.Space.inline)
                 }
-                .padding(.vertical, 4)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(white: 0.15).opacity(0.9))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
     }
 }

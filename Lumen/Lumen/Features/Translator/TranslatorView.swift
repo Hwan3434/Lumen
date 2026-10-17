@@ -1,20 +1,22 @@
 import SwiftUI
 import Translation
 
+private typealias P = LumenTokens.Palette
+
 struct TranslatorView: View {
     @State var viewModel: TranslatorViewModel
 
-    private let historyRailWidth: CGFloat = 240
+    private let historyRailWidth: CGFloat = 280
 
     var body: some View {
         ZStack {
-            LumenGlassBackground(radius: LumenTokens.Radius.window)
+            LumenPanelBackground()
             VStack(spacing: 0) {
                 titleStrip
                 LumenHairline()
                 HStack(spacing: 0) {
                     mainColumn
-                    Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                    Rectangle().fill(P.borderSubtle).frame(width: 1)
                     historyRail
                         .frame(width: historyRailWidth)
                 }
@@ -22,7 +24,7 @@ struct TranslatorView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
         .translationTask(viewModel.translationConfig) { session in
             do {
                 let text = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -43,41 +45,24 @@ struct TranslatorView: View {
     // MARK: - Title strip
 
     private var titleStrip: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Image(systemName: "character.bubble")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+        HStack(spacing: LumenTokens.Space.s3) {
+            HStack(spacing: LumenTokens.Space.inline) {
+                LumenIcon("languages")
+                    .foregroundStyle(P.inkMuted)
                 Text("번역")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    Text("자동 감지")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
-                Text(viewModel.providerName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.06))
-                            .overlay(Capsule().stroke(LumenTokens.stroke, lineWidth: 0.5))
-                    )
+                    .lumenText(.body, weight: .semibold)
+                    .foregroundStyle(P.ink)
             }
+            Text("자동 감지")
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
+            LumenBadge(text: viewModel.providerName)
             Spacer()
-            Text("⌘⇧C")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+            LumenKbd(label: "⌘⇧C")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, LumenTokens.Space.pad)
         .draggableWindowHeader()
-        .frame(height: 40)
+        .frame(height: 56)
     }
 
     // MARK: - Main column
@@ -92,37 +77,39 @@ struct TranslatorView: View {
     }
 
     private var inputArea: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
             LumenSectionLabel(text: "입력")
 
             LumenTextArea(
                 text: $viewModel.inputText,
-                placeholder: "여기에 한국어 또는 영어 문장을 입력하세요…",
-                fontSize: 17
+                placeholder: "한국어나 영어 문장을 입력해 주세요",
+                fontSize: LumenTextStyle.bodyLarge.size
             )
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(LumenTokens.Space.pad)
         .frame(maxHeight: .infinity)
     }
 
     private var outputArea: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
             HStack {
                 LumenSectionLabel(text: viewModel.errorMessage != nil ? "오류" : "번역")
                 Spacer()
                 if shouldShowResultCopy {
-                    AmberChip(label: "결과 복사", kbd: "⌘C") {
+                    Button {
                         viewModel.copyToClipboard()
+                    } label: {
+                        Label { Text("결과 복사") } icon: { LumenIcon("copy", size: .small) }
                     }
+                    .buttonStyle(LumenButtonStyle(variant: .primary, size: .small))
                 }
             }
+            .frame(minHeight: 32)
 
             outputBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(LumenTokens.Space.pad)
         .frame(maxHeight: .infinity)
     }
 
@@ -133,76 +120,75 @@ struct TranslatorView: View {
     @ViewBuilder
     private var outputBody: some View {
         if viewModel.isLoading {
-            ShimmerLines()
+            LoadingLines()
         } else if let error = viewModel.errorMessage {
-            ErrorBox(message: error)
+            LumenBanner(tone: .danger, title: "번역하지 못했어요", message: error)
         } else if !viewModel.translatedText.isEmpty {
             ScrollView {
                 Text(viewModel.translatedText)
-                    .font(.system(size: 17))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
+                    .lumenText(.bodyLarge)
+                    .foregroundStyle(P.ink)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
         } else {
-            Text(viewModel.inputText.isEmpty ? "번역 결과가 여기 표시됩니다" : "⏎를 눌러 번역하세요")
-                .font(.system(size: 17))
-                .foregroundStyle(LumenTokens.TextColor.placeholder)
+            Text(viewModel.inputText.isEmpty ? "번역 결과가 여기에 보여요" : "⏎를 누르면 번역해요")
+                .lumenText(.bodyLarge)
+                .foregroundStyle(P.inkFaint)
         }
     }
-
-
 
     // MARK: - History rail
 
     private var historyRail: some View {
         VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(LumenTokens.Accent.violetSoft)
-                    LumenSectionLabel(text: "히스토리")
-                }
+            HStack(spacing: LumenTokens.Space.inline) {
+                LumenIcon("history", size: .small)
+                    .foregroundStyle(P.inkMuted)
+                LumenSectionLabel(text: "기록")
                 Spacer()
-                Text("\(viewModel.history.count)/30")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                Text("\(viewModel.history.count) / 30")
+                    .lumenText(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(P.inkFaint)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
+            .padding(.horizontal, LumenTokens.Space.s4)
+            .padding(.top, LumenTokens.Space.s4)
+            .padding(.bottom, LumenTokens.Space.inline)
 
             if viewModel.history.isEmpty {
                 Spacer(minLength: 0)
-                Text("번역 히스토리가\n여기에 표시됩니다")
-                    .font(.system(size: 12))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                Text("번역한 문장이 여기에 쌓여요")
+                    .lumenText(.label, weight: .regular)
+                    .foregroundStyle(P.inkFaint)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, LumenTokens.Space.s4)
                 Spacer(minLength: 0)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 1) {
+                        LazyVStack(spacing: 0) {
                             ForEach(Array(viewModel.history.enumerated()), id: \.element.id) { index, item in
-                                HistoryItemRow(
-                                    item: item,
-                                    isSelected: index == viewModel.selectedHistoryIndex
-                                )
+                                Button {
+                                    viewModel.selectHistory(at: index)
+                                } label: {
+                                    HistoryItemRow(
+                                        item: item,
+                                        isSelected: index == viewModel.selectedHistoryIndex
+                                    )
+                                }
+                                .buttonStyle(LumenListRowStyle(isSelected: index == viewModel.selectedHistoryIndex))
                                 .id(item.id)
-                                .onTapGesture { viewModel.selectHistory(at: index) }
                             }
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.bottom, 8)
+                        .padding(.horizontal, LumenTokens.Space.inline)
+                        .padding(.bottom, LumenTokens.Space.inline)
                     }
                     .scrollIndicators(.hidden)
                     .onChange(of: viewModel.selectedHistoryIndex) { _, newValue in
                         if let item = viewModel.history[safe: newValue] {
-                            withAnimation(.easeOut(duration: 0.3)) {
+                            withAnimation(LumenTokens.Motion.easeMove()) {
                                 proxy.scrollTo(item.id, anchor: .center)
                             }
                         }
@@ -212,28 +198,21 @@ struct TranslatorView: View {
 
             historyFooter
         }
-        .background(LumenTokens.BG.sidePanel)
+        .background(P.surface)
     }
 
     private var historyFooter: some View {
-        HStack {
-            HStack(spacing: 6) {
-                LumenKbd(label: "↑")
-                LumenKbd(label: "↓")
-                Text("탐색")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
+        HStack(spacing: LumenTokens.Space.inline) {
+            LumenKbd(label: "↑")
+            LumenKbd(label: "↓")
+            Text("이동")
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
             Spacer()
-            Text("최대 30개")
-                .font(.system(size: 10.5))
-                .foregroundStyle(LumenTokens.TextColor.muted)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        .padding(.horizontal, LumenTokens.Space.s4)
+        .padding(.vertical, LumenTokens.Space.s3)
+        .overlay(alignment: .top) { LumenHairline() }
     }
 
     // MARK: - Footer
@@ -254,162 +233,47 @@ private struct HistoryItemRow: View {
     let isSelected: Bool
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-                .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-                        .stroke(isSelected ? LumenTokens.Accent.amber.opacity(0.18) : .clear, lineWidth: 0.5)
-                )
-
-            if isSelected {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(LumenTokens.Accent.amber)
-                    .frame(width: 2)
-                    .padding(.vertical, 6)
-                    .padding(.leading, 4)
-                    .shadow(color: LumenTokens.Accent.amberDim, radius: 4)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.original)
-                    .font(.system(size: 12, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(item.translated)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Text(LumenTime.relative(item.date, granularity: .shortNoSuffix))
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .padding(.top, 1)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
+            Text(item.original)
+                .lumenText(.label, weight: isSelected ? .semibold : .medium)
+                .foregroundStyle(isSelected ? P.brand : P.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Text(item.translated)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.inkMuted)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Text(LumenTime.relative(item.date, granularity: .shortNoSuffix))
+                .lumenText(.caption)
+                .foregroundStyle(P.inkFaint)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, LumenTokens.Space.s3)
+        .padding(.horizontal, LumenTokens.Space.s4)
         .contentShape(Rectangle())
     }
 }
 
+// MARK: - Loading
 
-
-// MARK: - Shimmer
-
-private struct ShimmerLines: View {
-    @State private var phase: CGFloat = -1
-
+/// 번역 중 자리 표시. 반복 애니메이션 없이 정적인 줄과 안내 문구만 둔다.
+private struct LoadingLines: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            shimmerLine(width: 0.94)
-            shimmerLine(width: 0.82)
-            shimmerLine(width: 0.50)
-            Spacer(minLength: 0)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: false)) {
-                phase = 1
-            }
-        }
-    }
-
-    private func shimmerLine(width: CGFloat) -> some View {
-        GeometryReader { geo in
-            ZStack {
-                Capsule().fill(LumenTokens.Accent.violet.opacity(0.06))
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                LumenTokens.Accent.violet.opacity(0.06),
-                                LumenTokens.Accent.violetSoft.opacity(0.20),
-                                LumenTokens.Accent.violet.opacity(0.06),
-                            ],
-                            startPoint: .leading, endPoint: .trailing
-                        )
-                    )
-                    .offset(x: phase * geo.size.width)
-                    .mask(Capsule())
-            }
-            .frame(width: geo.size.width * width, height: 14)
-        }
-        .frame(height: 14)
-    }
-}
-
-// MARK: - Error box
-
-private struct ErrorBox: View {
-    let message: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LumenTokens.ErrorTone.icon)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("번역에 실패했습니다")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LumenTokens.ErrorTone.title)
-                Text(message)
-                    .font(.system(size: 12))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .lineSpacing(3)
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            Text("번역하고 있어요")
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.inkFaint)
+            GeometryReader { geo in
+                VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+                    ForEach([0.94, 0.82, 0.5], id: \.self) { ratio in
+                        Capsule()
+                            .fill(P.surface)
+                            .frame(width: geo.size.width * ratio, height: 16)
+                    }
+                }
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(LumenTokens.ErrorTone.bg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(LumenTokens.ErrorTone.border, lineWidth: 0.5)
-                )
-        )
     }
 }
-
-// MARK: - Amber chip
-
-struct AmberChip: View {
-    let label: String
-    let kbd: String
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                Text(kbd)
-                    .font(.system(size: 9.5, design: .monospaced))
-                    .padding(.horizontal, 4)
-                    .frame(minWidth: 14, minHeight: 14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(LumenTokens.Accent.amber.opacity(0.35), lineWidth: 0.5)
-                    )
-            }
-            .foregroundStyle(LumenTokens.Accent.amber)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LumenTokens.BG.rowActive)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(LumenTokens.Accent.amber.opacity(0.35), lineWidth: 0.5)
-                    )
-            )
-            .shadow(color: LumenTokens.Accent.amber.opacity(0.15), radius: 6)
-        }
-        .buttonStyle(.plain)
-    }
-}
-

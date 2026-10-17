@@ -1,22 +1,24 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
     @State private var showDeleteAllConfirm = false
 
-    private let listColumnWidth: CGFloat = 320
+    private let listColumnWidth: CGFloat = 360
     private let totalCapacity = 500
 
     var body: some View {
         ZStack {
-            LumenGlassBackground(radius: LumenTokens.Radius.window)
+            LumenPanelBackground()
             VStack(spacing: 0) {
                 titleStrip
                 LumenHairline()
                 HStack(spacing: 0) {
                     listColumn
                         .frame(width: listColumnWidth)
-                    Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                    Rectangle().fill(P.borderSubtle).frame(width: 1)
                     previewColumn
                         .frame(maxWidth: .infinity)
                 }
@@ -25,72 +27,50 @@ struct ClipboardView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
         .confirmationDialog(
-            "클립보드 기록을 모두 삭제할까요?",
+            "클립보드 기록을 모두 지울까요?",
             isPresented: $showDeleteAllConfirm,
             titleVisibility: .visible
         ) {
             Button("모두 삭제", role: .destructive) { viewModel.deleteAll() }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("이 작업은 되돌릴 수 없습니다.")
+            Text("지운 기록은 되돌릴 수 없어요.")
         }
     }
 
     // MARK: - Title strip
 
     private var titleStrip: some View {
-        HStack {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.on.clipboard.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(LumenTokens.Accent.violetSoft)
+        HStack(spacing: LumenTokens.Space.s3) {
+            HStack(spacing: LumenTokens.Space.inline) {
+                LumenIcon("clipboard-list")
+                    .foregroundStyle(P.inkMuted)
                 Text("클립보드")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                Rectangle()
-                    .fill(LumenTokens.divider)
-                    .frame(width: 1, height: 12)
-                Text(countLabel)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                if viewModel.query.isEmpty == false {
-                    Text("(검색)")
-                        .font(.system(size: 10.5))
-                        .tracking(0.4)
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
+                    .lumenText(.body, weight: .semibold)
+                    .foregroundStyle(P.ink)
+            }
+            Text(countLabel)
+                .lumenText(.caption)
+                .monospacedDigit()
+                .foregroundStyle(P.inkFaint)
+            if viewModel.query.isEmpty == false {
+                Text("검색 중")
+                    .lumenText(.caption)
+                    .foregroundStyle(P.inkFaint)
             }
             Spacer()
-            HStack(spacing: 10) {
-                Button {
-                    showDeleteAllConfirm = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .frame(width: 22, height: 22)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("모두 삭제")
-                .disabled(ClipboardManager.shared.history.isEmpty)
-                .opacity(ClipboardManager.shared.history.isEmpty ? 0.35 : 1)
-
-                Rectangle()
-                    .fill(LumenTokens.divider)
-                    .frame(width: 1, height: 12)
-
-                Text("패널")
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                LumenKbd(label: "⌘⇧V")
+            LumenIconButton(icon: "trash-2", label: "모두 삭제") {
+                showDeleteAllConfirm = true
             }
+            .disabled(ClipboardManager.shared.history.isEmpty)
+            LumenKbd(label: "⌘⇧V")
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, LumenTokens.Space.pad)
+        .padding(.trailing, LumenTokens.Space.s4)
         .draggableWindowHeader()
-        .frame(height: 38)
+        .frame(height: 56)
     }
 
     private var countLabel: String {
@@ -119,66 +99,60 @@ struct ClipboardView: View {
     private var searchField: some View {
         LumenInputField(
             text: $viewModel.query,
-            placeholder: "클립보드 검색…",
-            fontSize: 12.5,
+            placeholder: "클립보드 검색",
+            fontSize: LumenTextStyle.body.size,
             leading: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(viewModel.query.isEmpty
-                                     ? LumenTokens.TextColor.muted
-                                     : LumenTokens.Accent.violetSoft)
+                LumenIcon("search")
+                    .foregroundStyle(P.inkMuted)
             },
             trailing: {
                 if !viewModel.query.isEmpty {
                     Button {
                         viewModel.query = ""
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.7))
+                        LumenIcon("circle-x", size: .small)
+                            .foregroundStyle(P.inkFaint)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("검색어 지우기")
                 }
             }
         )
-        .padding(.horizontal, 14)
-        .frame(height: 36)
+        .padding(.horizontal, LumenTokens.Space.s4)
+        .frame(height: 52)
     }
 
     private var listEmptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 20, weight: .light))
-                .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.5))
-            Text(viewModel.query.isEmpty ? "아직 항목이 없습니다" : "일치하는 항목이 없습니다")
-                .font(.system(size: 12))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-                .multilineTextAlignment(.center)
-        }
+        LumenEmptyState(icon: "search",
+                        text: viewModel.query.isEmpty ? "아직 복사한 항목이 없어요" : "찾는 항목이 없어요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(LumenTokens.Space.pad)
     }
 
     private var listContent: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 1) {
+                LazyVStack(spacing: 0) {
                     ForEach(Array(viewModel.filteredItems.enumerated()), id: \.element.id) { index, item in
-                        ClipboardListRow(
-                            item: item,
-                            isSelected: index == viewModel.selectedIndex,
-                            onDelete: { viewModel.delete(item: item) }
-                        )
+                        Button {
+                            viewModel.selectedIndex = index
+                        } label: {
+                            ClipboardListRow(
+                                item: item,
+                                isSelected: index == viewModel.selectedIndex,
+                                onDelete: { viewModel.delete(item: item) }
+                            )
+                        }
+                        .buttonStyle(LumenListRowStyle(isSelected: index == viewModel.selectedIndex))
                         .id(item.id)
-                        .onTapGesture { viewModel.selectedIndex = index }
                     }
                 }
-                .padding(.vertical, 6)
+                .padding(LumenTokens.Space.inline)
             }
             .scrollIndicators(.hidden)
             .onChange(of: viewModel.selectedIndex) { _, newValue in
                 if let item = viewModel.filteredItems[safe: newValue] {
-                    withAnimation(.easeOut(duration: 0.3)) {
+                    withAnimation(LumenTokens.Motion.easeMove()) {
                         proxy.scrollTo(item.id, anchor: .center)
                     }
                 }
@@ -198,14 +172,7 @@ struct ClipboardView: View {
     }
 
     private var previewEmpty: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "doc.on.clipboard.fill")
-                .font(.system(size: 40, weight: .regular))
-                .foregroundStyle(LumenTokens.Accent.violetSoft.opacity(0.35))
-            Text("미리보기")
-                .font(.system(size: 12))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-        }
+        LumenEmptyState(icon: "clipboard-list", text: "항목을 고르면 여기에 미리 보여요")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -230,78 +197,42 @@ private struct ClipboardListRow: View {
     @State private var isHovering = false
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-                .fill(isSelected ? LumenTokens.BG.rowActive : Color.clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: LumenTokens.Radius.row)
-                        .stroke(isSelected ? LumenTokens.Accent.amber.opacity(0.18) : .clear, lineWidth: 0.5)
-                )
+        HStack(spacing: LumenTokens.Space.s3) {
+            LumenIcon(typeIcon)
+                .foregroundStyle(P.inkMuted)
 
-            if isSelected {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(LumenTokens.Accent.amber)
-                    .frame(width: 2)
-                    .padding(.vertical, 6)
-                    .padding(.leading, 4)
-                    .shadow(color: LumenTokens.Accent.amberDim, radius: 4)
+            Text(item.displayText)
+                .lumenText(.body, weight: isSelected ? .semibold : .medium)
+                .foregroundStyle(isSelected ? P.brand : P.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: LumenTokens.Space.inline)
+
+            if let count = fileCount, count > 1 {
+                LumenBadge(text: "+\(count - 1)")
             }
 
-            HStack(spacing: 10) {
-                Image(systemName: typeIcon)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(isSelected ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.muted)
-                    .frame(width: 14)
-
-                Text(item.displayText)
-                    .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Spacer(minLength: 6)
-
-                if let count = fileCount, count > 1 {
-                    Text("+\(count - 1)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                        )
-                }
-
-                if isHovering {
-                    Button(action: onDelete) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("삭제")
-                } else {
-                    Text(item.typeLabel)
-                        .font(.system(size: 10.5))
-                        .tracking(0.2)
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                }
+            if isHovering {
+                LumenIconButton(icon: "x", label: "삭제", action: onDelete)
+                    .padding(.vertical, -8)
+            } else {
+                Text(item.typeLabel)
+                    .lumenText(.label, weight: .regular)
+                    .foregroundStyle(P.inkFaint)
             }
-            .padding(.horizontal, 12)
         }
-        .frame(height: 36)
-        .padding(.horizontal, 6)
+        .padding(.vertical, 14)
+        .padding(.horizontal, LumenTokens.Space.s4)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
     }
 
     private var typeIcon: String {
         switch item.typeLabel {
-        case "이미지": return "photo"
-        case "파일":   return "doc"
-        default:       return "text.alignleft"
+        case "이미지": return "image"
+        case "파일":   return "file"
+        default:       return "align-left"
         }
     }
 
@@ -326,11 +257,10 @@ private struct ClipboardPreview: View {
             previewHeader
             LumenHairline()
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: LumenTokens.Space.group) {
                     bodyContent
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(LumenTokens.Space.pad)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
@@ -354,22 +284,22 @@ private struct ClipboardPreview: View {
     }
 
     private var previewHeader: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: LumenTokens.Space.s3) {
             sourceAppTile
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
                 Text(primaryLine)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
+                    .lumenText(.body, weight: .semibold)
+                    .foregroundStyle(P.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Text(secondaryLine)
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .lumenText(.caption)
+                    .foregroundStyle(P.inkFaint)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .padding(.vertical, LumenTokens.Space.s4)
     }
 
     @ViewBuilder
@@ -379,16 +309,13 @@ private struct ClipboardPreview: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 32, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
         } else {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(LumenTokens.BG.card)
+            LumenShape.rect(LumenTokens.Radius.sm)
+                .fill(P.surface)
                 .frame(width: 32, height: 32)
                 .overlay(
-                    Image(systemName: "questionmark.app")
-                        .font(.system(size: 14))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                    LumenIcon("app-window")
+                        .foregroundStyle(P.inkMuted)
                 )
         }
     }
@@ -398,7 +325,7 @@ private struct ClipboardPreview: View {
     }
 
     private var secondaryLine: String {
-        let app = item.sourceApp ?? "Unknown"
+        let app = item.sourceApp ?? "알 수 없는 앱"
         return "\(app) · \(timeOnly(item.date))"
     }
 
@@ -408,48 +335,33 @@ private struct ClipboardPreview: View {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: 200)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
+                .frame(maxWidth: .infinity, maxHeight: 240)
+                .clipShape(LumenShape.rect(LumenTokens.Radius.lg))
+                .overlay(LumenShape.rect(LumenTokens.Radius.lg).strokeBorder(P.borderSubtle, lineWidth: 1))
         }
 
         if let urls = item.fileURLs, !urls.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(urls, id: \.self) { url in
-                    HStack(spacing: 8) {
-                        Image(systemName: "doc")
-                            .font(.system(size: 12))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                        Text(url.lastPathComponent)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(LumenTokens.TextColor.primary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 0)
-                    }
+            LumenList(data: urls, id: \.self) { url in
+                HStack(spacing: LumenTokens.Space.s3) {
+                    LumenIcon("file")
+                        .foregroundStyle(P.inkMuted)
+                    Text(url.lastPathComponent)
+                        .font(LumenFont.mono(LumenTextStyle.label.size))
+                        .foregroundStyle(P.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
                 }
+                .padding(.vertical, LumenTokens.Space.s3)
+                .padding(.horizontal, LumenTokens.Space.s4)
             }
-            .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LumenTokens.BG.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
-            )
         }
 
         if let text = item.text, !text.isEmpty {
             let displayed = text.count > 500 ? String(text.prefix(500)) + "…" : text
             Text(displayed)
-                .font(.system(size: 13))
-                .foregroundStyle(LumenTokens.TextColor.primary)
-                .lineSpacing(3)
+                .lumenText(.body)
+                .foregroundStyle(P.ink)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -458,39 +370,34 @@ private struct ClipboardPreview: View {
     // MARK: - Meta footer (하단 가로 stripe)
 
     /// 우측 패널 하단에 고정되는 메타데이터 띠. 본문 영역을 줄이지 않도록 ScrollView 밖에 둔다.
-    /// 항목들은 `·`로 연결돼 한 줄로, 너무 길어지면 가로 스크롤로 처리.
+    /// 항목들은 한 줄로, 너무 길어지면 가로 스크롤로 처리.
     @ViewBuilder
     private var metaFooter: some View {
         let rows = buildMetaRows()
         if !rows.isEmpty {
             VStack(spacing: 0) {
-                Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
+                LumenHairline()
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 14) {
-                        ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
-                            HStack(spacing: 6) {
+                    HStack(spacing: LumenTokens.Space.group) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                            HStack(spacing: LumenTokens.Space.inline) {
                                 Text(row.key)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .tracking(0.4)
-                                    .foregroundStyle(LumenTokens.TextColor.muted)
+                                    .lumenText(.caption)
+                                    .foregroundStyle(P.inkFaint)
                                 Text(row.value)
-                                    .font(.system(size: 11.5, design: row.mono ? .monospaced : .default))
-                                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                                    .font(row.mono ? LumenFont.mono(LumenTextStyle.caption.size)
+                                                   : LumenFont.style(.caption, weight: .medium))
+                                    .foregroundStyle(P.inkMuted)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                             }
-                            if idx < rows.count - 1 {
-                                Text("·")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(LumenTokens.TextColor.muted.opacity(0.5))
-                            }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, LumenTokens.Space.pad)
+                    .padding(.vertical, LumenTokens.Space.s3)
                 }
             }
-            .background(LumenTokens.BG.sidePanel)
+            .background(P.surface)
         }
     }
 

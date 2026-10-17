@@ -33,7 +33,7 @@ struct TodayAgendaPopover: View {
                 }
             }
         }
-        .frame(width: 380, height: 520, alignment: .top)
+        .frame(width: Constants.agendaPanelSize.width, height: Constants.agendaPanelSize.height, alignment: .top)
         .background(P.surfaceRaised)
         .clipShape(LumenShape.rect(LumenTokens.Radius.lg))
         .overlay(LumenShape.rect(LumenTokens.Radius.lg).strokeBorder(P.borderSubtle, lineWidth: 1))
@@ -167,7 +167,7 @@ private struct AgendaRow: View {
         } label: {
             HStack(alignment: .top, spacing: LumenTokens.Space.s3) {
                 LumenDot(color: barColor)
-                    .padding(.top, 8)
+                    .padding(.top, LumenTokens.Space.scaled(8))
                 VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
                     Text(item.title)
                         .lumenText(.body, weight: .medium)

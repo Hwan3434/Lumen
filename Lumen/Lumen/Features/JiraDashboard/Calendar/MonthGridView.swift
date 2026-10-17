@@ -22,7 +22,11 @@ struct MonthGridView: View {
     var resetToTodayToken: Int = 0
 
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-    private let weekRowHeight: CGFloat = 140
+    /// 날짜 줄 + 막대 4줄 + "+N" 줄. WeekRow의 치수와 맞춘다.
+    private var weekRowHeight: CGFloat {
+        WeekRow.topPadding + 4 * (WeekRow.laneHeight + WeekRow.laneSpacing)
+            + LumenTextStyle.caption.lineHeight + LumenTokens.Space.s1
+    }
     /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 "+N" 으로.
     private let maxLanesPerWeek: Int = 4
 
@@ -60,7 +64,7 @@ struct MonthGridView: View {
             Text(monthLabel)
                 .lumenText(.title3)
                 .foregroundStyle(P.ink)
-                .frame(minWidth: 140, alignment: .leading)
+                .frame(minWidth: LumenTokens.Space.size(140), alignment: .leading)
                 .contentTransition(.numericText())
 
             Button("오늘") {
@@ -193,9 +197,12 @@ private struct WeekRow: View {
     let weekStart: Date
     let layout: WeekLayout
     let today: Date
-    private let laneHeight: CGFloat = 22
-    private let laneSpacing: CGFloat = 2
-    private let topPadding: CGFloat = 28  // 날짜 숫자 자리
+    static var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 6 }
+    static let laneSpacing: CGFloat = 2
+    static var topPadding: CGFloat { LumenTextStyle.caption.lineHeight + 12 }  // 날짜 숫자 자리
+    private var laneHeight: CGFloat { Self.laneHeight }
+    private var laneSpacing: CGFloat { Self.laneSpacing }
+    private var topPadding: CGFloat { Self.topPadding }
     /// Jira 막대 클릭 시 띄울 popover의 대상 issue key — nil이면 닫힘.
     @State private var previewingKey: String? = nil
     /// ⌘클릭이면 설명 대신 댓글 팝오버를 띄운다.
@@ -234,8 +241,8 @@ private struct WeekRow: View {
                             .monospacedDigit()
                             .foregroundStyle(P.inkFaint)
                             .padding(.horizontal, LumenTokens.Space.s1)
-                            .padding(.leading, CGFloat(col) * cellW + 4)
-                            .padding(.top, topPadding + CGFloat(4) * (laneHeight + laneSpacing) + 1)
+                            .padding(.leading, CGFloat(col) * cellW + LumenTokens.Space.scaled(4))
+                            .padding(.top, topPadding + CGFloat(LumenTokens.Space.scaled(4)) * (laneHeight + laneSpacing) + 1)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
@@ -273,7 +280,7 @@ private struct WeekRow: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(6)
+        .padding(LumenTokens.Space.scaled(6))
         .frame(width: cellWidth, height: cellHeight, alignment: .topLeading)
         .background(isToday ? P.brandSoft : .clear)
         .overlay(Rectangle().strokeBorder(P.borderSubtle, lineWidth: 0.5))

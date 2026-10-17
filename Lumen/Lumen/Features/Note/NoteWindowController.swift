@@ -7,7 +7,8 @@ final class NoteWindowController: PanelWindowController {
     /// 다른 패널이 떠도 자기는 안 닫는다.
     override var isExclusive: Bool { false }
 
-    private static let panelSize = NSSize(width: 880, height: 720)
+    private static var panelSize: NSSize { Constants.noteWindowSize }
+    override var densityContentSize: NSSize? { Self.panelSize }
     private var viewModel: NotesViewModel?
 
     override func createPanel() -> KeyablePanel {

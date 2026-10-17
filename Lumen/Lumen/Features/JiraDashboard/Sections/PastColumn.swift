@@ -36,7 +36,7 @@ struct PastColumn: View {
                             .monospacedDigit()
                             .foregroundStyle(P.ink)
                     }
-                    .padding(.vertical, 14)
+                    .padding(.vertical, LumenTokens.Space.scaled(14))
                     .padding(.horizontal, LumenTokens.Space.s4)
                     .lumenCard()
                 }
@@ -52,7 +52,7 @@ struct PastColumn: View {
             }
             .padding(LumenTokens.Space.pad)
         }
-        .frame(width: 340)
+        .frame(width: Constants.jiraPastColumnWidth)
     }
 
     private var projectBars: some View {
@@ -136,7 +136,7 @@ struct ProjectBar: View {
             Text(jiraProjectDisplayName(key))
                 .lumenText(.label, weight: .regular)
                 .foregroundStyle(P.inkMuted)
-                .frame(width: 88, alignment: .leading)
+                .frame(width: LumenTokens.Space.size(88), alignment: .leading)
                 .lineLimit(1)
                 .truncationMode(.tail)
             GeometryReader { geo in
@@ -150,12 +150,12 @@ struct ProjectBar: View {
                     Rectangle().fill(P.chartGrid).frame(height: 1)
                 }
             }
-            .frame(height: 8)
+            .frame(height: LumenTokens.Space.scaled(8))
             Text("\(count)")
                 .lumenText(.label)
                 .monospacedDigit()
                 .foregroundStyle(P.ink)
-                .frame(width: 32, alignment: .trailing)
+                .frame(width: LumenTokens.Space.scaled(32), alignment: .trailing)
         }
     }
 }

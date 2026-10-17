@@ -6,7 +6,7 @@ struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
     @State private var showDeleteAllConfirm = false
 
-    private let listColumnWidth: CGFloat = 360
+    private var listColumnWidth: CGFloat { LumenTokens.Space.size(360) }
     private let totalCapacity = 500
 
     var body: some View {
@@ -70,7 +70,7 @@ struct ClipboardView: View {
         .padding(.leading, LumenTokens.Space.pad)
         .padding(.trailing, LumenTokens.Space.s4)
         .draggableWindowHeader()
-        .frame(height: 56)
+        .frame(height: LumenTokens.Space.size(56))
     }
 
     private var countLabel: String {
@@ -119,7 +119,7 @@ struct ClipboardView: View {
             }
         )
         .padding(.horizontal, LumenTokens.Space.s4)
-        .frame(height: 52)
+        .frame(height: LumenTokens.Space.size(52))
     }
 
     private var listEmptyState: some View {
@@ -215,14 +215,14 @@ private struct ClipboardListRow: View {
 
             if isHovering {
                 LumenIconButton(icon: "x", label: "삭제", action: onDelete)
-                    .padding(.vertical, -8)
+                    .padding(.vertical, -LumenIconButton.inlineOverhang)
             } else {
                 Text(item.typeLabel)
                     .lumenText(.label, weight: .regular)
                     .foregroundStyle(P.inkFaint)
             }
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, LumenTokens.Space.scaled(14))
         .padding(.horizontal, LumenTokens.Space.s4)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
@@ -308,11 +308,11 @@ private struct ClipboardPreview: View {
             Image(nsImage: icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 32, height: 32)
+                .frame(width: LumenTokens.Space.size(32), height: LumenTokens.Space.size(32))
         } else {
             LumenShape.rect(LumenTokens.Radius.sm)
                 .fill(P.surface)
-                .frame(width: 32, height: 32)
+                .frame(width: LumenTokens.Space.size(32), height: LumenTokens.Space.size(32))
                 .overlay(
                     LumenIcon("app-window")
                         .foregroundStyle(P.inkMuted)
@@ -335,7 +335,7 @@ private struct ClipboardPreview: View {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: 240)
+                .frame(maxWidth: .infinity, maxHeight: LumenTokens.Space.size(240))
                 .clipShape(LumenShape.rect(LumenTokens.Radius.lg))
                 .overlay(LumenShape.rect(LumenTokens.Radius.lg).strokeBorder(P.borderSubtle, lineWidth: 1))
         }
@@ -397,7 +397,7 @@ private struct ClipboardPreview: View {
                     .padding(.vertical, LumenTokens.Space.s3)
                 }
             }
-            .background(P.surface)
+            .background(P.panelSurface)
         }
     }
 

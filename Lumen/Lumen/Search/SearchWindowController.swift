@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 final class SearchWindowController: PanelWindowController {
+    override var densityContentSize: NSSize? { Constants.searchWindowSize }
+
     private var viewModel: SearchViewModel?
 
     override func show() {

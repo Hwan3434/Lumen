@@ -42,7 +42,7 @@ struct CalendarBarView: View {
                 .truncationMode(.tail)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, LumenTokens.Space.scaled(6))
         .frame(height: height, alignment: .leading)
         .background(LumenShape.rect(cornerRadius).fill(P.surfaceRaised))
         .overlay(

@@ -4,7 +4,8 @@ import MarkdownUI
 private typealias P = LumenTokens.Palette
 
 extension MarkdownUI.Theme {
-    static let lumen = Theme()
+    /// 밀도에 따라 글자 크기가 달라서 매번 새로 만든다.
+    static var lumen: Theme { Theme()
         .text {
             FontFamily(.custom("SUIT Variable"))
             ForegroundColor(P.ink)
@@ -78,7 +79,7 @@ extension MarkdownUI.Theme {
             HStack(spacing: 0) {
                 Rectangle()
                     .fill(P.borderStrong)
-                    .frame(width: 2)
+                    .frame(width: LumenTokens.Space.scaled(2))
                 configuration.label
                     .markdownTextStyle {
                         ForegroundColor(P.inkMuted)
@@ -95,4 +96,5 @@ extension MarkdownUI.Theme {
             LumenHairline()
                 .markdownMargin(top: LumenTokens.Space.group, bottom: LumenTokens.Space.group)
         }
+    }
 }

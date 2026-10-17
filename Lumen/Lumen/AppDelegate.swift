@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         LumenStorage.purgeRetiredFilesIfNeeded()
         LumenFont.register()
+        LumenAppearance.saved.apply()
 
         let translator = TranslatorFeature()
         FeatureRegistry.shared.register(translator)

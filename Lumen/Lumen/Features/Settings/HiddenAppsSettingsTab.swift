@@ -66,7 +66,7 @@ struct HiddenAppsSettingsTab: View {
                 .foregroundStyle(P.inkMuted)
             Spacer()
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, LumenTokens.Space.scaled(14))
         .padding(.horizontal, LumenTokens.Space.s4)
         .lumenCard()
     }
@@ -81,7 +81,7 @@ private struct HiddenAppRow: View {
             Image(nsImage: app.icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 24, height: 24)
+                .frame(width: LumenIcon.Size.large.points, height: LumenIcon.Size.large.points)
             Text(app.name)
                 .lumenText(.body, weight: .medium)
                 .foregroundStyle(P.ink)

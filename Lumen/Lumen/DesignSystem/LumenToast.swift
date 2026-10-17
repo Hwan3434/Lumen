@@ -106,7 +106,7 @@ private struct ToastBody: View {
             if let swatch {
                 LumenShape.rect(LumenTokens.Radius.xs)
                     .fill(swatch)
-                    .frame(width: 20, height: 20)
+                    .frame(width: LumenIcon.Size.regular.points, height: LumenIcon.Size.regular.points)
                     .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
             } else {
                 LumenIcon("circle-check").foregroundStyle(LumenTokens.Palette.success)
@@ -115,8 +115,8 @@ private struct ToastBody: View {
                 .lumenText(.label, weight: .regular)
                 .foregroundStyle(LumenTokens.Palette.ink)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
+        .padding(.vertical, LumenTokens.Space.scaled(10))
+        .padding(.horizontal, LumenTokens.Space.scaled(16))
         .background(LumenTokens.Palette.surfaceRaised, in: Capsule())
         .overlay(Capsule().strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
         .lumenElevation(2, radius: LumenTokens.Radius.full)

@@ -135,8 +135,8 @@ struct LumenFooterBar: View {
             }
         }
         .padding(.horizontal, LumenTokens.Space.s4)
-        .frame(height: 40)
-        .background(LumenTokens.Palette.surface)
+        .frame(height: LumenTokens.Space.size(40))
+        .background(LumenTokens.Palette.panelSurface)
         .overlay(alignment: .top) { LumenHairline() }
     }
 }

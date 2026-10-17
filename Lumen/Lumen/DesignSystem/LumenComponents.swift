@@ -10,7 +10,18 @@ private typealias P = LumenTokens.Palette
 /// Lucide 아이콘. 선 굵기 1.5, 크기는 16(caption·label 옆) / 20(body·버튼·입력창) / 24(title-3 이상).
 /// 에셋 이름은 `lucide-<Lucide 원래 이름>` (Assets.xcassets/Icons).
 struct LumenIcon: View {
-    enum Size: CGFloat { case small = 16, regular = 20, large = 24 }
+    enum Size {
+        case small, regular, large
+
+        /// Still 16 / 20 / 24. 촘촘한 밀도에서는 글자 크기에 맞춰 함께 줄인다.
+        var points: CGFloat {
+            switch self {
+            case .small:   LumenDensity.current.pick(compact: 12, cozy: 16, regular: 16, spacious: 16)
+            case .regular: LumenDensity.current.pick(compact: 14, cozy: 16, regular: 20, spacious: 20)
+            case .large:   LumenDensity.current.pick(compact: 18, cozy: 20, regular: 24, spacious: 24)
+            }
+        }
+    }
 
     let name: String
     var size: Size = .regular
@@ -25,13 +36,13 @@ struct LumenIcon: View {
             .renderingMode(.template)
             .resizable()
             .interpolation(.high)
-            .frame(width: size.rawValue, height: size.rawValue)
+            .frame(width: size.points, height: size.points)
     }
 
     /// 메뉴바·메뉴 항목용 템플릿 NSImage.
     static func nsImage(_ name: String, size: Size = .small, accessibility: String? = nil) -> NSImage? {
         guard let src = NSImage(named: "lucide-\(name)"), let img = src.copy() as? NSImage else { return nil }
-        img.size = NSSize(width: size.rawValue, height: size.rawValue)
+        img.size = NSSize(width: size.points, height: size.points)
         img.isTemplate = true
         img.accessibilityDescription = accessibility
         return img
@@ -61,9 +72,9 @@ struct LumenButtonStyle: ButtonStyle {
 
         var body: some View {
             let pad: (CGFloat, CGFloat) = switch size {
-            case .small: (6, 12)
-            case .regular: (10, 16)
-            case .large: (14, 24)
+            case .small: (LumenTokens.Space.scaled(6), LumenTokens.Space.scaled(12))
+            case .regular: (LumenTokens.Space.scaled(10), LumenTokens.Space.scaled(16))
+            case .large: (LumenTokens.Space.scaled(14), LumenTokens.Space.scaled(24))
             case .icon: (0, 0)
             }
             configuration.label
@@ -105,17 +116,21 @@ struct LumenButtonStyle: ButtonStyle {
     }
 }
 
-/// 아이콘 하나로 된 정사각형 버튼(40 × 40, 아이콘 20). 접근성 이름은 `.help`로 마우스 올림 때도 보인다.
+/// 아이콘 하나로 된 정사각형 버튼(Still 40 × 40, 아이콘 20. 밀도에 맞춰 줄어든다). 접근성 이름은 `.help`로 마우스 올림 때도 보인다.
 struct LumenIconButton: View {
     let icon: String
     let label: String
     var variant: LumenButtonStyle.Variant = .ghost
     let action: () -> Void
 
+    static var side: CGFloat { LumenTokens.Space.size(40) }
+    /// 본문 한 줄 안에 넣을 때 줄 높이를 늘리지 않도록 위아래로 겹치게 할 양.
+    static var inlineOverhang: CGFloat { max(0, (side - LumenTextStyle.body.lineHeight) / 2) }
+
     var body: some View {
         Button(action: action) {
             LumenIcon(icon)
-                .frame(width: 40, height: 40)
+                .frame(width: Self.side, height: Self.side)
         }
         .buttonStyle(LumenButtonStyle(variant: variant, size: .icon))
         .accessibilityLabel(label)
@@ -128,7 +143,7 @@ struct LumenInlineLabelStyle: LabelStyle {
     var iconSize: LumenIcon.Size = .regular
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: LumenTokens.Space.inline) {
-            configuration.icon.frame(width: iconSize.rawValue, height: iconSize.rawValue)
+            configuration.icon.frame(width: iconSize.points, height: iconSize.points)
             configuration.title
         }
     }
@@ -189,8 +204,8 @@ struct LumenBadge: View {
                 .lineLimit(1)
         }
         .foregroundStyle(tone.color)
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
+        .padding(.vertical, LumenTokens.Space.scaled(4))
+        .padding(.horizontal, LumenTokens.Space.scaled(8))
         .background(tone.soft, in: LumenShape.rect(LumenTokens.Radius.xs))
         .overlay {
             if tone == .category {
@@ -226,8 +241,8 @@ struct LumenBanner<Action: View>: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 16)
+        .padding(.vertical, LumenTokens.Space.scaled(14))
+        .padding(.horizontal, LumenTokens.Space.scaled(16))
         .background(tone.soft, in: LumenShape.rect(LumenTokens.Radius.md))
         .accessibilityElement(children: .combine)
     }
@@ -263,8 +278,8 @@ struct LumenSegmentedControl<Value: Hashable>: View {
                         Text(item.label).lumenText(.label)
                     }
                     .foregroundStyle(selected ? P.ink : P.inkMuted)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
+                    .padding(.vertical, LumenTokens.Space.scaled(6))
+                    .padding(.horizontal, LumenTokens.Space.scaled(12))
                     .background {
                         if selected {
                             LumenShape.rect(9)
@@ -278,7 +293,7 @@ struct LumenSegmentedControl<Value: Hashable>: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(3)
+        .padding(LumenTokens.Space.scaled(3))
         .background(P.surface, in: LumenShape.rect(LumenTokens.Radius.md))
         .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(P.borderSubtle, lineWidth: 1))
     }
@@ -322,6 +337,9 @@ struct LumenListRowStyle: ButtonStyle {
 /// 즉시 적용되는 켜고 끄기. 트랙 52 × 32, 손잡이 26.
 /// 줄 전체가 버튼이라 라벨을 눌러도 바뀌고, 키보드(스페이스)와 VoiceOver에서는 스위치로 읽힌다.
 struct LumenSwitchStyle: ToggleStyle {
+    private static var trackHeight: CGFloat { LumenDensity.current.pick(compact: 20, cozy: 24, regular: 28, spacious: 32) }
+    private static var trackWidth: CGFloat { trackHeight * 52 / 32 }
+
     func makeBody(configuration: Configuration) -> some View {
         Button {
             configuration.isOn.toggle()
@@ -334,12 +352,12 @@ struct LumenSwitchStyle: ToggleStyle {
                 ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                     Capsule()
                         .fill(configuration.isOn ? P.brand : P.borderStrong)
-                        .frame(width: 52, height: 32)
+                        .frame(width: Self.trackWidth, height: Self.trackHeight)
                     Circle()
                         .fill(Color.white)
-                        .frame(width: 26, height: 26)
+                        .frame(width: Self.trackHeight - LumenTokens.Space.scaled(6), height: Self.trackHeight - LumenTokens.Space.scaled(6))
                         .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
-                        .padding(3)
+                        .padding(LumenTokens.Space.scaled(3))
                 }
                 .animation(LumenTokens.Motion.easeMove(), value: configuration.isOn)
             }
@@ -362,8 +380,8 @@ struct LumenFieldChrome: ViewModifier {
     func body(content: Content) -> some View {
         let shape = LumenShape.rect(LumenTokens.Radius.md)
         content
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
+            .padding(.vertical, LumenTokens.Space.scaled(10))
+            .padding(.horizontal, LumenTokens.Space.scaled(12))
             .background(P.bg, in: shape)
             .overlay(shape.strokeBorder(focused ? P.brand : P.borderStrong, lineWidth: 1))
             .background {
@@ -438,9 +456,62 @@ struct LumenEmptyState: View {
 struct LumenDot: View {
     let color: Color
 
+    private static var side: CGFloat { LumenDensity.current.pick(compact: 6, cozy: 8, regular: 8, spacious: 8) }
+
     var body: some View {
         Circle()
             .fill(color)
-            .frame(width: 8, height: 8)
+            .frame(width: Self.side, height: Self.side)
+    }
+}
+
+// MARK: - RadioGroup
+
+/// 여럿 중 하나만 고르는 묶음. 원 22(밀도에 맞춰 줄어듦), 선택되면 brand 고리.
+struct LumenRadioGroup<Value: Hashable>: View {
+    struct Option {
+        let value: Value
+        let label: String
+        var detail: String? = nil
+    }
+
+    let options: [Option]
+    @Binding var selection: Value
+
+    private static var circle: CGFloat { LumenDensity.current.pick(compact: 16, cozy: 18, regular: 20, spacious: 22) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.s3) {
+            ForEach(options, id: \.value) { option in
+                let selected = option.value == selection
+                Button {
+                    selection = option.value
+                } label: {
+                    HStack(alignment: .top, spacing: LumenTokens.Space.s3) {
+                        Circle()
+                            .strokeBorder(selected ? P.brand : P.borderStrong, lineWidth: selected ? Self.circle * 7 / 22 : 1.5)
+                            .background(Circle().fill(P.bg))
+                            .frame(width: Self.circle, height: Self.circle)
+                            .padding(.top, max(0, (LumenTextStyle.body.lineHeight - Self.circle) / 2))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(option.label)
+                                .lumenText(.body)
+                                .foregroundStyle(P.ink)
+                            if let detail = option.detail {
+                                Text(detail)
+                                    .lumenText(.label, weight: .regular)
+                                    .foregroundStyle(P.inkMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                    .animation(LumenTokens.Motion.easeOut(LumenTokens.Motion.fast), value: selected)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
+            }
+        }
     }
 }

@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 final class ClipboardWindowController: PanelWindowController {
-    private static let panelSize = NSSize(width: 800, height: 640)
+    private static var panelSize: NSSize { Constants.clipboardWindowSize }
+    override var densityContentSize: NSSize? { Self.panelSize }
     private var clipboardViewModel: ClipboardViewModel?
 
     override func createPanel() -> KeyablePanel {

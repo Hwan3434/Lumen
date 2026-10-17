@@ -31,7 +31,7 @@ enum LumenDensity: String, CaseIterable {
 
     /// 저장하고 바로 반영한다.
     static var saved: LumenDensity {
-        get { UserDefaults.standard.string(forKey: key).flatMap(LumenDensity.init(rawValue:)) ?? .spacious }
+        get { UserDefaults.standard.string(forKey: key).flatMap(LumenDensity.init(rawValue:)) ?? .cozy }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: key)
             LumenUIStore.shared.density = newValue
@@ -85,7 +85,7 @@ enum LumenAppearance: String, CaseIterable {
     private static let key = "lumen.ui.appearance"
 
     @MainActor static var saved: LumenAppearance {
-        get { UserDefaults.standard.string(forKey: key).flatMap(LumenAppearance.init(rawValue:)) ?? .system }
+        get { UserDefaults.standard.string(forKey: key).flatMap(LumenAppearance.init(rawValue:)) ?? .dark }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: key)
             newValue.apply()
@@ -122,7 +122,7 @@ enum LumenGlass {
 
     static var saved: Double {
         get {
-            let stored = UserDefaults.standard.object(forKey: key) as? Double ?? 0.24
+            let stored = UserDefaults.standard.object(forKey: key) as? Double ?? 0.7
             return min(max(stored, 0), maxTransparency)
         }
         set {

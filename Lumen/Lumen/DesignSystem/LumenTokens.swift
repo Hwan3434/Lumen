@@ -53,8 +53,9 @@ enum LumenTokens {
 
         static let scrim         = dyn(dark: (0x000000, 0.6), light: (0x111113, 0.32))
 
-        /// 떠 있는 패널 안에 넓게 까는 `surface`(하단 바, 사이드 영역). 패널 배경과 같은 글래스 정도로 비친다.
-        static var panelSurface: Color { surface.opacity(LumenGlass.current.backgroundOpacity) }
+        /// 떠 있는 패널 안에 넓게 까는 `surface`(하단 바, 사이드 영역).
+        /// 글래스가 켜져 있으면 면을 한 겹 더 깔면 그 영역만 덜 비치므로 깔지 않고, 구분선으로만 나눈다.
+        static var panelSurface: Color { LumenGlass.current == .off ? surface : .clear }
 
         /// 차트 범주 색. 항상 앞에서부터 순서대로 쓴다. 다섯을 넘으면 `chartOther`.
         static let chartCategories = [chart1, chart2, chart3, chart4, chart5]

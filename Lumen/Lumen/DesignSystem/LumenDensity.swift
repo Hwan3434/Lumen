@@ -11,7 +11,7 @@ import Observation
 final class LumenUIStore {
     static let shared = LumenUIStore()
     var density: LumenDensity = LumenDensity.saved
-    var glass: LumenGlass = LumenGlass.saved
+    var glassTransparency: Double = LumenGlass.saved
 }
 
 enum LumenDensity: String, CaseIterable {
@@ -110,38 +110,30 @@ enum LumenAppearance: String, CaseIterable {
     }
 }
 
-/// 떠 있는 패널(런처, 메모 등) 배경을 얼마나 비치게 할지. 시스템 블러 위에 `bg`를 이 불투명도로 깐다.
-enum LumenGlass: String, CaseIterable {
-    case off, light, medium, strong
+/// 떠 있는 패널(런처, 메모 등) 배경을 얼마나 비치게 할지. 시스템 블러 위에 `bg`를 (1 − 투명도)만큼 깐다.
+enum LumenGlass {
+    /// 투명도 상한. 이보다 비치면 뒤 화면에 글자가 묻힌다.
+    static let maxTransparency = 0.6
 
-    private static let key = "lumen.ui.glass"
+    private static let key = "lumen.ui.glass.transparency"
 
-    static var current: LumenGlass { LumenUIStore.shared.glass }
+    /// 지금 쓰는 투명도(0 = 불투명, 글래스 끔).
+    static var current: Double { LumenUIStore.shared.glassTransparency }
 
-    static var saved: LumenGlass {
-        get { UserDefaults.standard.string(forKey: key).flatMap(LumenGlass.init(rawValue:)) ?? .medium }
+    static var saved: Double {
+        get {
+            let stored = UserDefaults.standard.object(forKey: key) as? Double ?? 0.24
+            return min(max(stored, 0), maxTransparency)
+        }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: key)
-            LumenUIStore.shared.glass = newValue
+            let clamped = min(max(newValue, 0), maxTransparency)
+            UserDefaults.standard.set(clamped, forKey: key)
+            LumenUIStore.shared.glassTransparency = clamped
         }
     }
 
-    var label: String {
-        switch self {
-        case .off:    "끄기 (불투명)"
-        case .light:  "약하게"
-        case .medium: "보통"
-        case .strong: "강하게"
-        }
-    }
+    static var isOn: Bool { current > 0 }
 
-    /// 블러 위에 까는 `bg`의 불투명도. 1이면 블러 없이 불투명.
-    var backgroundOpacity: Double {
-        switch self {
-        case .off:    1
-        case .light:  0.88
-        case .medium: 0.76
-        case .strong: 0.6
-        }
-    }
+    /// 블러 위에 까는 `bg`의 불투명도.
+    static var backgroundOpacity: Double { 1 - current }
 }

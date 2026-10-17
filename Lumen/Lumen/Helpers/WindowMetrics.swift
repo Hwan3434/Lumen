@@ -2,12 +2,12 @@ import SwiftUI
 
 extension Constants {
     // MARK: - Search Window
-    static let searchWindowWidth: CGFloat = 680
-    static let searchWindowHeight: CGFloat = 600
+    static let searchWindowWidth: CGFloat = 760
+    static let searchWindowHeight: CGFloat = 680
 
     // MARK: - Translator Window
-    static let translatorWindowWidth: CGFloat = 760
-    static let translatorWindowHeight: CGFloat = 620
+    static let translatorWindowWidth: CGFloat = 880
+    static let translatorWindowHeight: CGFloat = 720
 }
 
 extension NSScreen {

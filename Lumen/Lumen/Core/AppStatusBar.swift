@@ -19,9 +19,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
         super.init()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        let image = NSImage(systemSymbolName: "sparkle", accessibilityDescription: "Lumen")
-        image?.isTemplate = true
-        statusItem.button?.image = image
+        statusItem.button?.image = LumenIcon.nsImage("sparkle", accessibility: "Lumen")
 
         menu.delegate = self
         statusItem.menu = menu
@@ -67,10 +65,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
             )
             item.target = self
             item.representedObject = feature
-            if let img = NSImage(systemSymbolName: feature.iconName, accessibilityDescription: feature.name) {
-                img.isTemplate = true
-                item.image = img
-            }
+            item.image = LumenIcon.nsImage(feature.iconName, accessibility: feature.name)
             menu.addItem(item)
         }
 

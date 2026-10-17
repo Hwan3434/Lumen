@@ -6,7 +6,7 @@ import AppKit
 struct LumenInputField<Leading: View, Trailing: View>: View {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 18
+    var fontSize: CGFloat = LumenTextStyle.bodyLarge.size
     var monospaced: Bool = false
     var onSubmit: (() -> Void)? = nil
 
@@ -14,7 +14,7 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: LumenTokens.Space.s3) {
             leading()
             TintedTextField(
                 text: $text,
@@ -36,7 +36,7 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
 struct LumenTextArea: View {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 17
+    var fontSize: CGFloat = LumenTextStyle.body.size
     var monospaced: Bool = false
     /// 변화가 감지될 때마다 NSTextView를 first responder로 만든다. 0은 "no-op".
     /// 호출자는 단조 증가 카운터를 넘기면 된다 — 같은 값으로 머무르면 포커스 변화 없음.
@@ -99,7 +99,7 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.textContainerInset = NSSize(width: 0, height: 0)
-        textView.insertionPointColor = NSColor(LumenTokens.Accent.violetSoft)
+        textView.insertionPointColor = NSColor(LumenTokens.Palette.brand)
         textView.autoresizingMask = [.width]
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -142,13 +142,11 @@ private struct TextAreaRepresentable: NSViewRepresentable {
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = monospaced
-            ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            : NSFont.systemFont(ofSize: fontSize)
+        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
         textView.font = font
-        textView.textColor = NSColor(LumenTokens.TextColor.primary)
+        textView.textColor = NSColor(LumenTokens.Palette.ink)
         textView.placeholderString = placeholder
-        textView.placeholderColor = NSColor(LumenTokens.TextColor.placeholder)
+        textView.placeholderColor = NSColor(LumenTokens.Palette.inkFaint)
         textView.placeholderFont = font
     }
 
@@ -213,7 +211,7 @@ private final class PlaceholderTextView: NSTextView {
 private struct TintedTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
-    var fontSize: CGFloat = 13
+    var fontSize: CGFloat = LumenTextStyle.body.size
     var monospaced: Bool = false
     var onSubmit: (() -> Void)? = nil
 
@@ -250,13 +248,11 @@ private struct TintedTextField: NSViewRepresentable {
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = monospaced
-            ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            : NSFont.systemFont(ofSize: fontSize)
+        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
         tf.font = font
-        tf.textColor = NSColor(LumenTokens.TextColor.primary)
+        tf.textColor = NSColor(LumenTokens.Palette.ink)
 
-        let placeholderColor = NSColor(LumenTokens.TextColor.placeholder)
+        let placeholderColor = NSColor(LumenTokens.Palette.inkFaint)
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: placeholderColor,
             .font: font,

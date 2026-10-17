@@ -22,22 +22,23 @@ enum CalendarItemKind {
     }
 
     /// 종류를 색으로 구분한다. 셀이 좁아 레인 분리는 답답하므로 색이 1차 시그널.
+    /// Still 차트 범주 색을 선언 순서대로 쓴다.
     var color: Color {
         switch self {
-        case .sprint:          return LumenTokens.Accent.amber
-        case .epic:            return LumenTokens.Accent.violet
-        case .task:            return LumenTokens.TextColor.secondary
-        case .local:           return LumenTokens.TextColor.muted
-        case .googleCalendar:  return LumenTokens.Accent.teal
+        case .sprint:          return LumenTokens.Palette.chart1
+        case .epic:            return LumenTokens.Palette.chart2
+        case .task:            return LumenTokens.Palette.chart3
+        case .local:           return LumenTokens.Palette.chart4
+        case .googleCalendar:  return LumenTokens.Palette.chart5
         }
     }
 
     var iconName: String {
         switch self {
-        case .sprint:          return "flag.fill"
-        case .epic:            return "rectangle.stack.fill"
-        case .task:            return "checkmark.circle"
-        case .local:           return "calendar.badge.plus"
+        case .sprint:          return "flag"
+        case .epic:            return "layers"
+        case .task:            return "circle-check"
+        case .local:           return "calendar-plus"
         case .googleCalendar:  return "calendar"
         }
     }
@@ -318,12 +319,12 @@ enum CalendarDateUtils {
         return "\(prefix)-\(comp.year ?? 0)-\(comp.month ?? 0)-\(comp.day ?? 0)"
     }
 
-    /// 요일별 색 — 일요일은 공휴일 톤보다 옅은 톤, 토요일은 violetSoft, 평일은 muted.
+    /// 요일별 색 — 일요일 `danger`, 토요일 `info`, 평일 `ink-muted`.
     static func weekdayColor(for date: Date) -> Color {
         let w = Calendar.current.component(.weekday, from: date)
-        if w == 1 { return LumenTokens.CalendarTone.sunday }
-        if w == 7 { return LumenTokens.Accent.violetSoft }
-        return LumenTokens.TextColor.muted
+        if w == 1 { return LumenTokens.Palette.danger }
+        if w == 7 { return LumenTokens.Palette.info }
+        return LumenTokens.Palette.inkMuted
     }
 }
 

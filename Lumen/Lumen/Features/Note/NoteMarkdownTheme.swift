@@ -1,105 +1,98 @@
 import SwiftUI
 import MarkdownUI
 
+private typealias P = LumenTokens.Palette
+
 extension MarkdownUI.Theme {
     static let lumen = Theme()
         .text {
-            ForegroundColor(LumenTokens.TextColor.primary)
-            FontSize(14)
+            FontFamily(.custom("SUIT Variable"))
+            ForegroundColor(P.ink)
+            FontSize(LumenTextStyle.body.size)
+        }
+        .paragraph { configuration in
+            configuration.label
+                .relativeLineSpacing(.em(0.3))
+                .markdownMargin(top: 0, bottom: LumenTokens.Space.s4)
         }
         .heading1 { configuration in
             configuration.label
-                .markdownMargin(top: 18, bottom: 8)
+                .markdownMargin(top: LumenTokens.Space.s6, bottom: LumenTokens.Space.stack)
                 .markdownTextStyle {
                     FontWeight(.semibold)
-                    FontSize(20)
-                    ForegroundColor(LumenTokens.Accent.violetSoft)
+                    FontSize(LumenTextStyle.title2.size)
+                    ForegroundColor(P.ink)
                 }
         }
         .heading2 { configuration in
             configuration.label
-                .markdownMargin(top: 14, bottom: 6)
+                .markdownMargin(top: LumenTokens.Space.group, bottom: LumenTokens.Space.s2)
                 .markdownTextStyle {
                     FontWeight(.semibold)
-                    FontSize(15)
-                    ForegroundColor(LumenTokens.Accent.violetSoft)
+                    FontSize(LumenTextStyle.title3.size)
+                    ForegroundColor(P.ink)
                 }
         }
         .heading3 { configuration in
             configuration.label
-                .markdownMargin(top: 12, bottom: 4)
+                .markdownMargin(top: LumenTokens.Space.s4, bottom: LumenTokens.Space.s2)
                 .markdownTextStyle {
                     FontWeight(.semibold)
-                    FontSize(14)
-                    ForegroundColor(LumenTokens.Accent.violetSoft)
+                    FontSize(LumenTextStyle.bodyLarge.size)
+                    ForegroundColor(P.ink)
                 }
         }
         .strong {
             FontWeight(.semibold)
-            ForegroundColor(LumenTokens.TextColor.primary)
+            ForegroundColor(P.ink)
         }
         .emphasis {
             FontStyle(.italic)
-            ForegroundColor(LumenTokens.TextColor.primary)
+            ForegroundColor(P.ink)
         }
         .link {
-            ForegroundColor(LumenTokens.Accent.violetSoft)
+            ForegroundColor(P.brand)
             UnderlineStyle(.single)
         }
         .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(12.5)
-            ForegroundColor(LumenTokens.Accent.violetSoft)
-            BackgroundColor(LumenTokens.BG.card)
+            FontFamily(.custom("Geist Mono"))
+            FontSize(.em(0.875))
+            ForegroundColor(P.ink)
+            BackgroundColor(P.surfaceRaised)
         }
         .codeBlock { configuration in
             configuration.label
                 .markdownTextStyle {
-                    FontFamilyVariant(.monospaced)
-                    FontSize(12.5)
-                    ForegroundColor(LumenTokens.TextColor.primary)
+                    FontFamily(.custom("Geist Mono"))
+                    FontSize(LumenTextStyle.codeBlock.size)
+                    ForegroundColor(P.ink)
                 }
-                .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
-                .background(LumenTokens.BG.card)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .markdownMargin(top: 6, bottom: 12)
+                .padding(.vertical, LumenTokens.Space.s4)
+                .padding(.horizontal, LumenTokens.Space.s5)
+                .background(P.bg)
+                .clipShape(LumenShape.rect(LumenTokens.Radius.md))
+                .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(P.borderSubtle, lineWidth: 1))
+                .markdownMargin(top: 0, bottom: LumenTokens.Space.s4)
         }
         .blockquote { configuration in
             HStack(spacing: 0) {
                 Rectangle()
-                    .fill(LumenTokens.Accent.violetSoft.opacity(0.4))
+                    .fill(P.borderStrong)
                     .frame(width: 2)
                 configuration.label
                     .markdownTextStyle {
-                        ForegroundColor(LumenTokens.TextColor.secondary)
-                        FontSize(14)
+                        ForegroundColor(P.inkMuted)
                     }
-                    .padding(.leading, 12)
+                    .padding(.leading, LumenTokens.Space.s3)
             }
-            .markdownMargin(top: 8, bottom: 8)
+            .markdownMargin(top: 0, bottom: LumenTokens.Space.s4)
         }
         .listItem { configuration in
             configuration.label
-                .markdownMargin(top: 4, bottom: 4)
+                .markdownMargin(top: LumenTokens.Space.s1, bottom: LumenTokens.Space.s1)
         }
         .thematicBreak {
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: LumenTokens.divider, location: 0.12),
-                            .init(color: LumenTokens.divider, location: 0.88),
-                            .init(color: .clear, location: 1.0),
-                        ],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                )
-                .frame(height: 1)
-                .markdownMargin(top: 14, bottom: 14)
+            LumenHairline()
+                .markdownMargin(top: LumenTokens.Space.group, bottom: LumenTokens.Space.group)
         }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Settings → "숨긴 앱" 탭. SearchView에서 X 버튼으로 숨긴 앱들을 모아 보여주고,
+private typealias P = LumenTokens.Palette
+
+/// Settings → "숨긴 앱" 탭. SearchView에서 숨기기 버튼으로 숨긴 앱들을 모아 보여주고,
 /// 각 행에서 되돌리기 버튼으로 다시 검색 결과에 노출시킬 수 있다.
 /// HiddenAppsManager는 @Observable이라 토글 즉시 리스트가 갱신된다.
 struct HiddenAppsSettingsTab: View {
@@ -11,28 +13,28 @@ struct HiddenAppsSettingsTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s7) {
                 SettingsSection(title: "숨긴 앱") {
                     if hiddenApps.isEmpty {
                         emptyState
                     } else {
-                        VStack(spacing: 4) {
-                            ForEach(hiddenApps) { app in
+                        VStack(spacing: 0) {
+                            ForEach(Array(hiddenApps.enumerated()), id: \.element.id) { idx, app in
+                                if idx > 0 { LumenHairline() }
                                 HiddenAppRow(app: app) {
                                     manager.unhide(app.id)
                                 }
                             }
                         }
+                        .lumenCard()
                     }
-                    Text("검색창에서 앱 위에 마우스를 올리면 우측에 작은 숨기기 버튼이 나타납니다. 숨긴 앱은 검색 결과에서 제외되며, 이 화면에서 되돌리기 전까지 유지됩니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                        .lineSpacing(3)
-                        .padding(.top, 4)
+                    Text("검색창에서 앱 위에 마우스를 올리면 오른쪽에 숨기기 버튼이 나타나요. 숨긴 앱은 여기서 되돌리기 전까지 검색 결과에 보이지 않아요.")
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
+            .padding(LumenTokens.Space.s6)
         }
         .scrollIndicators(.hidden)
         .onAppear {
@@ -60,25 +62,17 @@ struct HiddenAppsSettingsTab: View {
     }
 
     private var emptyState: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "eye")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            Text("숨긴 앱이 없습니다.")
-                .font(.system(size: 12.5))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+        HStack(spacing: LumenTokens.Space.s3) {
+            LumenIcon("eye")
+                .foregroundStyle(P.inkMuted)
+            Text("숨긴 앱이 없어요")
+                .lumenText(.body)
+                .foregroundStyle(P.inkMuted)
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .frame(height: 52)
-        .background(
-            RoundedRectangle(cornerRadius: 7)
-                .fill(Color.white.opacity(0.018))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-        )
+        .padding(.vertical, 14)
+        .padding(.horizontal, LumenTokens.Space.s4)
+        .lumenCard()
     }
 }
 
@@ -86,50 +80,23 @@ private struct HiddenAppRow: View {
     let app: AppItem
     let onUnhide: () -> Void
 
-    @State private var hovered = false
-
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LumenTokens.Space.s3) {
             Image(nsImage: app.icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 22, height: 22)
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .frame(width: 24, height: 24)
             Text(app.name)
-                .font(.system(size: 12.5))
-                .foregroundStyle(LumenTokens.TextColor.primary)
+                .lumenText(.body, weight: .medium)
+                .foregroundStyle(P.ink)
                 .lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: LumenTokens.Space.inline)
             Button(action: onUnhide) {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 10.5, weight: .semibold))
-                    Text("되돌리기")
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-                .padding(.horizontal, 9)
-                .frame(height: 24)
-                .background(
-                    Capsule()
-                        .fill(LumenTokens.Accent.violet.opacity(0.12))
-                        .overlay(
-                            Capsule().stroke(LumenTokens.Accent.violetSoft.opacity(0.30), lineWidth: 0.5)
-                        )
-                )
+                Label { Text("되돌리기") } icon: { LumenIcon("undo-2", size: .small) }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
         }
-        .padding(.horizontal, 10)
-        .frame(height: 36)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(hovered ? Color.white.opacity(0.035) : Color.white.opacity(0.015))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-        )
-        .onHover { hovered = $0 }
+        .padding(.vertical, LumenTokens.Space.s3)
+        .padding(.horizontal, LumenTokens.Space.s4)
     }
 }

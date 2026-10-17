@@ -9,9 +9,9 @@ import AppKit
 @MainActor
 final class PresentColumnScrollTests: XCTestCase {
 
-    /// 대시보드 패널 실제 크기 기준 — 가운데 컬럼은 1160에서 좌우 컬럼(280/320)을 뺀 폭을 쓴다.
-    private let columnWidth: CGFloat = 1160 - 280 - 320
-    private let panelHeight: CGFloat = 840
+    /// 대시보드 패널 실제 크기 기준 — 가운데 컬럼은 1320에서 좌우 컬럼(340/380)을 뺀 폭을 쓴다.
+    private let columnWidth: CGFloat = 1320 - 340 - 380
+    private let panelHeight: CGFloat = 860
 
     func testPresentColumnScrollsWhenContentOverflows() throws {
         // 한 화면에 절대 안 들어갈 분량.
@@ -58,10 +58,10 @@ final class PresentColumnScrollTests: XCTestCase {
         let data = JiraDashboardData.scrollMock(overdue: many, thisWeek: many)
 
         let content = DashboardContent(data: data, selectedProject: .constant(PresentColumn.allKey))
-            .frame(width: 1160, height: 840)
+            .frame(width: 1320, height: 860)
 
         let hosting = NSHostingView(rootView: content)
-        hosting.frame = NSRect(x: 0, y: 0, width: 1160, height: 840)
+        hosting.frame = NSRect(x: 0, y: 0, width: 1320, height: 860)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless],
                               backing: .buffered, defer: false)
         window.contentView = hosting
@@ -78,9 +78,9 @@ final class PresentColumnScrollTests: XCTestCase {
                   + "clip=\(Int(sv.contentView.bounds.height)) content=\(Int(doc))")
         }
 
-        // 가운데 컬럼 = 좌우 고정폭(280/320)이 아닌 것.
+        // 가운데 컬럼 = 좌우 고정폭(340/380)이 아닌 것.
         let middle = try XCTUnwrap(
-            scrollViews.first { abs($0.bounds.width - 280) > 1 && abs($0.bounds.width - 320) > 1 },
+            scrollViews.first { abs($0.bounds.width - 340) > 1 && abs($0.bounds.width - 380) > 1 },
             "가운데 컬럼의 ScrollView를 찾지 못함")
 
         let docHeight = try XCTUnwrap(middle.documentView?.frame.height)

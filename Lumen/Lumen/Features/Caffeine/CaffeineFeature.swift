@@ -3,7 +3,7 @@ import IOKit.pwr_mgt
 
 final class CaffeineFeature: BuiltInFeature {
     let featureDescription = "슬립 방지 (카페인)"
-    let iconName = "cup.and.saucer"
+    let iconName = "coffee"
     let searchKeywords = ["카페인", "caffeine", "슬립", "sleep", "잠금", "화면"]
     let showInDefaultList = false
 
@@ -27,7 +27,7 @@ final class CaffeineFeature: BuiltInFeature {
     func attachStatusBar(_ coordinator: StatusBarCoordinator) {
         // 카페인은 평소엔 메뉴바에 없음. 활성화 시점에 show() 한다.
         statusHandle = coordinator.addItem(
-            initialIcon: "cup.and.saucer.fill",
+            initialIcon: "coffee",
             accessibility: "카페인",
             visible: false,
             onClick: { [weak self] in self?.toggle() }
@@ -53,7 +53,7 @@ final class CaffeineFeature: BuiltInFeature {
         )
         if result == kIOReturnSuccess {
             isActive = true
-            statusHandle?.updateIcon("cup.and.saucer.fill")
+            statusHandle?.updateIcon("coffee")
             statusHandle?.show()
         }
     }

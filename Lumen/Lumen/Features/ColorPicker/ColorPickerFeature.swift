@@ -4,7 +4,7 @@ import Carbon.HIToolbox
 final class ColorPickerFeature: BuiltInFeature {
     let name = "컬러 피커"
     let featureDescription = "화면 색상 추출 → HEX 복사"
-    let iconName = "eyedropper"
+    let iconName = "pipette"
     let searchKeywords = ["컬러", "색상", "color", "picker", "스포이드", "hex", "rgb"]
 
     private var isActive = false
@@ -30,6 +30,6 @@ final class ColorPickerFeature: BuiltInFeature {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(hex, forType: .string)
 
-        LumenToast.show(text: "\(hex) 복사됨", swatch: rgb)
+        LumenToast.show(text: "\(hex)를 복사했어요", swatch: rgb)
     }
 }

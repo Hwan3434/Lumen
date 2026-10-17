@@ -103,8 +103,8 @@ enum LumenDateFormat {
 
 // MARK: - LumenFooterBar
 //
-// 검색·번역·메모·클립보드 패널이 공유하는 32pt 하단 chrome.
-// 좌측: 보라→앰버 그라데이션 브랜드 마크 + "Lumen". 우측: 액션 + kbd 힌트.
+// 검색·번역·메모·클립보드 패널이 공유하는 하단 chrome.
+// 좌측: "Lumen" 캡션. 우측: 액션 + 단축키 힌트.
 
 struct LumenFooterAction: Identifiable {
     let id = UUID()
@@ -118,35 +118,25 @@ struct LumenFooterBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 6) {
-                LinearGradient(
-                    colors: [LumenTokens.Accent.violetSoft, LumenTokens.Accent.amber],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .frame(width: 14, height: 14)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                Text("Lumen")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-            }
+            Text("Lumen")
+                .lumenText(.caption, weight: .medium)
+                .foregroundStyle(LumenTokens.Palette.inkFaint)
             Spacer()
-            HStack(spacing: 14) {
+            HStack(spacing: LumenTokens.Space.s4) {
                 ForEach(actions) { action in
-                    HStack(spacing: 5) {
+                    HStack(spacing: LumenTokens.Space.inline) {
                         Text(action.label)
-                            .font(.system(size: 11, weight: action.primary ? .medium : .regular))
-                            .foregroundStyle(action.primary ? LumenTokens.TextColor.primary
-                                                            : LumenTokens.TextColor.muted)
+                            .lumenText(.caption, weight: action.primary ? .medium : .regular)
+                            .foregroundStyle(action.primary ? LumenTokens.Palette.ink
+                                                            : LumenTokens.Palette.inkMuted)
                         LumenKbd(label: action.kbd, primary: action.primary)
                     }
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 32)
-        .background(LumenTokens.BG.footer)
-        .overlay(alignment: .top) {
-            Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-        }
+        .padding(.horizontal, LumenTokens.Space.s4)
+        .frame(height: 40)
+        .background(LumenTokens.Palette.surface)
+        .overlay(alignment: .top) { LumenHairline() }
     }
 }

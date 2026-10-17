@@ -35,7 +35,7 @@ struct NewEventPopover: View {
             onPrimary: commit,
             secondary: nil
         )
-        .frame(width: 280)
+        .frame(width: 360)
         .onAppear { DispatchQueue.main.async { titleFocused = true } }
     }
 
@@ -80,9 +80,9 @@ struct LocalEventEditPopover: View {
             titleFocused: $titleFocused,
             primaryLabel: "저장",
             onPrimary: save,
-            secondary: ("삭제", LumenTokens.ErrorTone.title, delete)
+            secondary: ("삭제", delete)
         )
-        .frame(width: 280)
+        .frame(width: 360)
     }
 
     private func save() {
@@ -114,89 +114,64 @@ private struct EventForm: View {
     var titleFocused: FocusState<Bool>.Binding
     let primaryLabel: String
     let onPrimary: () -> Void
-    /// 보조 액션(삭제 등) — (라벨, 색, 핸들러).
-    let secondary: (String, Color, () -> Void)?
+    /// 보조 액션(삭제 등) — (라벨, 핸들러).
+    let secondary: (String, () -> Void)?
+
+    private typealias P = LumenTokens.Palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(heading)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.4)
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: LumenTokens.Space.group) {
+            Text(heading)
+                .lumenText(.title3)
+                .foregroundStyle(P.ink)
 
-            TextField("제목", text: $title)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .focused(titleFocused)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color.white.opacity(0.04))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                        )
-                )
-                .onSubmit { onPrimary() }
+            VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("제목")
+                        .lumenText(.label)
+                        .foregroundStyle(P.inkMuted)
+                    TextField("", text: $title)
+                        .textFieldStyle(.plain)
+                        .font(LumenFont.style(.body))
+                        .foregroundStyle(P.ink)
+                        .tint(P.brand)
+                        .focused(titleFocused)
+                        .lumenFieldChrome(focused: titleFocused.wrappedValue)
+                        .onSubmit { onPrimary() }
+                }
 
-            DatePicker("시작", selection: $start, displayedComponents: .date)
-                .datePickerStyle(.compact)
-                .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-
-            Toggle("종료일", isOn: $hasEnd)
-                .toggleStyle(.checkbox)
-                .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-
-            if hasEnd {
-                DatePicker("종료", selection: $end, in: start..., displayedComponents: .date)
+                DatePicker("시작", selection: $start, displayedComponents: .date)
                     .datePickerStyle(.compact)
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                    .font(LumenFont.style(.label))
+                    .foregroundStyle(P.inkMuted)
+
+                Toggle("종료일 지정", isOn: $hasEnd)
+                    .toggleStyle(.checkbox)
+                    .font(LumenFont.style(.label, weight: .regular))
+                    .foregroundStyle(P.ink)
+                    .tint(P.brand)
+
+                if hasEnd {
+                    DatePicker("종료", selection: $end, in: start..., displayedComponents: .date)
+                        .datePickerStyle(.compact)
+                        .font(LumenFont.style(.label))
+                        .foregroundStyle(P.inkMuted)
+                }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: LumenTokens.Space.inline) {
                 if let s = secondary {
-                    Button(action: s.2) {
-                        Text(s.0)
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(s.1)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(s.1.opacity(0.45), lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
+                    Button(s.0, action: s.1)
+                        .buttonStyle(LumenButtonStyle(variant: .ghost))
                 }
                 Spacer()
-                Button(action: onPrimary) {
-                    Text(primaryLabel)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(canCommit ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(canCommit ? LumenTokens.Accent.violet.opacity(0.22) : Color.white.opacity(0.04))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 5)
-                                        .stroke(canCommit ? LumenTokens.Accent.violet.opacity(0.45) : LumenTokens.stroke,
-                                                lineWidth: 0.5)
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(!canCommit)
+                Button(primaryLabel, action: onPrimary)
+                    .buttonStyle(LumenButtonStyle(variant: .primary))
+                    .disabled(!canCommit)
             }
         }
-        .padding(14)
+        .padding(LumenTokens.Space.pad)
+        .background(P.surfaceRaised)
     }
 
     private var canCommit: Bool {

@@ -93,8 +93,8 @@ final class IssuePreviewSnapshotTests: XCTestCase {
                         .foregroundStyle(.white.opacity(0.5))
                     let key = "snapshotOverdueExpanded-\(expanded)"
                     IssueListSection(
-                        icon: "exclamationmark.triangle",
-                        iconColor: LumenTokens.ErrorTone.icon,
+                        icon: "triangle-alert",
+                        iconColor: LumenTokens.Palette.danger,
                         title: "기한 초과 미완료",
                         items: items,
                         emptyText: "기한 초과 없음",

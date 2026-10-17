@@ -1,34 +1,44 @@
 import SwiftUI
 import AppKit
 
+private typealias P = LumenTokens.Palette
+
 // MARK: - Atoms
 
+/// 프로젝트 표식. 계열 색은 앞의 점에만 쓰고 글자는 무채색(Still 차트 규칙과 같은 방식).
 struct ProjectChip: View {
     let key: String
 
     var body: some View {
-        let color = jiraProjectColor(key)
-        Text(key)
-            .font(.system(size: 10, weight: .semibold))
-            .tracking(0.4)
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .frame(height: 16)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color.opacity(0.12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(color.opacity(0.33), lineWidth: 0.5)
-                    )
-            )
+        HStack(spacing: LumenTokens.Space.s1 + 2) {
+            Circle()
+                .fill(jiraProjectColor(key))
+                .frame(width: 8, height: 8)
+            Text(key)
+                .lumenText(.caption, weight: .semibold)
+                .foregroundStyle(P.inkMuted)
+        }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 8)
+        .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(P.borderSubtle, lineWidth: 1))
     }
 }
 
+/// 높은 우선순위만 깃발 아이콘으로 표시. 보통·낮음은 자리만 차지한다.
 struct PriorityDot: View {
     let priority: String
     var body: some View {
-        Circle().fill(jiraPriorityColor(priority)).frame(width: 5, height: 5)
+        Group {
+            if let tone = jiraPriorityTone(priority) {
+                LumenIcon("flag", size: .small)
+                    .foregroundStyle(tone.color)
+                    .help("우선순위: \(priority)")
+                    .accessibilityLabel("우선순위 \(priority)")
+            } else {
+                Color.clear
+            }
+        }
+        .frame(width: 16, height: 16)
     }
 }
 
@@ -40,16 +50,7 @@ struct StatusBadge: View {
 
     var body: some View {
         let key = JiraStatusKey(category)
-        Text(label)
-            .font(.system(size: 10, weight: .medium))
-            .tracking(0.1)
-            .foregroundStyle(key.fg)
-            .padding(.horizontal, 6)
-            .frame(height: 16)
-            .background(
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(key.bg)
-            )
+        LumenBadge(text: label, tone: key.tone, icon: key.icon)
     }
 }
 
@@ -59,10 +60,18 @@ struct DueLabel: View {
     var startDate: Date? = nil
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 10.5, design: .monospaced))
-            .tracking(0.2)
-            .foregroundStyle(jiraDueTone(date, isDone: isDone).color)
+        let tone = jiraDueTone(date, isDone: isDone)
+        HStack(spacing: LumenTokens.Space.s1) {
+            switch tone {
+            case .past:  LumenIcon("triangle-alert", size: .small)
+            case .today: LumenIcon("clock", size: .small)
+            default:     EmptyView()
+            }
+            Text(text)
+                .lumenText(.caption)
+                .monospacedDigit()
+        }
+        .foregroundStyle(tone.color)
     }
 
     private var text: String {
@@ -80,21 +89,14 @@ struct DueLabel: View {
     }
 }
 
+/// 진행 중 표시. Still은 반복 애니메이션을 쓰지 않으므로 정적인 아이콘으로 둔다.
 struct InlineSpinner: View {
-    @State private var angle: Double = 0
-    var size: CGFloat = 11
+    var size: CGFloat = 16
 
     var body: some View {
-        Circle()
-            .trim(from: 0, to: 0.75)
-            .stroke(LumenTokens.Accent.violetSoft, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-            .frame(width: size, height: size)
-            .rotationEffect(.degrees(angle))
-            .onAppear {
-                withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) {
-                    angle = 360
-                }
-            }
+        LumenIcon("rotate-cw", size: .small)
+            .foregroundStyle(P.inkFaint)
+            .accessibilityLabel("불러오는 중")
     }
 }
 
@@ -109,51 +111,47 @@ var isCommandClick: Bool {
 
 struct IssueRow: View {
     let issue: JiraIssue
-    @State private var hovered = false
     @State private var showingPreview = false
     @State private var showingComments = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 3) {
-                ProjectChip(key: issue.projectKey)
-                if let number = issueNumber {
-                    Text(number)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+        Button {
+            if isCommandClick { showingComments = true } else { showingPreview = true }
+        } label: {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s1 + 2) {
+                HStack(spacing: LumenTokens.Space.inline) {
+                    PriorityDot(priority: issue.priority)
+                    Text(issue.summary)
+                        .lumenText(.body, weight: .medium)
+                        .foregroundStyle(issue.isDone ? P.inkFaint : P.ink)
+                        .strikethrough(issue.isDone)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                HStack(spacing: LumenTokens.Space.inline) {
+                    ProjectChip(key: issue.projectKey)
+                    if let number = issueNumber {
+                        Text(number)
+                            .font(LumenFont.mono(LumenTextStyle.caption.size))
+                            .foregroundStyle(P.inkFaint)
+                    }
+                    Spacer(minLength: 0)
+                    if let due = issue.dueDate {
+                        DueLabel(date: due, isDone: issue.isDone, startDate: issue.startDate)
+                    }
+                    StatusBadge(label: issue.status, category: issue.statusCategory)
                 }
             }
-            PriorityDot(priority: issue.priority)
-            Text(issue.summary)
-                .font(.system(size: 12))
-                .foregroundStyle(textColor)
-                .strikethrough(issue.isDone)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if let due = issue.dueDate {
-                DueLabel(date: due, isDone: issue.isDone, startDate: issue.startDate)
-            }
-            StatusBadge(label: issue.status, category: issue.statusCategory)
+            .padding(.vertical, LumenTokens.Space.s3)
+            .padding(.horizontal, LumenTokens.Space.s3)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 8)
-        .frame(height: 28)
-        .background(
-            RoundedRectangle(cornerRadius: 5)
-                .fill(hovered ? Color.white.opacity(0.04) : .clear)
-        )
-        .contentShape(Rectangle())
-        .onHover { hovered = $0; if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
-        .onTapGesture {
-            if isCommandClick { showingComments = true } else { showingPreview = true }
-        }
+        .buttonStyle(LumenListRowStyle())
+        .onHover { if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
         .help("클릭: 미리보기 · ⌘클릭: 댓글")
         .issuePreviewPopover(issueKey: issue.key, isPresented: $showingPreview)
         .issueCommentsPopover(issueKey: issue.key, isPresented: $showingComments)
-    }
-
-    private var textColor: Color {
-        issue.isDone ? LumenTokens.TextColor.muted : LumenTokens.TextColor.primary
     }
 
     /// "ABC-123" → "-123". 앞의 프로젝트 칩이 이미 프로젝트 키를 보여주므로 번호 부분만 이어 붙인다.
@@ -165,10 +163,10 @@ struct IssueRow: View {
 
 struct IssueListSection: View {
     let icon: String
-    var iconColor: Color = LumenTokens.TextColor.muted
+    var iconColor: Color = LumenTokens.Palette.inkMuted
     let title: String
     let items: [JiraIssue]
-    var emptyText: String = "없음"
+    var emptyText: String = "없어요"
     var hideWhenEmpty: Bool = false
     /// 지정하면 헤더를 눌러 접을 수 있고, 펼침 여부가 이 키로 기억된다. nil이면 항상 펼친 고정 섹션.
     var collapseKey: String? = nil
@@ -182,9 +180,8 @@ struct IssueListSection: View {
                 IssueListItems(items: items, emptyText: emptyText)
             }
         } else {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.inline) {
                 IssueListHeader(icon: icon, iconColor: iconColor, title: title, count: items.count)
-                    .padding(.horizontal, 4)
                 IssueListItems(items: items, emptyText: emptyText)
             }
         }
@@ -203,24 +200,22 @@ private struct IssueListHeader: View {
     var expanded: Bool = true
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: LumenTokens.Space.inline) {
             if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                LumenIcon("chevron-right", size: .small)
+                    .foregroundStyle(P.inkFaint)
                     .rotationEffect(.degrees(expanded ? 90 : 0))
-                    .frame(width: 8)
             }
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+            LumenIcon(icon, size: .small)
                 .foregroundStyle(iconColor)
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
+                .lumenText(.label)
+                .foregroundStyle(P.inkMuted)
             if let count {
                 Text("\(count)")
-                    .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                    .lumenText(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(P.inkFaint)
             }
         }
     }
@@ -233,15 +228,21 @@ private struct IssueListItems: View {
     var body: some View {
         if items.isEmpty {
             Text(emptyText)
-                .font(.system(size: 11))
-                .italic()
-                .foregroundStyle(LumenTokens.TextColor.muted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.inkFaint)
+                .padding(.vertical, LumenTokens.Space.s3)
+                .padding(.horizontal, LumenTokens.Space.s4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lumenCard()
         } else {
-            VStack(spacing: 1) {
-                ForEach(items) { IssueRow(issue: $0) }
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { idx, issue in
+                    if idx > 0 { LumenHairline() }
+                    IssueRow(issue: issue)
+                }
             }
+            .padding(LumenTokens.Space.s1)
+            .lumenCard()
         }
     }
 }
@@ -259,10 +260,10 @@ struct CollapsibleSection<Content: View>: View {
 
     init(storageKey: String,
          icon: String,
-         iconColor: Color = LumenTokens.TextColor.muted,
+         iconColor: Color = LumenTokens.Palette.inkMuted,
          title: String,
          count: Int? = nil,
-         spacing: CGFloat = 6,
+         spacing: CGFloat = LumenTokens.Space.inline,
          @ViewBuilder content: @escaping () -> Content) {
         // 기본은 펼침 — 처음 보는 사용자에게 대시보드가 비어 보이지 않도록.
         _expanded = AppStorage(wrappedValue: true, storageKey)
@@ -277,11 +278,10 @@ struct CollapsibleSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
             Button {
-                withAnimation(.easeInOut(duration: 0.16)) { expanded.toggle() }
+                withAnimation(LumenTokens.Motion.easeOut()) { expanded.toggle() }
             } label: {
                 IssueListHeader(icon: icon, iconColor: iconColor, title: title,
                                 count: count, showsChevron: true, expanded: expanded)
-                    .padding(.horizontal, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
@@ -308,23 +308,13 @@ enum JiraSectionKey {
 // MARK: - Full-panel overlays
 
 struct JiraFullPanelLoading: View {
-    @State private var angle: Double = 0
-
     var body: some View {
-        VStack(spacing: 14) {
-            Circle()
-                .trim(from: 0, to: 0.75)
-                .stroke(LumenTokens.Accent.violetSoft, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .frame(width: 32, height: 32)
-                .rotationEffect(.degrees(angle))
-                .onAppear {
-                    withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) {
-                        angle = 360
-                    }
-                }
-            Text("Jira 데이터 불러오는 중…")
-                .font(.system(size: 13))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
+        VStack(spacing: LumenTokens.Space.stack) {
+            LumenIcon("rotate-cw", size: .large)
+                .foregroundStyle(P.inkFaint)
+            Text("Jira 데이터를 불러오고 있어요")
+                .lumenText(.body)
+                .foregroundStyle(P.inkMuted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -335,65 +325,26 @@ struct JiraFullPanelError: View {
     var onRetry: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(LumenTokens.ErrorTone.icon)
-                Text("불러오기 실패")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(LumenTokens.ErrorTone.title)
-            }
-            Text(message)
-                .font(.system(size: 12))
-                .foregroundStyle(LumenTokens.TextColor.secondary)
-                .lineSpacing(3)
-
+        LumenBanner(tone: .danger, title: "Jira 데이터를 불러오지 못했어요", message: message) {
             Button(action: onRetry) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("다시 시도")
-                        .font(.system(size: 11.5, weight: .medium))
-                }
-                .foregroundStyle(LumenTokens.ErrorTone.title)
-                .padding(.horizontal, 12)
-                .frame(height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(LumenTokens.ErrorTone.bg)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(LumenTokens.ErrorTone.border, lineWidth: 0.5)
-                        )
-                )
+                Label { Text("다시 시도") } icon: { LumenIcon("rotate-cw", size: .small) }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
         }
-        .padding(EdgeInsets(top: 20, leading: 22, bottom: 20, trailing: 22))
         .frame(maxWidth: 480)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(LumenTokens.ErrorTone.bg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(LumenTokens.ErrorTone.border, lineWidth: 0.5)
-                )
-        )
-        .padding(32)
+        .padding(LumenTokens.Space.s6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 struct JiraFullPanelEmpty: View {
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "tray")
-                .font(.system(size: 20))
-                .foregroundStyle(LumenTokens.TextColor.muted)
-            Text("데이터 없음")
-                .font(.system(size: 12))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+        VStack(spacing: LumenTokens.Space.stack) {
+            LumenIcon("inbox", size: .large)
+                .foregroundStyle(P.inkFaint)
+            Text("보여줄 데이터가 없어요")
+                .lumenText(.body)
+                .foregroundStyle(P.inkMuted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -401,7 +352,7 @@ struct JiraFullPanelEmpty: View {
 
 // MARK: - Header
 
-/// 통합 Jira 패널의 56pt 헤더. 좌측(타이틀+프로젝트), 가운데(탭/임의), 우측(controls + refresh)
+/// 통합 Jira 패널의 헤더. 좌측(타이틀+프로젝트), 가운데(탭/임의), 우측(controls + refresh)
 /// 세 영역을 가진다. 가운데와 우측-controls는 호출자가 ViewBuilder로 채운다 — 탭별로 다른
 /// 컨트롤(범례 / 필터 칩 등)을 노출하기 위함.
 struct JiraHeader<LeadingNav: View, TrailingControls: View>: View {
@@ -413,32 +364,17 @@ struct JiraHeader<LeadingNav: View, TrailingControls: View>: View {
     @ViewBuilder var trailingControls: () -> TrailingControls
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: LumenTokens.Space.group) {
             // 좌측: 타이틀 + 탭/모드 인라인
-            HStack(spacing: 14) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(Color(red: 0x5B/255, green: 0xA8/255, blue: 1.0).opacity(0.12))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 7)
-                                    .stroke(Color(red: 0x5B/255, green: 0xA8/255, blue: 1.0).opacity(0.30), lineWidth: 0.5)
-                            )
-                        Image(systemName: "rhombus.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color(red: 0x5B/255, green: 0xA8/255, blue: 1.0))
-                    }
-                    .frame(width: 26, height: 26)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Jira 대시보드")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(LumenTokens.TextColor.primary)
-                        Text(Constants.jiraProjects.map(\.displayName).joined(separator: " · "))
-                            .font(.system(size: 11))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .lineLimit(1)
-                    }
+            HStack(spacing: LumenTokens.Space.group) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Jira 대시보드")
+                        .lumenText(.title3)
+                        .foregroundStyle(P.ink)
+                    Text(Constants.jiraProjects.map(\.displayName).joined(separator: " · "))
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
+                        .lineLimit(1)
                 }
 
                 leadingNav()
@@ -446,61 +382,45 @@ struct JiraHeader<LeadingNav: View, TrailingControls: View>: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
+            HStack(spacing: LumenTokens.Space.s4) {
                 trailingControls()
             }
-            .padding(.trailing, 18)
 
-            HStack(spacing: 10) {
+            HStack(spacing: LumenTokens.Space.inline) {
                 if refreshing {
-                    HStack(spacing: 6) {
+                    HStack(spacing: LumenTokens.Space.s1) {
                         InlineSpinner()
-                        Text("새로고침 중…")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(LumenTokens.Accent.violetSoft)
+                        Text("새로고침하고 있어요")
+                            .lumenText(.caption)
+                            .foregroundStyle(P.inkFaint)
                     }
                 } else {
                     Text("\(LumenTime.relative(lastUpdated)) 업데이트")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
                 }
 
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(LumenTokens.TextColor.secondary)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.white.opacity(0.02))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
+                LumenIconButton(icon: "rotate-cw", label: "새로고침", variant: .secondary, action: onRefresh)
             }
         }
-        .padding(.horizontal, 18)
-        .frame(height: 56)
-        .background(Color.white.opacity(0.012))
+        .padding(.horizontal, LumenTokens.Space.pad)
+        .frame(height: 72)
     }
 }
 
+/// 범례 항목: 계열 색 표식(점) + 무채색 글자.
 struct LegendDot: View {
     let color: Color
     let label: String
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: LumenTokens.Space.s1 + 2) {
             Circle()
                 .fill(color)
-                .frame(width: 7, height: 7)
-                .shadow(color: color.opacity(0.4), radius: 3)
+                .frame(width: 8, height: 8)
             Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(LumenTokens.TextColor.muted)
+                .lumenText(.caption)
+                .foregroundStyle(P.inkMuted)
         }
     }
 }

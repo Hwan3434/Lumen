@@ -3,7 +3,7 @@ import AppKit
 final class WindowMagnetFeature: BuiltInFeature {
     let name = "윈도우 마그넷"
     let featureDescription = "윈도우 좌우 스내핑"
-    let iconName = "rectangle.split.2x1"
+    let iconName = "columns-2"
     let searchKeywords = ["magnet", "마그넷", "윈도우", "window", "스냅", "크기"]
 
     var isEnabled: Bool { Constants.magnetEnabled }

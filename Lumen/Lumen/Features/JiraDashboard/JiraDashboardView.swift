@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// 통합 Jira 패널 메인 뷰 — 1160×840pt 글래스 패널, 56pt 통합 헤더 + 탭 컨텐츠.
+private typealias P = LumenTokens.Palette
+
+/// 통합 Jira 패널 메인 뷰 — 1320×860pt 패널, 통합 헤더 + 탭 컨텐츠.
 /// 탭: 대시보드 / 캘린더(월간·주간 토글). 모두 같은 JiraService.shared 데이터 위에서.
 ///
 /// 단축키: ⌘1 = 대시보드, ⌘2 = 캘린더(월간), ⌘3 = 캘린더(주간).
@@ -26,7 +28,7 @@ struct JiraDashboardView: View {
 
     var body: some View {
         ZStack {
-            LumenGlassBackground(radius: LumenTokens.Radius.window)
+            LumenPanelBackground()
 
             if service.isLoading && service.data == nil {
                 JiraFullPanelLoading()
@@ -40,8 +42,8 @@ struct JiraDashboardView: View {
                 JiraFullPanelEmpty()
             }
         }
-        .frame(width: 1160, height: 840)
-        .clipShape(RoundedRectangle(cornerRadius: LumenTokens.Radius.window, style: .continuous))
+        .frame(width: 1320, height: 860)
+        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
         .onAppear {
             Task { await service.fetch() }
             Task { await eventKitService.requestAccessAndFetch() }
@@ -83,7 +85,7 @@ struct JiraDashboardView: View {
                 refreshing: service.isLoading,
                 onRefresh: { Task { await service.fetch(force: true) } },
                 leadingNav: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: LumenTokens.Space.inline) {
                         JiraTabBar(active: $activeTab)
                         if activeTab == .calendar {
                             CalendarModeToggle(mode: $calendarMode)
@@ -101,13 +103,13 @@ struct JiraDashboardView: View {
     private var trailingControls: some View {
         switch activeTab {
         case .dashboard:
-            LegendDot(color: LumenTokens.JiraTrendTone.created, label: "생성")
-            LegendDot(color: LumenTokens.JiraTrendTone.completed, label: "완료")
+            LegendDot(color: P.chart1, label: "생성")
+            LegendDot(color: P.chart2, label: "완료")
         case .calendar:
-            FilterChip(label: "캘린더",  color: LumenTokens.Accent.teal,           isOn: $filter.showGoogleCalendar, showDot: false)
-            FilterChip(label: "에픽",   color: LumenTokens.Accent.violet,          isOn: $filter.showEpic)
-            FilterChip(label: "스프린트", color: LumenTokens.Accent.amber,          isOn: $filter.showSprint)
-            FilterChip(label: "태스크",  color: LumenTokens.TextColor.secondary,    isOn: $filter.showTask)
+            FilterChip(label: "캘린더",  color: CalendarItemKind.googleCalendar.color, isOn: $filter.showGoogleCalendar)
+            FilterChip(label: "에픽",   color: CalendarItemKind.epic.color,           isOn: $filter.showEpic)
+            FilterChip(label: "스프린트", color: CalendarItemKind.sprint.color,         isOn: $filter.showSprint)
+            FilterChip(label: "태스크",  color: CalendarItemKind.task.color,           isOn: $filter.showTask)
         }
     }
 
@@ -125,14 +127,14 @@ struct JiraDashboardView: View {
                 .allowsHitTesting(activeTab == .dashboard)
 
             MonthGridView(items: calendarItems, showLocal: $filter.showLocal, disabledProjectKeys: $filter.disabledProjectKeys, showGoogleCalendar: filter.showGoogleCalendar, resetToTodayToken: monthResetToken)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.bottom, LumenTokens.Space.pad)
                 .opacity(monthVisible ? 1 : 0)
                 .allowsHitTesting(monthVisible)
 
             TimelineView(items: calendarItems, anchorDate: $anchorDate, showLocal: $filter.showLocal, disabledProjectKeys: $filter.disabledProjectKeys, showGoogleCalendar: filter.showGoogleCalendar, resetToTodayToken: weekResetToken)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.bottom, LumenTokens.Space.pad)
                 .opacity(weekVisible ? 1 : 0)
                 .allowsHitTesting(weekVisible)
         }
@@ -149,91 +151,55 @@ struct JiraDashboardView: View {
 
 // MARK: - CalendarModeToggle
 //
-// 캘린더 탭에서 월간/주간 전환. 헤더 우측, 필터칩 옆.
+// 캘린더 탭에서 월간/주간 전환. 헤더의 탭 옆.
 
 struct CalendarModeToggle: View {
     @Binding var mode: CalendarMode
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(CalendarMode.allCases) { m in
-                button(for: m)
-            }
-        }
-        .padding(2)
-        .background(
-            RoundedRectangle(cornerRadius: 5)
-                .fill(Color.white.opacity(0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
+        LumenSegmentedControl(
+            items: CalendarMode.allCases.map { .init(value: $0, label: $0.label, icon: $0.iconName) },
+            selection: $mode
         )
-    }
-
-    private func button(for m: CalendarMode) -> some View {
-        let isActive = (mode == m)
-        return Button {
-            mode = m
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: m.iconName)
-                    .font(.system(size: 9, weight: .medium))
-                Text(m.label)
-                    .font(.system(size: 11, weight: isActive ? .semibold : .regular))
-            }
-            .foregroundStyle(isActive ? LumenTokens.TextColor.primary : LumenTokens.TextColor.muted)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(isActive ? LumenTokens.Accent.violet.opacity(0.22) : .clear)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 
 // MARK: - FilterChip
 
+/// 켜고 끄는 필터. 계열 색은 점에만 쓰고, 꺼지면 점을 비운다(색만으로 상태를 나타내지 않도록 체크 아이콘도 함께).
 struct FilterChip: View {
     let label: String
     let color: Color
     @Binding var isOn: Bool
-    /// false면 색 점 생략 — 라벨 텍스트 색으로 식별이 충분한 칩(EKCalendar 등)에 사용.
+    /// false면 색 점 생략.
     var showDot: Bool = true
 
     var body: some View {
         Button {
             isOn.toggle()
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: LumenTokens.Space.s1 + 2) {
                 if showDot {
                     Circle()
-                        .fill(isOn ? color : color.opacity(0.25))
-                        .frame(width: 7, height: 7)
+                        .strokeBorder(color, lineWidth: 2)
+                        .background(Circle().fill(isOn ? color : .clear))
+                        .frame(width: 10, height: 10)
                 }
                 Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(labelColor)
+                    .lumenText(.label)
+                    .foregroundStyle(isOn ? P.ink : P.inkFaint)
+                if isOn {
+                    LumenIcon("check", size: .small)
+                        .foregroundStyle(P.inkMuted)
+                }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background(isOn ? P.surface : .clear, in: LumenShape.rect(LumenTokens.Radius.md))
+            .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(P.borderSubtle, lineWidth: 1))
             .contentShape(Rectangle())
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(isOn ? color.opacity(0.35) : LumenTokens.divider, lineWidth: 0.5)
-            )
         }
         .buttonStyle(.plain)
-    }
-
-    /// 점이 없는 칩은 라벨 색으로 식별해야 하므로 활성 시 brand color, 비활성 시 dim.
-    private var labelColor: Color {
-        if showDot {
-            return isOn ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.muted
-        }
-        return isOn ? color : color.opacity(0.4)
+        .accessibilityValue(isOn ? "켜짐" : "꺼짐")
     }
 }

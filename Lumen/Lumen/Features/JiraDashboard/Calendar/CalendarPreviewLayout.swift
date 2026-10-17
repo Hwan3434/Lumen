@@ -1,9 +1,11 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 /// 미리보기 popover의 공통 치수. 본 레이아웃뿐 아니라 호출자의 로딩/에러 상태도
 /// 같은 폭을 써야 popover가 상태 전환 때 흔들리지 않으므로 한 곳에서 관리한다.
 enum CalendarPreviewMetrics {
-    static let width: CGFloat = 500
+    static let width: CGFloat = 520
     /// 본문(설명/메모) 스크롤 영역의 최소 높이. ScrollView가 0으로 붕괴하지 않을 만큼만 준다 —
     /// 이걸 키우면 설명이 짧은 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
     static let bodyMinHeight: CGFloat = 44
@@ -56,25 +58,24 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
                 header
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
+                    .lumenText(.title3)
+                    .foregroundStyle(P.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
 
                 if !metaRows.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: LumenTokens.Space.s1 + 2) {
                         ForEach(metaRows) { row in
-                            HStack(alignment: .top, spacing: 6) {
-                                Image(systemName: row.icon)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                    .foregroundStyle(LumenTokens.TextColor.muted)
+                            HStack(alignment: .top, spacing: LumenTokens.Space.inline) {
+                                LumenIcon(row.icon, size: .small)
+                                    .foregroundStyle(P.inkMuted)
                                     .padding(.top, 2)
                                 Text(row.text)
-                                    .font(.system(size: 11.5))
-                                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                                    .lumenText(.label, weight: .regular)
+                                    .foregroundStyle(P.inkMuted)
                                     .lineLimit(3)
                                     .truncationMode(.tail)
                                     .textSelection(.enabled)
@@ -87,9 +88,8 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                 if let text = bodyText, !text.isEmpty {
                     ScrollView {
                         Text(text)
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(LumenTokens.TextColor.secondary)
-                            .lineSpacing(2)
+                            .lumenText(.label, weight: .regular)
+                            .foregroundStyle(P.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .textSelection(.enabled)
@@ -100,34 +100,27 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
 
                 extraContent()
             }
-            .padding(14)
+            .padding(LumenTokens.Space.pad)
 
             footer()
         }
         .frame(width: CalendarPreviewMetrics.width)
         // 메타 행이 많은 호출자(캘린더 이벤트)는 크롬만으로도 두꺼워질 수 있어 전체로도 한 번 막는다.
         .frame(maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
+        .background(P.surfaceRaised)
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LumenTokens.Space.inline) {
             Circle()
                 .fill(accentColor)
-                .frame(width: 9, height: 9)
+                .frame(width: 8, height: 8)
             Text(accentLabel)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
+                .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
+                .foregroundStyle(P.inkMuted)
                 .lineLimit(1)
             if let badge = badgeText, !badge.isEmpty {
-                Text(badge)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
+                LumenBadge(text: badge)
             }
             Spacer()
         }
@@ -196,5 +189,22 @@ extension CalendarPreviewLayout where Body == EmptyView, Footer == EmptyView {
         self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = { EmptyView() }
         self.footer = { EmptyView() }
+    }
+}
+
+/// 미리보기 팝오버의 불러오는 중 상태. 반복 애니메이션 없이 정적인 아이콘과 문구만 둔다.
+struct PopoverLoadingView: View {
+    var text: String = "불러오고 있어요"
+
+    var body: some View {
+        VStack(spacing: LumenTokens.Space.stack) {
+            LumenIcon("rotate-cw")
+                .foregroundStyle(P.inkFaint)
+            Text(text)
+                .lumenText(.label, weight: .regular)
+                .foregroundStyle(P.inkMuted)
+        }
+        .frame(width: CalendarPreviewMetrics.width, height: 160)
+        .background(P.surfaceRaised)
     }
 }

@@ -1,190 +1,397 @@
 import SwiftUI
+import AppKit
+import CoreText
+
+// Still 디자인 시스템 토큰 (원본: claude.ai Design System 아티팩트 "Still", project/tokens.json).
+// 값은 여기에만 둔다. 뷰에서는 이 토큰과 아래 공용 부품만 조합하고 RGB·크기를 새로 만들지 않는다.
+// 색은 시스템 외관(다크/라이트)을 따라 자동으로 바뀐다.
 
 enum LumenTokens {
-    enum BG {
-        static let window       = Color(red: 0x16/255, green: 0x12/255, blue: 0x2A/255).opacity(0.72)
-        static let windowSolid  = Color(red: 0x16/255, green: 0x12/255, blue: 0x2A/255)
-        static let card         = Color.white.opacity(0.04)
-        static let rowActive    = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.10)
-        static let sidePanel    = Color.white.opacity(0.02)
-        static let footer       = Color.black.opacity(0.18)
+
+    // MARK: - Color
+
+    enum Palette {
+        static let bg            = dyn(dark: 0x0a0a0b, light: 0xffffff)
+        static let surface       = dyn(dark: 0x141415, light: 0xf5f5f7)
+        static let surfaceRaised = dyn(dark: 0x1c1c1e, light: 0xffffff)
+        static let borderSubtle  = dyn(dark: 0x2c2c2e, light: 0xe5e5ea)
+        static let borderStrong  = dyn(dark: 0x6c6c72, light: 0x86868b)
+
+        static let ink           = dyn(dark: 0xf5f5f7, light: 0x111113)
+        static let inkMuted      = dyn(dark: 0xa1a1a6, light: 0x5d5d63)
+        static let inkFaint      = dyn(dark: 0x8a8a90, light: 0x6e6e73)
+
+        static let brand         = dyn(dark: 0x2fd3b5, light: 0x0a7466)
+        static let brandSoft     = dyn(dark: (0x2fd3b5, 0.12), light: (0x0a7466, 0.08))
+        static let onBrand       = dyn(dark: 0x0a0a0b, light: 0xffffff)
+
+        static let success       = dyn(dark: 0x4cd471, light: 0x1a7f37)
+        static let successSoft   = dyn(dark: (0x4cd471, 0.12), light: (0x1a7f37, 0.08))
+        static let warning       = dyn(dark: 0xffb340, light: 0x966300)
+        static let warningSoft   = dyn(dark: (0xffb340, 0.12), light: (0x966300, 0.08))
+        static let danger        = dyn(dark: 0xff6961, light: 0xcf222e)
+        static let dangerSoft    = dyn(dark: (0xff6961, 0.12), light: (0xcf222e, 0.08))
+        static let onDanger      = dyn(dark: 0x0a0a0b, light: 0xffffff)
+        static let info          = dyn(dark: 0x64a8ff, light: 0x0b67d0)
+        static let infoSoft      = dyn(dark: (0x64a8ff, 0.12), light: (0x0b67d0, 0.08))
+
+        static let codeKeyword   = info
+        static let codeString    = success
+        static let codeNumber    = warning
+        static let codeComment   = inkFaint
+
+        static let focusRing     = brand
+
+        static let chart1        = dyn(dark: 0x1aa58f, light: 0x1a9e88)
+        static let chart2        = dyn(dark: 0xd95926, light: 0xeb6834)
+        static let chart3        = dyn(dark: 0x3987e5, light: 0x2a78d6)
+        static let chart4        = dyn(dark: 0xd55181, light: 0xe87ba4)
+        static let chart5        = dyn(dark: 0x9085e9, light: 0x6250d6)
+        static let chartOther    = dyn(dark: 0x6c6c72, light: 0xa1a1a6)
+        static let chartGrid     = borderSubtle
+        static let chartAxis     = inkFaint
+
+        static let scrim         = dyn(dark: (0x000000, 0.6), light: (0x111113, 0.32))
+
+        /// 차트 범주 색. 항상 앞에서부터 순서대로 쓴다. 다섯을 넘으면 `chartOther`.
+        static let chartCategories = [chart1, chart2, chart3, chart4, chart5]
     }
 
-    enum Accent {
-        static let amber       = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255)
-        static let amberDim    = Color(red: 0xFF/255, green: 0xB4/255, blue: 0x54/255).opacity(0.55)
-        static let violet      = Color(red: 0x7B/255, green: 0x6B/255, blue: 0xFF/255)
-        static let violetSoft  = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255)
-        static let teal        = Color(red: 0x34/255, green: 0xC7/255, blue: 0xB8/255)
+    // MARK: - Spacing (4px 단위)
+
+    enum Space {
+        static let inline: CGFloat  = 8
+        static let stack: CGFloat   = 12
+        static let group: CGFloat   = 24
+        static let pad: CGFloat     = 24
+        static let section: CGFloat = 64
+        static let page: CGFloat    = 32
+
+        static let s1: CGFloat = 4
+        static let s2: CGFloat = 8
+        static let s3: CGFloat = 12
+        static let s4: CGFloat = 16
+        static let s5: CGFloat = 24
+        static let s6: CGFloat = 32
+        static let s7: CGFloat = 48
+        static let s8: CGFloat = 64
+        static let s9: CGFloat = 96
+        static let s10: CGFloat = 128
     }
 
-    enum TextColor {
-        static let primary     = Color(red: 0xF2/255, green: 0xEE/255, blue: 0xFF/255)
-        static let secondary   = Color(red: 0xB6/255, green: 0xAE/255, blue: 0xD6/255)
-        static let muted       = Color(red: 0x73/255, green: 0x6C/255, blue: 0x90/255)
-        static let placeholder = Color(red: 0x6E/255, green: 0x67/255, blue: 0x90/255)
-    }
-
-    static let divider       = Color.white.opacity(0.06)
-    static let stroke        = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255).opacity(0.10)
-    static let strokeStrong  = Color(red: 0xB5/255, green: 0xA8/255, blue: 0xFF/255).opacity(0.20)
+    // MARK: - Radius
 
     enum Radius {
-        static let window: CGFloat = 16
-        static let card: CGFloat = 10
-        static let row: CGFloat = 8
-        static let kbd: CGFloat = 4
-        static let appTile: CGFloat = 6
+        /// 태그, 배지, 작은 칩
+        static let xs: CGFloat = 6
+        /// 썸네일, 아이콘 타일, 작은 버튼
+        static let sm: CGFloat = 8
+        /// 버튼, 입력창, 팝오버, 메뉴
+        static let md: CGFloat = 12
+        /// 카드, 리스트 그룹, 섹션 패널
+        static let lg: CGFloat = 16
+        /// 시트, 모달, 큰 미디어
+        static let xl: CGFloat = 22
+        /// 페이지 단위 큰 패널
+        static let xxl: CGFloat = 28
+        static let full: CGFloat = 9999
     }
 
-    enum ErrorTone {
-        static let title  = Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255)
-        static let icon   = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255)
-        static let bg     = Color(red: 1.0, green: 90/255, blue: 90/255).opacity(0.04)
-        static let border = Color(red: 1.0, green: 110/255, blue: 110/255).opacity(0.18)
+    // MARK: - Motion
+
+    enum Motion {
+        static let fast: Double = 0.15
+        static let base: Double = 0.24
+        static let slow: Double = 0.36
+
+        static func easeOut(_ d: Double = base) -> Animation { .timingCurve(0.16, 1, 0.3, 1, duration: d) }
+        static func easeIn(_ d: Double = base) -> Animation  { .timingCurve(0.5, 0, 0.75, 0, duration: d) }
+        static func easeMove(_ d: Double = base) -> Animation { .timingCurve(0.32, 0.72, 0, 1, duration: d) }
+
+        static let moveSm: CGFloat = 8
+        static let scaleEnter: CGFloat = 0.96
+        static let scalePress: CGFloat = 0.97
     }
 
-    /// 캘린더의 일요일/공휴일 색 — 두 톤이 비슷하지만 공휴일은 더 진하게.
-    enum CalendarTone {
-        static let sunday  = Color(red: 0xE1/255, green: 0xA0/255, blue: 0xA0/255)
-        static let holiday = Color(red: 0xE8/255, green: 0x6E/255, blue: 0x6E/255)
+    // MARK: - State
+
+    enum State {
+        static let focusRingWidth: CGFloat = 2
+        static let focusRingOffset: CGFloat = 2
+        static let disabledOpacity: Double = 0.4
     }
 
-    /// Jira 대시보드 전용 status 색 매핑. Atlassian 표준 statusCategory 3분류
-    /// (`new`/`indeterminate`/`done`) 기준 — 진행중=violet, 완료=green.
-    enum JiraStatusTone {
-        static let todoFg         = TextColor.muted
-        static let inProgressFg   = Accent.violet
-        static let completedFg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255)
+    // MARK: - Helpers
 
-        static let todoBg         = Color(red: 0x73/255, green: 0x6C/255, blue: 0x90/255).opacity(0.10)
-        static let inProgressBg   = Color(red: 0x7B/255, green: 0x6B/255, blue: 0xFF/255).opacity(0.14)
-        static let completedBg    = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255).opacity(0.12)
+    private static func dyn(dark: Int, light: Int) -> Color {
+        dyn(dark: (dark, 1), light: (light, 1))
     }
 
-    enum JiraPriorityTone {
-        static let highest = Color(red: 0xE1/255, green: 0x8A/255, blue: 0x8A/255)
-        static let high    = Color(red: 0xE2/255, green: 0xA4/255, blue: 0x72/255)
-        static let medium  = TextColor.muted
-        static let low     = Color(red: 0x9A/255, green: 0xAE/255, blue: 0xDB/255)
-        static let lowest  = Color(red: 0x70/255, green: 0x88/255, blue: 0xB8/255)
+    private static func dyn(dark: (Int, Double), light: (Int, Double)) -> Color {
+        let d = nsColor(dark.0, dark.1), l = nsColor(light.0, light.1)
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? d : l
+        })
     }
 
-    enum JiraTrendTone {
-        static let created   = Color(red: 0x7B/255, green: 0xA8/255, blue: 0xD9/255)
-        static let completed = Color(red: 0x7A/255, green: 0xC9/255, blue: 0x7A/255)
-        static let grid      = Color.white.opacity(0.05)
+    private static func nsColor(_ hex: Int, _ alpha: Double) -> NSColor {
+        NSColor(srgbRed: CGFloat((hex >> 16) & 0xff) / 255,
+                green: CGFloat((hex >> 8) & 0xff) / 255,
+                blue: CGFloat(hex & 0xff) / 255,
+                alpha: alpha)
     }
 }
 
+// MARK: - Shape
+
+enum LumenShape {
+    /// Still 곡률 규칙: `Radius.lg`(16) 이상은 연속 곡률(squircle), 그 아래는 일반 원호.
+    static func rect(_ radius: CGFloat) -> RoundedRectangle {
+        RoundedRectangle(cornerRadius: radius, style: radius >= LumenTokens.Radius.lg ? .continuous : .circular)
+    }
+}
+
+// MARK: - Typography
+
+/// Still 타입 스케일 8단계 + 코드. 본문·제목은 SUIT, 코드는 Geist Mono.
+enum LumenTextStyle {
+    case display, title1, title2, title3, bodyLarge, body, label, caption, codeBlock
+
+    var size: CGFloat {
+        switch self {
+        case .display: 56
+        case .title1: 40
+        case .title2: 28
+        case .title3: 20
+        case .bodyLarge: 18
+        case .body: 16
+        case .label, .codeBlock: 14
+        case .caption: 12
+        }
+    }
+
+    var lineHeight: CGFloat {
+        switch self {
+        case .display: 64
+        case .title1: 48
+        case .title2: 36
+        case .title3: 28
+        case .bodyLarge: 30
+        case .body: 26
+        case .label: 20
+        case .caption: 16
+        case .codeBlock: 22
+        }
+    }
+
+    /// em 단위 자간. 큰 제목일수록 살짝 좁힌다.
+    var tracking: CGFloat {
+        switch self {
+        case .display: -0.03
+        case .title1: -0.025
+        case .title2: -0.02
+        case .title3: -0.01
+        default: 0
+        }
+    }
+
+    var defaultWeight: LumenWeight {
+        switch self {
+        case .display, .title1: .bold
+        case .title2, .title3: .semibold
+        case .label: .medium
+        default: .regular
+        }
+    }
+
+    var isMono: Bool { self == .codeBlock }
+}
+
+/// Still이 허용하는 굵기 네 단계.
+enum LumenWeight: CGFloat {
+    case regular = 400, medium = 500, semibold = 600, bold = 700
+}
+
+enum LumenFont {
+    private static let wghtAxis = NSNumber(value: 0x77676874) // 'wght'
+    private static let registered: Void = {
+        for name in ["SUIT-Variable", "GeistMono-Variable"] {
+            if let url = Bundle.main.url(forResource: name, withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+    }()
+    @MainActor private static var cache: [String: Font] = [:]
+
+    /// 앱 시작 시 한 번 불러 글꼴을 등록한다. MarkdownUI처럼 이름으로 글꼴을 찾는 곳도 쓸 수 있게.
+    static func register() { _ = registered }
+
+    static func sans(_ size: CGFloat, _ weight: LumenWeight = .regular) -> Font {
+        font(family: "SUIT Variable", size: size, weight: weight)
+    }
+
+    static func mono(_ size: CGFloat, _ weight: LumenWeight = .regular) -> Font {
+        font(family: "Geist Mono", size: size, weight: weight)
+    }
+
+    static func style(_ style: LumenTextStyle, weight: LumenWeight? = nil) -> Font {
+        let w = weight ?? style.defaultWeight
+        return style.isMono ? mono(style.size, w) : sans(style.size, w)
+    }
+
+    /// AppKit 쪽(NSTextView 등)에서 쓰는 같은 글꼴.
+    static func nsFont(family: String = "SUIT Variable", size: CGFloat, weight: LumenWeight = .regular) -> NSFont {
+        _ = registered
+        let desc = NSFontDescriptor(fontAttributes: [
+            .family: family,
+            .variation: [wghtAxis: weight.rawValue],
+        ])
+        return NSFont(descriptor: desc, size: size) ?? .systemFont(ofSize: size)
+    }
+
+    /// Still 행간(lineHeight)을 맞추려면 글꼴 자체 높이를 뺀 나머지를 lineSpacing으로 준다.
+    static func extraLineSpacing(_ style: LumenTextStyle) -> CGFloat {
+        let f = nsFont(family: style.isMono ? "Geist Mono" : "SUIT Variable", size: style.size)
+        return max(0, style.lineHeight - (f.ascender - f.descender + f.leading))
+    }
+
+    private static func font(family: String, size: CGFloat, weight: LumenWeight) -> Font {
+        MainActor.assumeIsolated {
+            let key = "\(family)|\(size)|\(weight.rawValue)"
+            if let f = cache[key] { return f }
+            let f = Font(nsFont(family: family, size: size, weight: weight))
+            cache[key] = f
+            return f
+        }
+    }
+}
+
+extension View {
+    /// Still 글자 스타일: 글꼴 + 행간 + 자간. 한글은 단어 단위 줄바꿈이 SwiftUI 기본이다.
+    func lumenText(_ style: LumenTextStyle, weight: LumenWeight? = nil) -> some View {
+        self
+            .font(LumenFont.style(style, weight: weight))
+            .lineSpacing(LumenFont.extraLineSpacing(style))
+            .tracking(style.size * style.tracking)
+    }
+}
+
+// MARK: - Elevation
+
+/// Still 깊이 3단계. 다크에서는 위쪽 안쪽 하이라이트 + 그림자, 라이트에서는 그림자만.
+struct LumenElevation: ViewModifier {
+    let level: Int
+    let radius: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        let dark = scheme == .dark
+        content
+            .overlay(alignment: .top) {
+                if dark {
+                    Rectangle()
+                        .fill(Color.white.opacity(level == 1 ? 0.04 : 0.06))
+                        .frame(height: 1)
+                        .allowsHitTesting(false)
+                }
+            }
+            .clipShape(LumenShape.rect(radius))
+            .modifier(Shadows(level: level, dark: dark))
+    }
+
+    private struct Shadows: ViewModifier {
+        let level: Int
+        let dark: Bool
+
+        func body(content: Content) -> some View {
+            switch (level, dark) {
+            case (1, true):
+                content
+            case (1, false):
+                content.shadow(color: .black.opacity(0.05), radius: 1, y: 1)
+            case (2, true):
+                content.shadow(color: .black.opacity(0.5), radius: 12, y: 8)
+            case (2, false):
+                content
+                    .shadow(color: .black.opacity(0.06), radius: 1.5, y: 1)
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 6)
+            case (_, true):
+                content.shadow(color: .black.opacity(0.6), radius: 32, y: 24)
+            default:
+                content
+                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                    .shadow(color: .black.opacity(0.14), radius: 24, y: 20)
+            }
+        }
+    }
+}
+
+extension View {
+    func lumenElevation(_ level: Int, radius: CGFloat) -> some View {
+        modifier(LumenElevation(level: level, radius: radius))
+    }
+
+    /// 층 1: 카드, 리스트 그룹. `surface` + `border-subtle` + `elevation-1`, `radius-lg`.
+    func lumenCard(radius: CGFloat = LumenTokens.Radius.lg) -> some View {
+        self
+            .background(LumenTokens.Palette.surface)
+            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+            .lumenElevation(1, radius: radius)
+    }
+
+    /// 층 2: 팝오버, 메뉴, 툴팁. `surface-raised` + `border-subtle` + `elevation-2`.
+    func lumenPopover(radius: CGFloat = LumenTokens.Radius.md) -> some View {
+        self
+            .background(LumenTokens.Palette.surfaceRaised)
+            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+            .lumenElevation(2, radius: radius)
+    }
+}
+
+// MARK: - Small shared parts
+
+/// 묶음 이름. `label` 굵기 500 `ink-muted`.
 struct LumenSectionLabel: View {
     let text: String
     var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 10, weight: .medium))
-            .tracking(1.0)
-            .foregroundStyle(LumenTokens.TextColor.muted)
+        Text(text)
+            .lumenText(.label)
+            .foregroundStyle(LumenTokens.Palette.inkMuted)
     }
 }
 
+/// 단축키 표시. Still Code 부품(Geist Mono, `surface-raised`, `border-subtle`, `radius-xs`).
 struct LumenKbd: View {
     let label: String
     var primary: Bool = false
     var body: some View {
         Text(label)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(primary ? LumenTokens.TextColor.secondary : LumenTokens.TextColor.muted)
-            .padding(.horizontal, 4)
-            .frame(minWidth: 16, minHeight: 16)
-            .background(
-                RoundedRectangle(cornerRadius: LumenTokens.Radius.kbd)
-                    .fill(Color.white.opacity(0.04))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LumenTokens.Radius.kbd)
-                            .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                    )
-            )
+            .font(LumenFont.mono(LumenTextStyle.caption.size))
+            .foregroundStyle(primary ? LumenTokens.Palette.ink : LumenTokens.Palette.inkMuted)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(LumenTokens.Palette.surfaceRaised, in: LumenShape.rect(LumenTokens.Radius.xs))
+            .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
     }
 }
 
-/// Edge-faded hairline divider — 12% → 88% to match the design spec.
+/// 1px 구분선 `border-subtle`.
 struct LumenHairline: View {
     var body: some View {
         Rectangle()
-            .fill(
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: LumenTokens.divider, location: 0.12),
-                        .init(color: LumenTokens.divider, location: 0.88),
-                        .init(color: .clear, location: 1.0),
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
+            .fill(LumenTokens.Palette.borderSubtle)
             .frame(height: 1)
     }
 }
 
-/// Glass material wrapper — backdrop blur, ambient violet glow, top edge highlight.
-struct LumenGlassBackground: View {
-    var radius: CGFloat = LumenTokens.Radius.window
+/// 떠 있는 패널(런처, 메모, 설정 등) 바탕. 층 3: `bg` + `border-subtle`, `radius-xl`.
+/// 그림자는 창 밖으로 그려져야 해서 NSPanel의 `hasShadow`가 맡는다.
+struct LumenPanelBackground: View {
+    var radius: CGFloat = LumenTokens.Radius.xl
 
     var body: some View {
-        ZStack {
-            // Base material — uses .hudWindow vibrancy plus a tinted overlay so we
-            // pick up the desktop without losing the violet character of the window.
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-            LumenTokens.BG.window
-
-            // Top inner highlight (1px gradient).
-            VStack(spacing: 0) {
-                LinearGradient(
-                    colors: [.clear, Color.white.opacity(0.18), .clear],
-                    startPoint: .leading, endPoint: .trailing
-                )
-                .frame(height: 1)
-                Spacer(minLength: 0)
-            }
-            .allowsHitTesting(false)
-
-            // Ambient violet glow — top-left ellipse.
-            GeometryReader { geo in
-                Ellipse()
-                    .fill(LumenTokens.Accent.violet.opacity(0.18))
-                    .frame(width: 360, height: 200)
-                    .blur(radius: 60)
-                    .position(x: geo.size.width * 0.35, y: -20)
-            }
-            .allowsHitTesting(false)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(LumenTokens.strokeStrong, lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 20)
-        .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
-    }
-}
-
-/// NSVisualEffectView wrapper for use inside SwiftUI.
-struct VisualEffectBlur: NSViewRepresentable {
-    let material: NSVisualEffectView.Material
-    let blendingMode: NSVisualEffectView.BlendingMode
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = NSVisualEffectView()
-        v.material = material
-        v.blendingMode = blendingMode
-        v.state = .active
-        v.isEmphasized = true
-        return v
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
+        LumenShape.rect(radius)
+            .fill(LumenTokens.Palette.bg)
+            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
     }
 }

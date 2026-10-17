@@ -1,5 +1,7 @@
 import SwiftUI
 
+private typealias P = LumenTokens.Palette
+
 /// Cmd+, 로 열리는 macOS 기본 설정창의 루트 뷰.
 /// Jira 자격증명·옵션을 사이드바로 분리해 보여준다.
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
@@ -14,7 +16,7 @@ struct SettingsView: View {
             }
         }
 
-        /// asset 이름이 있으면 그쪽이 우선, 없으면 SF Symbol 폴백.
+        /// asset 이름이 있으면 그쪽이 우선, 없으면 Lucide 아이콘.
         var asset: String? {
             switch self {
             case .jira:       return "JiraLogo"
@@ -22,10 +24,10 @@ struct SettingsView: View {
             }
         }
 
-        var systemImage: String {
+        var icon: String {
             switch self {
-            case .hiddenApps: return "eye.slash"
-            default:          return "questionmark"
+            case .hiddenApps: return "eye-off"
+            default:          return "circle-help"
             }
         }
     }
@@ -35,32 +37,32 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+            Rectangle().fill(P.borderSubtle).frame(width: 1)
             contentArea
         }
-        .frame(width: 600, height: 540)
-        .background(LumenTokens.BG.windowSolid)
-        .preferredColorScheme(.dark)
+        .frame(width: 760, height: 640)
+        .background(P.bg)
     }
 
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 0) {
             LumenSectionLabel(text: "일반")
-                .padding(.horizontal, 18)
-                .padding(.top, 16)
-                .padding(.bottom, 10)
+                .padding(.horizontal, LumenTokens.Space.s5)
+                .padding(.top, LumenTokens.Space.pad)
+                .padding(.bottom, LumenTokens.Space.inline)
 
             ForEach(Tab.allCases, id: \.self) { tab in
                 SidebarRow(tab: tab, isSelected: tab == selection) {
                     selection = tab
                 }
+                .padding(.horizontal, LumenTokens.Space.inline)
             }
             Spacer()
         }
-        .frame(width: 168)
-        .background(Color.white.opacity(0.015))
+        .frame(width: 220)
+        .background(P.surface)
     }
 
     // MARK: - Content area
@@ -106,47 +108,32 @@ private struct SidebarRow: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(spacing: LumenTokens.Space.s3) {
                 tabIcon
-                    .foregroundStyle(isSelected ? LumenTokens.Accent.violetSoft : LumenTokens.TextColor.secondary)
-                    .frame(width: 24, alignment: .center)
+                    .foregroundStyle(isSelected ? P.brand : P.inkMuted)
+                    .frame(width: 20, height: 20)
                 Text(tab.label)
-                    .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
-                    .foregroundStyle(isSelected ? LumenTokens.TextColor.primary : LumenTokens.TextColor.secondary)
+                    .lumenText(.body, weight: isSelected ? .semibold : .medium)
+                    .foregroundStyle(isSelected ? P.brand : P.ink)
                 Spacer()
             }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 38, maxHeight: 38, alignment: .leading)
-            // hit-testable 배경 — 비선택 행도 row 전체가 클릭 영역이 되도록 거의 투명한 fill을
-            // 깔아둔다. 완전 .clear 면 SwiftUI가 픽셀이 없는 영역을 hit test에서 제외해
-            // Spacer/패딩 영역 클릭이 먹히지 않는 사례가 있다.
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? LumenTokens.Accent.violet.opacity(0.14) : Color.white.opacity(0.0001))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(isSelected ? LumenTokens.Accent.violetSoft.opacity(0.25) : .clear, lineWidth: 0.5)
-                    )
-            )
+            .padding(.vertical, LumenTokens.Space.s3)
+            .padding(.horizontal, LumenTokens.Space.s4)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .padding(.horizontal, 8)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LumenListRowStyle(isSelected: isSelected))
     }
 
     @ViewBuilder
     private var tabIcon: some View {
         if let asset = tab.asset {
-            // 자산 아이콘은 글리프 안에 padding이 있어 같은 frame이라도 작아 보인다 — 24pt까지 키움.
             Image(asset)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(height: 24)
         } else {
-            // SF Symbol은 글리프가 frame을 거의 다 채우므로 작게.
-            Image(systemName: tab.systemImage)
-                .font(.system(size: 11, weight: .medium))
+            LumenIcon(tab.icon)
         }
     }
 }
@@ -158,13 +145,16 @@ struct SettingsSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            LumenSectionLabel(text: title)
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
+            Text(title)
+                .lumenText(.title3)
+                .foregroundStyle(P.ink)
             content()
         }
     }
 }
 
+/// Still TextField 구조: 라벨(위) · 입력 상자 · 도움말(아래), 사이 간격 6.
 struct SettingsField<Content: View>: View {
     let label: String
     var hint: String? = nil
@@ -173,23 +163,22 @@ struct SettingsField<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+            HStack(spacing: LumenTokens.Space.inline) {
                 Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.secondary)
+                    .lumenText(.label)
+                    .foregroundStyle(P.inkMuted)
                 if dirty {
-                    Circle()
-                        .fill(LumenTokens.Accent.violetSoft)
-                        .frame(width: 5, height: 5)
-                        .shadow(color: LumenTokens.Accent.violetSoft, radius: 3)
+                    Text("변경됨")
+                        .lumenText(.caption)
+                        .foregroundStyle(P.inkFaint)
                 }
             }
             content()
             if let hint {
                 Text(hint)
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .lineSpacing(2)
+                    .lumenText(.caption)
+                    .foregroundStyle(P.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -204,40 +193,28 @@ struct LumenTextField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LumenTokens.Space.inline) {
             if secure {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
+                LumenIcon("lock")
+                    .foregroundStyle(P.inkFaint)
             }
             Group {
                 if secure {
                     SecureField(placeholder, text: $text)
-                        .font(.system(size: 12.5, design: .monospaced))
+                        .font(LumenFont.mono(LumenTextStyle.body.size))
                         .textContentType(.password)
                 } else {
                     TextField(placeholder, text: $text)
-                        .font(.system(size: 12.5, design: monospaced ? .monospaced : .default))
+                        .font(monospaced ? LumenFont.mono(LumenTextStyle.body.size) : LumenFont.style(.body))
                 }
             }
             .textFieldStyle(.plain)
-            .foregroundStyle(LumenTokens.TextColor.primary)
-            .tint(LumenTokens.Accent.violetSoft)
+            .foregroundStyle(P.ink)
+            .tint(P.brand)
             .focused($focused)
         }
-        .padding(.horizontal, 10)
-        .frame(height: 32)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.black.opacity(0.20))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(focused ? LumenTokens.Accent.violetSoft : LumenTokens.stroke,
-                                lineWidth: 0.5)
-                )
-                .shadow(color: focused ? LumenTokens.Accent.violet.opacity(0.18) : .clear,
-                        radius: focused ? 4 : 0)
-        )
+        .frame(minHeight: 24)
+        .lumenFieldChrome(focused: focused)
     }
 }
 
@@ -251,126 +228,42 @@ private struct ActionBar: View {
             EmptyView()
         } else {
             VStack(spacing: 0) {
-                Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-
-                // Restart notice strip
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
-                    Text("변경 사항은 앱을 재시작해야 반영됩니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(LumenTokens.TextColor.muted)
+                LumenHairline()
+                HStack(spacing: LumenTokens.Space.inline) {
+                    LumenIcon("info", size: .small)
+                    Text("바꾼 설정은 앱을 다시 시작하면 적용돼요.")
+                        .lumenText(.caption)
                     Spacer()
                 }
-                .padding(.horizontal, 18)
-                .frame(height: 26)
-                .background(Color.black.opacity(0.10))
+                .foregroundStyle(P.inkMuted)
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.top, LumenTokens.Space.s3)
 
-                Rectangle().fill(LumenTokens.divider).frame(height: 0.5)
-
-                // Buttons
-                HStack {
-                    ResetButton(action: viewModel.reset)
+                HStack(spacing: LumenTokens.Space.inline) {
+                    Button(action: viewModel.reset) {
+                        Label { Text("초기화") } icon: { LumenIcon("rotate-ccw") }
+                    }
+                    .buttonStyle(LumenButtonStyle(variant: .secondary))
                     Spacer()
                     if viewModel.saved {
-                        SavedIndicator()
-                            .transition(.opacity)
+                        HStack(spacing: LumenTokens.Space.s1) {
+                            LumenIcon("circle-check", size: .small)
+                                .foregroundStyle(P.success)
+                            Text("저장했어요")
+                                .lumenText(.label, weight: .regular)
+                                .foregroundStyle(P.inkMuted)
+                        }
+                        .transition(.opacity)
                     }
-                    SaveButton(prominent: viewModel.dirty, action: viewModel.save)
+                    Button("저장", action: viewModel.save)
+                        .buttonStyle(LumenButtonStyle(variant: .primary))
+                        .keyboardShortcut(.defaultAction)
                 }
-                .padding(.horizontal, 18)
-                .frame(height: 50)
-                .background(Color.black.opacity(0.18))
+                .padding(.horizontal, LumenTokens.Space.pad)
+                .padding(.vertical, LumenTokens.Space.s4)
             }
+            .background(P.surface)
         }
-    }
-}
-
-private struct SaveButton: View {
-    var prominent: Bool
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Text("저장")
-                    .font(.system(size: 12.5, weight: .medium))
-                Text("⏎")
-                    .font(.system(size: 9.5, design: .monospaced))
-                    .padding(.horizontal, 5)
-                    .frame(minWidth: 16, minHeight: 16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(LumenTokens.Accent.amber.opacity(0.35), lineWidth: 0.5)
-                    )
-            }
-            .foregroundStyle(LumenTokens.Accent.amber)
-            .padding(.horizontal, 14)
-            .frame(height: 30)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LumenTokens.BG.rowActive)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(LumenTokens.Accent.amber.opacity(prominent ? 0.55 : 0.35),
-                                    lineWidth: 0.5)
-                    )
-                    .shadow(color: LumenTokens.Accent.amber.opacity(prominent ? 0.18 : 0.10),
-                            radius: prominent ? 8 : 6)
-            )
-        }
-        .buttonStyle(.plain)
-        .keyboardShortcut(.defaultAction)
-    }
-}
-
-private struct ResetButton: View {
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 11, weight: .semibold))
-                Text("초기화")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundStyle(LumenTokens.ErrorTone.title)
-            .padding(.horizontal, 12)
-            .frame(height: 30)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(LumenTokens.ErrorTone.bg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(LumenTokens.ErrorTone.border, lineWidth: 0.5)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct SavedIndicator: View {
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 10, weight: .bold))
-            Text("저장됨")
-                .font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(LumenTokens.Accent.violetSoft)
-        .padding(.horizontal, 10)
-        .frame(height: 24)
-        .background(
-            Capsule()
-                .fill(LumenTokens.Accent.violet.opacity(0.10))
-                .overlay(
-                    Capsule()
-                        .stroke(LumenTokens.Accent.violetSoft.opacity(0.25), lineWidth: 0.5)
-                )
-        )
     }
 }
 
@@ -397,12 +290,12 @@ private struct JiraSettingsTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s7) {
                 SettingsSection(title: "Jira") {
                     SwitchRow(
                         on: $enabled,
                         title: "사용",
-                        description: "꺼져 있으면 Jira 대시보드 핫키와 메뉴 항목이 노출되지 않습니다. 자격증명은 꺼도 보존됩니다."
+                        description: "끄면 Jira 대시보드 단축키와 메뉴 항목이 보이지 않아요. 자격증명은 그대로 남아요."
                     ) { newValue in
                         CredentialsStore.shared.setJiraEnabled(newValue)
                     }
@@ -412,7 +305,7 @@ private struct JiraSettingsTab: View {
                     SwitchRow(
                         on: $iCalEnabled,
                         title: "iCal 연동",
-                        description: "macOS Calendar.app에 연동된 캘린더 일정을 Jira 월간·주간 뷰에 표시합니다. Google Calendar는 macOS 설정 > 인터넷 계정에서 연결하세요. 표시할 캘린더 선택은 Jira 패널에서 합니다."
+                        description: "macOS 캘린더 앱에 연결된 일정을 Jira 월간·주간 보기에 보여줘요. Google Calendar는 macOS 설정의 [인터넷 계정]에서 연결해 주세요. 보여줄 캘린더는 Jira 패널에서 고를 수 있어요."
                     ) { newValue in
                         CredentialsStore.shared.setICalEnabled(newValue)
                         Task { await EventKitService.shared.requestAccessAndFetch() }
@@ -421,7 +314,7 @@ private struct JiraSettingsTab: View {
                     SwitchRow(
                         on: $menuBarAgendaEnabled,
                         title: "메뉴바 캘린더 위젯",
-                        description: "메뉴바 우상단에 오늘의 다음 일정과 오늘 안건 popover를 띄웁니다. ⌘⇧A로도 열립니다."
+                        description: "메뉴바 오른쪽 위에 오늘의 다음 일정을 보여주고, 누르면 오늘 일정이 열려요. ⌘⇧A로도 열 수 있어요."
                     ) { newValue in
                         CredentialsStore.shared.setMenuBarAgendaEnabled(newValue)
                     }
@@ -430,73 +323,45 @@ private struct JiraSettingsTab: View {
                 if enabled {
                     SettingsSection(title: "Jira 자격증명") {
                         SettingsField(label: "워크스페이스 도메인",
-                                      hint: "https://{여기}.atlassian.net 의 서브도메인 부분만 — 예: your-workspace") {
+                                      hint: "https://{여기}.atlassian.net 에서 {여기} 부분만 적어 주세요. 예: your-workspace") {
                             LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
                         }
-                        SettingsField(label: "Email") {
+                        SettingsField(label: "이메일") {
                             LumenTextField(text: $email, placeholder: "you@example.com")
                         }
-                        SettingsField(label: "API Token",
-                                      hint: "Atlassian 계정 → 보안 → API 토큰에서 발급") {
+                        SettingsField(label: "API 토큰",
+                                      hint: "Atlassian 계정의 [보안] > [API 토큰]에서 만들 수 있어요.") {
                             LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
                         }
                     }
 
                     SettingsSection(title: "대시보드 조회 프로젝트") {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: LumenTokens.Space.inline) {
                             ForEach($projects) { $entry in
-                                HStack(spacing: 8) {
+                                HStack(spacing: LumenTokens.Space.inline) {
                                     LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
-                                        .frame(width: 130)
+                                        .frame(width: 160)
                                     LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
-                                    Button {
+                                    LumenIconButton(icon: "trash-2", label: "프로젝트 삭제") {
                                         projects.removeAll { $0.id == entry.id }
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(LumenTokens.TextColor.muted)
-                                            .frame(width: 28, height: 28)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                                            )
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                             Button {
                                 projects.append(JiraProjectEntry(key: "", name: ""))
                             } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 11, weight: .semibold))
-                                    Text("프로젝트 추가")
-                                        .font(.system(size: 12, weight: .medium))
-                                    Spacer()
-                                }
-                                .foregroundStyle(LumenTokens.Accent.violetSoft)
-                                .padding(.horizontal, 10)
-                                .frame(height: 32)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
-                                        .foregroundStyle(LumenTokens.stroke)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.015))
-                                        )
-                                )
+                                Label { Text("프로젝트 추가") } icon: { LumenIcon("plus") }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(LumenButtonStyle(variant: .secondary))
                         }
                         Text(jiraProjectsHint)
-                            .font(.system(size: 11))
-                            .foregroundStyle(LumenTokens.TextColor.muted)
-                            .lineSpacing(3)
+                            .lumenText(.caption)
+                            .foregroundStyle(P.inkFaint)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
+            .padding(LumenTokens.Space.s6)
         }
         .scrollIndicators(.hidden)
         .onAppear {
@@ -529,10 +394,10 @@ private struct JiraSettingsTab: View {
 
     /// 프로젝트 리스트 하단 도움말 — 기본값 폴백 메시지는 폴백 키가 있을 때만 보여준다.
     private var jiraProjectsHint: String {
-        let base = "Key는 대문자 식별자(예: PROJ) — API 호출용. 별칭은 비워두면 Key가 그대로 표시됩니다."
+        let base = "Key는 API 호출에 쓰는 대문자 식별자예요(예: PROJ). 별칭을 비워 두면 Key가 그대로 보여요."
         let defaults = Constants.defaultJiraProjectKeys
         guard !defaults.isEmpty else { return base }
-        return base + " 프로젝트를 모두 비우면 기본값(\(defaults.joined(separator: ", ")))으로 복원됩니다."
+        return base + " 프로젝트를 모두 지우면 기본값(\(defaults.joined(separator: ", ")))으로 돌아가요."
     }
 
     private func snapshot() -> String {
@@ -573,40 +438,26 @@ private struct SwitchRow: View {
     var onChange: (Bool) -> Void = { _ in }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LumenTokens.TextColor.primary)
-                Text(description)
-                    .font(.system(size: 12))
-                    .foregroundStyle(LumenTokens.TextColor.muted)
-                    .lineSpacing(3)
+        Toggle(isOn: Binding(
+            get: { on },
+            set: { newValue in
+                on = newValue
+                onChange(newValue)
             }
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { on },
-                set: { newValue in
-                    on = newValue
-                    onChange(newValue)
-                }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .tint(LumenTokens.Accent.violet)
-            .labelsHidden()
+        )) {
+            VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
+                Text(title)
+                    .lumenText(.body, weight: .medium)
+                    .foregroundStyle(P.ink)
+                Text(description)
+                    .lumenText(.label, weight: .regular)
+                    .foregroundStyle(P.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .toggleStyle(LumenSwitchStyle())
+        .padding(LumenTokens.Space.pad)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.02))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(LumenTokens.stroke, lineWidth: 0.5)
-                )
-        )
+        .lumenCard()
     }
 }
-

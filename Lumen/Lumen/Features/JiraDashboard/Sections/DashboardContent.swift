@@ -10,9 +10,9 @@ struct DashboardContent: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 PastColumn(data: data)
-                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                Rectangle().fill(LumenTokens.Palette.borderSubtle).frame(width: 1)
                 PresentColumn(data: data, selectedProject: $selectedProject)
-                Rectangle().fill(LumenTokens.divider).frame(width: 0.5)
+                Rectangle().fill(LumenTokens.Palette.borderSubtle).frame(width: 1)
                 FutureColumn(data: data)
             }
             .frame(maxHeight: .infinity)

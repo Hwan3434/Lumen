@@ -4,7 +4,7 @@ import Carbon.HIToolbox
 final class JiraDashboardFeature: BuiltInFeature {
     let name = "Jira 대시보드"
     let featureDescription = "Jira 이슈 현황"
-    let iconName = "square.grid.2x2"
+    let iconName = "layout-grid"
     let searchKeywords = ["jira", "지라", "태스크", "task", "이슈", "issue", "대시보드"]
 
     var isEnabled: Bool { JiraService.isAvailable }

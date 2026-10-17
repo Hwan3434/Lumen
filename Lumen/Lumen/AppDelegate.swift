@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppResourceMonitor.trace("applicationDidFinishLaunching:start")
 
         LumenStorage.purgeRetiredFilesIfNeeded()
+        LumenFont.register()
 
         let translator = TranslatorFeature()
         FeatureRegistry.shared.register(translator)

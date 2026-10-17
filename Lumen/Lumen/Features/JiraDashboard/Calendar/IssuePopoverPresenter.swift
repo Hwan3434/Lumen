@@ -84,18 +84,15 @@ private struct PreloadedIssuePopover: ViewModifier {
     }
 
     private var failureView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
             Text(issueKey ?? "")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LumenTokens.Accent.violetSoft)
-            Text(errorMessage ?? "내용을 불러오지 못했습니다.")
-                .font(.system(size: 11.5))
-                .foregroundStyle(LumenTokens.ErrorTone.title)
-                .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
+                .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
+                .foregroundStyle(LumenTokens.Palette.inkMuted)
+            LumenBanner(tone: .danger, title: "내용을 불러오지 못했어요", message: errorMessage)
         }
-        .padding(14)
+        .padding(LumenTokens.Space.pad)
         .frame(width: CalendarPreviewMetrics.width, alignment: .leading)
+        .background(LumenTokens.Palette.surfaceRaised)
     }
 
     private func load() {

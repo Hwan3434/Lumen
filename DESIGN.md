@@ -41,8 +41,10 @@ Lumen의 UI는 개인 디자인 시스템 **Still**을 따릅니다. 원본은 �
 - **모션**은 150 / 240 / 360ms와 Still 곡선(`Motion.easeOut/easeIn/easeMove`)만 씁니다. 반복 애니메이션(스피너, 반짝임)은 쓰지 않습니다.
 - **보이스**는 해요체입니다. 날짜 `2026. 10. 17 (토)`, 시간 `오후 2:30`, 범위는 반각 대시(`–`)를 씁니다.
 
-## 3. 화면 밀도와 테마 (설정 > UI)
-- **밀도 4단계** (`LumenDensity`, 앱을 켤 때 한 번 읽어서 바꾸면 재시작해야 반영돼요)
+## 3. 화면 밀도, 글래스, 테마 (설정 > UI)
+모두 고르는 즉시 반영돼요. 값은 `LumenUIStore`(Observation)에 있고, 토큰을 읽는 화면은 바뀔 때 알아서 다시 그려져요. 열려 있는 패널 크기는 `PanelWindowController.applyDensityToPanels()`가 맞춰요.
+
+- **밀도 4단계** (`LumenDensity`)
 
 | 단계 | 글자(목록 제목/보조) | 간격 | 창 크기 |
 |---|---|---|---|
@@ -52,6 +54,7 @@ Lumen의 UI는 개인 디자인 시스템 **Still**을 따릅니다. 원본은 �
 | 넓게 (`spacious`, 기본값) | Still 그대로 | Still 그대로 | Still 크기 |
 
 - 뷰에서는 숫자를 직접 쓰지 않고 토큰만 써요. 간격은 `Space.*` / `Space.scaled(n)`, 창·열 너비와 헤더 높이 같은 큰 치수는 `Space.size(n)`, 아이콘은 `LumenIcon.Size.*.points`, 창 크기는 `Constants.*WindowSize`예요. `n`에는 넓게(Still) 기준 값을 적어요.
+- 밀도에 따라 달라지는 값은 `static let`이나 루트 뷰의 저장 프로퍼티에 담지 않아요. 한 번 계산돼 고정되면 실시간으로 바뀌지 않아요.
 - 반경과 색은 모든 밀도에서 같아요.
-- **테마**(`LumenAppearance`): 시스템 설정 따름 / 다크 / 라이트. `NSApp.appearance`를 바꾸므로 바로 반영돼요.
-
+- **배경 글래스** (`LumenGlass`): 떠 있는 패널(`LumenPanelBackground`)에만 적용해요. 시스템 블러 위에 `bg`를 끄기 1 / 약하게 0.88 / 보통 0.76(기본값) / 강하게 0.6 불투명도로 깔아요. 설정·리소스 모니터 같은 일반 창과 카드·팝오버는 불투명 그대로예요.
+- **테마** (`LumenAppearance`): 시스템 설정 따름 / 다크 / 라이트. `NSApp.appearance`를 바꿔요.

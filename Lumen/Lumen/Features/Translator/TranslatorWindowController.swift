@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 final class TranslatorWindowController: PanelWindowController {
+    override var densityContentSize: NSSize? { Constants.translatorWindowSize }
+
     private var translatorViewModel: TranslatorViewModel?
     private var enterMonitor: Any?
 

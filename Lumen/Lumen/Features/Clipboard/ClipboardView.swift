@@ -6,7 +6,7 @@ struct ClipboardView: View {
     @State var viewModel = ClipboardViewModel()
     @State private var showDeleteAllConfirm = false
 
-    private let listColumnWidth = LumenTokens.Space.size(360)
+    private var listColumnWidth: CGFloat { LumenTokens.Space.size(360) }
     private let totalCapacity = 500
 
     var body: some View {

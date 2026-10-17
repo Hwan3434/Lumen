@@ -1,8 +1,18 @@
 import AppKit
+import Observation
 
-// 설정 > UI 탭에서 고르는 화면 밀도와 테마.
-// 밀도는 앱을 켤 때 한 번 읽어 토큰(글자 크기, 간격, 창 크기)을 정하므로 바꾸면 재시작해야 반영된다.
-// 테마는 NSApp.appearance만 바꾸면 되어 바로 반영된다.
+// 설정 > UI 탭에서 고르는 화면 밀도, 글래스 정도, 테마. 둘 다 바꾸는 즉시 반영된다.
+// 밀도와 글래스: 토큰(글자 크기, 간격, 창 크기, 패널 배경)이 `LumenUIStore`를 읽으므로, 토큰을 쓰는 SwiftUI 화면은
+// Observation 추적으로 알아서 다시 그려진다. 창 크기는 PanelWindowController가 따로 맞춘다.
+// 테마: NSApp.appearance만 바꾸면 된다.
+
+/// 지금 쓰는 밀도와 글래스 정도. body 안에서 토큰을 읽으면 이 값의 접근이 추적되어 바뀔 때 다시 그려진다.
+@Observable
+final class LumenUIStore {
+    static let shared = LumenUIStore()
+    var density: LumenDensity = LumenDensity.saved
+    var glass: LumenGlass = LumenGlass.saved
+}
 
 enum LumenDensity: String, CaseIterable {
     /// 예전 Lumen 밀도. Still 타입 스케일보다 작은 글자를 쓴다.
@@ -16,14 +26,16 @@ enum LumenDensity: String, CaseIterable {
 
     private static let key = "lumen.ui.density"
 
-    /// 이번 실행 동안 쓰는 밀도. 앱 시작 시 한 번만 읽는다.
-    static let current: LumenDensity =
-        UserDefaults.standard.string(forKey: key).flatMap(LumenDensity.init(rawValue:)) ?? .spacious
+    /// 지금 화면이 쓰는 밀도.
+    static var current: LumenDensity { LumenUIStore.shared.density }
 
-    /// 저장만 한다. 반영은 다음 실행부터.
+    /// 저장하고 바로 반영한다.
     static var saved: LumenDensity {
         get { UserDefaults.standard.string(forKey: key).flatMap(LumenDensity.init(rawValue:)) ?? .spacious }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: key)
+            LumenUIStore.shared.density = newValue
+        }
     }
 
     var label: String {
@@ -94,6 +106,42 @@ enum LumenAppearance: String, CaseIterable {
         case .system: nil
         case .dark:   NSAppearance(named: .darkAqua)
         case .light:  NSAppearance(named: .aqua)
+        }
+    }
+}
+
+/// 떠 있는 패널(런처, 메모 등) 배경을 얼마나 비치게 할지. 시스템 블러 위에 `bg`를 이 불투명도로 깐다.
+enum LumenGlass: String, CaseIterable {
+    case off, light, medium, strong
+
+    private static let key = "lumen.ui.glass"
+
+    static var current: LumenGlass { LumenUIStore.shared.glass }
+
+    static var saved: LumenGlass {
+        get { UserDefaults.standard.string(forKey: key).flatMap(LumenGlass.init(rawValue:)) ?? .medium }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: key)
+            LumenUIStore.shared.glass = newValue
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .off:    "끄기 (불투명)"
+        case .light:  "약하게"
+        case .medium: "보통"
+        case .strong: "강하게"
+        }
+    }
+
+    /// 블러 위에 까는 `bg`의 불투명도. 1이면 블러 없이 불투명.
+    var backgroundOpacity: Double {
+        switch self {
+        case .off:    1
+        case .light:  0.88
+        case .medium: 0.76
+        case .strong: 0.6
         }
     }
 }

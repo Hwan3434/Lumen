@@ -35,8 +35,8 @@ struct TimelineView: View {
     private let halfRangeWeeks: Int = 13   // ±3개월
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     /// 요일(caption) + 날짜(label) + 공휴일 이름(caption) + 위아래 여백.
-    private let dayHeaderHeight: CGFloat = LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + 12
-    private let laneHeight: CGFloat = LumenTextStyle.caption.lineHeight + 10
+    private var dayHeaderHeight: CGFloat { LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + 12 }
+    private var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 10 }
     private let laneSpacing: CGFloat = 3
     /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
     private let maxLanesVisible: Int = 999

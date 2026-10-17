@@ -23,8 +23,10 @@ struct MonthGridView: View {
 
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     /// 날짜 줄 + 막대 4줄 + "+N" 줄. WeekRow의 치수와 맞춘다.
-    private let weekRowHeight: CGFloat = WeekRow.topPadding + 4 * (WeekRow.laneHeight + WeekRow.laneSpacing)
-        + LumenTextStyle.caption.lineHeight + LumenTokens.Space.s1
+    private var weekRowHeight: CGFloat {
+        WeekRow.topPadding + 4 * (WeekRow.laneHeight + WeekRow.laneSpacing)
+            + LumenTextStyle.caption.lineHeight + LumenTokens.Space.s1
+    }
     /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 "+N" 으로.
     private let maxLanesPerWeek: Int = 4
 
@@ -195,9 +197,9 @@ private struct WeekRow: View {
     let weekStart: Date
     let layout: WeekLayout
     let today: Date
-    static let laneHeight: CGFloat = LumenTextStyle.caption.lineHeight + 6
+    static var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 6 }
     static let laneSpacing: CGFloat = 2
-    static let topPadding: CGFloat = LumenTextStyle.caption.lineHeight + 12  // 날짜 숫자 자리
+    static var topPadding: CGFloat { LumenTextStyle.caption.lineHeight + 12 }  // 날짜 숫자 자리
     private var laneHeight: CGFloat { Self.laneHeight }
     private var laneSpacing: CGFloat { Self.laneSpacing }
     private var topPadding: CGFloat { Self.topPadding }

@@ -5,7 +5,7 @@ private typealias P = LumenTokens.Palette
 /// 미리보기 popover의 공통 치수. 본 레이아웃뿐 아니라 호출자의 로딩/에러 상태도
 /// 같은 폭을 써야 popover가 상태 전환 때 흔들리지 않으므로 한 곳에서 관리한다.
 enum CalendarPreviewMetrics {
-    static let width = LumenDensity.current.pick(compact: CGFloat(480), cozy: 480, regular: 500, spacious: 520)
+    static var width: CGFloat { LumenDensity.current.pick(compact: 480, cozy: 480, regular: 500, spacious: 520) }
     /// 본문(설명/메모) 스크롤 영역의 최소 높이. ScrollView가 0으로 붕괴하지 않을 만큼만 준다 —
     /// 이걸 키우면 설명이 짧은 이슈에서 팝오버 한가운데가 빈 공간으로 남는다.
     static let bodyMinHeight: CGFloat = 44

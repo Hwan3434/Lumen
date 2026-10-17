@@ -6,7 +6,7 @@ private typealias P = LumenTokens.Palette
 struct TranslatorView: View {
     @State var viewModel: TranslatorViewModel
 
-    private let historyRailWidth = LumenTokens.Space.size(280)
+    private var historyRailWidth: CGFloat { LumenTokens.Space.size(280) }
 
     var body: some View {
         ZStack {

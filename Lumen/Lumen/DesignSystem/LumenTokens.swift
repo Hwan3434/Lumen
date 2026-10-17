@@ -61,28 +61,28 @@ enum LumenTokens {
 
     /// Still 간격을 화면 밀도(`LumenDensity`)에 맞게 줄인 값. 넓게(spacious)에서는 Still 값 그대로다.
     enum Space {
-        private static let d = LumenDensity.current
+        private static var d: LumenDensity { LumenDensity.current }
 
-        static let inline  = d.space(8)
-        static let stack   = d.space(12)
-        static let group   = d.space(24)
-        static let pad     = d.space(24)
-        static let section = d.space(64)
-        static let page    = d.space(32)
+        static var inline:  CGFloat { d.space(8) }
+        static var stack:   CGFloat { d.space(12) }
+        static var group:   CGFloat { d.space(24) }
+        static var pad:     CGFloat { d.space(24) }
+        static var section: CGFloat { d.space(64) }
+        static var page:    CGFloat { d.space(32) }
 
-        static let s1  = d.space(4)
-        static let s2  = d.space(8)
-        static let s3  = d.space(12)
-        static let s4  = d.space(16)
-        static let s5  = d.space(24)
-        static let s6  = d.space(32)
-        static let s7  = d.space(48)
-        static let s8  = d.space(64)
-        static let s9  = d.space(96)
-        static let s10 = d.space(128)
+        static var s1:  CGFloat { d.space(4) }
+        static var s2:  CGFloat { d.space(8) }
+        static var s3:  CGFloat { d.space(12) }
+        static var s4:  CGFloat { d.space(16) }
+        static var s5:  CGFloat { d.space(24) }
+        static var s6:  CGFloat { d.space(32) }
+        static var s7:  CGFloat { d.space(48) }
+        static var s8:  CGFloat { d.space(64) }
+        static var s9:  CGFloat { d.space(96) }
+        static var s10: CGFloat { d.space(128) }
 
         /// ListItem 줄의 세로 여백(Still 14).
-        static let rowY = d.space(14)
+        static var rowY: CGFloat { d.space(14) }
 
         /// 위 이름에 없는 Still 치수(헤더 높이, 칸 높이 등)를 밀도에 맞게 줄일 때 쓴다.
         static func scaled(_ base: CGFloat) -> CGFloat { d.space(base) }
@@ -280,16 +280,17 @@ enum LumenFont {
         return NSFont(descriptor: desc, size: size) ?? .systemFont(ofSize: size)
     }
 
-    @MainActor private static var lineSpacingCache: [LumenTextStyle: CGFloat] = [:]
+    @MainActor private static var lineSpacingCache: [String: CGFloat] = [:]
 
     /// Still 행간(lineHeight)을 맞추려면 글꼴 자체 높이를 뺀 나머지를 lineSpacing으로 준다.
     /// 모든 Text의 body에서 불리므로 스타일별로 한 번만 계산한다.
     static func extraLineSpacing(_ style: LumenTextStyle) -> CGFloat {
         MainActor.assumeIsolated {
-            if let cached = lineSpacingCache[style] { return cached }
+            let key = "\(LumenDensity.current.rawValue)|\(style)"
+            if let cached = lineSpacingCache[key] { return cached }
             let f = nsFont(family: style.isMono ? "Geist Mono" : "SUIT Variable", size: style.size)
             let spacing = max(0, style.lineHeight - (f.ascender - f.descender + f.leading))
-            lineSpacingCache[style] = spacing
+            lineSpacingCache[key] = spacing
             return spacing
         }
     }
@@ -423,14 +424,40 @@ struct LumenHairline: View {
     }
 }
 
-/// 떠 있는 패널(런처, 메모, 설정 등) 바탕. 층 3: `bg` + `border-subtle`, `radius-xl`.
+/// 떠 있는 패널(런처, 메모 등) 바탕. 층 3: `bg` + `border-subtle`, `radius-xl`.
+/// Still은 떠 있는 레이어에 반투명 블러를 허용한다 — 설정 > UI의 글래스 정도만큼 `bg`를 비치게 한다.
 /// 그림자는 창 밖으로 그려져야 해서 NSPanel의 `hasShadow`가 맡는다.
 struct LumenPanelBackground: View {
     var radius: CGFloat = LumenTokens.Radius.xl
 
     var body: some View {
-        LumenShape.rect(radius)
-            .fill(LumenTokens.Palette.bg)
-            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+        let glass = LumenGlass.current
+        ZStack {
+            if glass != .off {
+                VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
+            }
+            LumenTokens.Palette.bg.opacity(glass.backgroundOpacity)
+        }
+        .clipShape(LumenShape.rect(radius))
+        .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+    }
+}
+
+/// NSVisualEffectView를 SwiftUI에서 쓰기 위한 래퍼.
+struct VisualEffectBlur: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = material
+        v.blendingMode = blendingMode
+        v.state = .active
+        return v
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
     }
 }

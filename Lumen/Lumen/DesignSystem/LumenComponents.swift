@@ -123,9 +123,9 @@ struct LumenIconButton: View {
     var variant: LumenButtonStyle.Variant = .ghost
     let action: () -> Void
 
-    static let side = LumenTokens.Space.size(40)
+    static var side: CGFloat { LumenTokens.Space.size(40) }
     /// 본문 한 줄 안에 넣을 때 줄 높이를 늘리지 않도록 위아래로 겹치게 할 양.
-    static let inlineOverhang = max(0, (side - LumenTextStyle.body.lineHeight) / 2)
+    static var inlineOverhang: CGFloat { max(0, (side - LumenTextStyle.body.lineHeight) / 2) }
 
     var body: some View {
         Button(action: action) {
@@ -337,8 +337,8 @@ struct LumenListRowStyle: ButtonStyle {
 /// 즉시 적용되는 켜고 끄기. 트랙 52 × 32, 손잡이 26.
 /// 줄 전체가 버튼이라 라벨을 눌러도 바뀌고, 키보드(스페이스)와 VoiceOver에서는 스위치로 읽힌다.
 struct LumenSwitchStyle: ToggleStyle {
-    private static let trackHeight = LumenDensity.current.pick(compact: CGFloat(20), cozy: 24, regular: 28, spacious: 32)
-    private static let trackWidth = trackHeight * 52 / 32
+    private static var trackHeight: CGFloat { LumenDensity.current.pick(compact: 20, cozy: 24, regular: 28, spacious: 32) }
+    private static var trackWidth: CGFloat { trackHeight * 52 / 32 }
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -456,7 +456,7 @@ struct LumenEmptyState: View {
 struct LumenDot: View {
     let color: Color
 
-    private static let side = LumenDensity.current.pick(compact: CGFloat(6), cozy: 8, regular: 8, spacious: 8)
+    private static var side: CGFloat { LumenDensity.current.pick(compact: 6, cozy: 8, regular: 8, spacious: 8) }
 
     var body: some View {
         Circle()

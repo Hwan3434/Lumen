@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 final class ResourceMonitorWindowController: PanelWindowController {
-    private static let panelSize = Constants.resourceWindowSize
+    private static var panelSize: NSSize { Constants.resourceWindowSize }
+    override var densityContentSize: NSSize? { Self.panelSize }
 
     override func createPanel() -> KeyablePanel {
         let panel = KeyablePanel(

@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 final class WindowMagnetWindowController: PanelWindowController {
-    private static let panelSize = Constants.magnetWindowSize
+    private static var panelSize: NSSize { Constants.magnetWindowSize }
+    override var densityContentSize: NSSize? { Self.panelSize }
     private var viewModel: WindowMagnetViewModel?
     private var targetApp: NSRunningApplication?
     private let manager: WindowMagnetManager

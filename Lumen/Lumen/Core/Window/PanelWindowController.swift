@@ -132,4 +132,19 @@ class PanelWindowController: NSObject {
 
     /// 매 hide마다 orderOut 직전에 호출 — event monitor 해제 등.
     func willHide() {}
+
+    /// 화면 밀도에 따른 패널 크기. nil이면 밀도가 바뀌어도 크기를 건드리지 않는다.
+    var densityContentSize: NSSize? { nil }
+
+    /// 밀도가 바뀌면 이미 만들어진 패널을 새 크기로 맞춘다. 가운데 위치는 유지한다.
+    /// 내용(SwiftUI)은 토큰을 읽고 있어 스스로 다시 그려진다.
+    static func applyDensityToPanels() {
+        for controller in registry.allObjects {
+            guard let panel = controller.panel, let size = controller.densityContentSize else { continue }
+            let old = panel.frame
+            let frame = NSRect(x: old.midX - size.width / 2, y: old.midY - size.height / 2,
+                               width: size.width, height: size.height)
+            panel.setFrame(frame, display: panel.isVisible, animate: false)
+        }
+    }
 }

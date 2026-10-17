@@ -435,14 +435,22 @@ struct LumenPanelBackground: View {
     var radius: CGFloat = LumenTokens.Radius.xl
 
     var body: some View {
+        LumenGlassFill()
+            .clipShape(LumenShape.rect(radius))
+        .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+    }
+}
+
+/// 글래스 바탕: 설정 > UI의 투명도만큼 시스템 블러 위에 `bg`를 깐다. 0%면 불투명한 `bg`.
+/// 떠 있는 패널과 설정 창이 같이 쓴다.
+struct LumenGlassFill: View {
+    var body: some View {
         ZStack {
             if LumenGlass.isOn {
                 VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
             }
             LumenTokens.Palette.bg.opacity(LumenGlass.backgroundOpacity)
         }
-        .clipShape(LumenShape.rect(radius))
-        .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
     }
 }
 

@@ -113,7 +113,7 @@ enum LumenAppearance: String, CaseIterable {
 /// 떠 있는 패널(런처, 메모 등) 배경을 얼마나 비치게 할지. 시스템 블러 위에 `bg`를 (1 − 투명도)만큼 깐다.
 enum LumenGlass {
     /// 투명도 상한. 이보다 비치면 뒤 화면에 글자가 묻힌다.
-    static let maxTransparency = 0.6
+    static let maxTransparency = 0.8
 
     private static let key = "lumen.ui.glass.transparency"
 

@@ -43,7 +43,8 @@ struct SettingsView: View {
             contentArea
         }
         .frame(width: Constants.settingsWindowSize.width, height: Constants.settingsWindowSize.height)
-        .background(P.bg)
+        // 창 배경 자체를 글래스로 — 떠 있는 패널과 같은 투명도를 쓴다.
+        .containerBackground(for: .window) { LumenGlassFill() }
     }
 
     // MARK: - Sidebar
@@ -64,7 +65,7 @@ struct SettingsView: View {
             Spacer()
         }
         .frame(width: LumenTokens.Space.size(220))
-        .background(P.surface)
+        .background(P.panelSurface)
     }
 
     // MARK: - Content area
@@ -265,7 +266,7 @@ private struct ActionBar: View {
                 .padding(.horizontal, LumenTokens.Space.pad)
                 .padding(.vertical, LumenTokens.Space.s4)
             }
-            .background(P.surface)
+            .background(P.panelSurface)
         }
     }
 }

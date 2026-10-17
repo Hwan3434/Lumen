@@ -34,8 +34,9 @@ struct TimelineView: View {
     private static let cal = Calendar.current
     private let halfRangeWeeks: Int = 13   // ±3개월
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-    private let dayHeaderHeight: CGFloat = 64
-    private let laneHeight: CGFloat = 26
+    /// 요일(caption) + 날짜(label) + 공휴일 이름(caption) + 위아래 여백.
+    private let dayHeaderHeight: CGFloat = LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + 12
+    private let laneHeight: CGFloat = LumenTextStyle.caption.lineHeight + 10
     private let laneSpacing: CGFloat = 3
     /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
     private let maxLanesVisible: Int = 999
@@ -86,7 +87,7 @@ struct TimelineView: View {
             Text(weekLabel)
                 .lumenText(.title3)
                 .foregroundStyle(P.ink)
-                .frame(minWidth: 140, alignment: .leading)
+                .frame(minWidth: LumenTokens.Space.size(140), alignment: .leading)
 
             Button("오늘") {
                 anchorDate = Date()
@@ -144,8 +145,8 @@ struct TimelineView: View {
                                 .lumenText(.caption, weight: .medium)
                                 .monospacedDigit()
                                 .foregroundStyle(P.inkFaint)
-                                .padding(.leading, CGFloat(col) * dayWidth + 4)
-                                .padding(.top, CGFloat(maxLanesVisible) * (laneHeight + laneSpacing) + 4)
+                                .padding(.leading, CGFloat(col) * dayWidth + LumenTokens.Space.scaled(4))
+                                .padding(.top, CGFloat(maxLanesVisible) * (laneHeight + laneSpacing) + LumenTokens.Space.scaled(4))
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                     }

@@ -12,7 +12,7 @@ struct NoteView: View {
             LumenPanelBackground()
             HStack(spacing: 0) {
                 NotesSidebar(viewModel: viewModel)
-                    .frame(width: 240)
+                    .frame(width: LumenTokens.Space.size(240))
                 Rectangle().fill(P.borderSubtle).frame(width: 1)
                 mainPane
             }
@@ -55,7 +55,7 @@ struct NoteView: View {
             }
             .padding(.horizontal, LumenTokens.Space.pad)
         }
-        .frame(height: 56)
+        .frame(height: LumenTokens.Space.size(56))
     }
 
     private var activeTitle: String {
@@ -166,7 +166,7 @@ private struct NotesSidebar: View {
             .padding(.leading, LumenTokens.Space.s4)
             .padding(.trailing, LumenTokens.Space.inline)
         }
-        .frame(height: 56)
+        .frame(height: LumenTokens.Space.size(56))
     }
 }
 
@@ -200,7 +200,7 @@ private struct DraggableSidebarRow: View {
                 onSelect: {},
                 onDelete: {}
             )
-            .frame(width: 224)
+            .frame(width: LumenTokens.Space.size(224))
             .opacity(0.85)
         }
         .onDrop(of: [.text], delegate: NoteReorderDelegate(
@@ -243,7 +243,7 @@ private struct TrailingDropZone: View {
     var body: some View {
         Color.clear
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(minHeight: 40)
+            .frame(minHeight: LumenTokens.Space.size(40))
             .onDrop(of: [.text], delegate: TrailingDropDelegate(
                 viewModel: viewModel,
                 draggingID: $draggingID
@@ -299,7 +299,7 @@ private struct SidebarRow: View {
                     }
                     if isHovering, canDelete {
                         LumenIconButton(icon: "trash-2", label: "노트 삭제", action: onDelete)
-                            .padding(.vertical, -10)
+                            .padding(.vertical, -LumenIconButton.inlineOverhang)
                     }
                 }
                 if !note.preview.isEmpty {

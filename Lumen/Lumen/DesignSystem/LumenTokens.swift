@@ -59,24 +59,36 @@ enum LumenTokens {
 
     // MARK: - Spacing (4px 단위)
 
+    /// Still 간격을 화면 밀도(`LumenDensity`)에 맞게 줄인 값. 넓게(spacious)에서는 Still 값 그대로다.
     enum Space {
-        static let inline: CGFloat  = 8
-        static let stack: CGFloat   = 12
-        static let group: CGFloat   = 24
-        static let pad: CGFloat     = 24
-        static let section: CGFloat = 64
-        static let page: CGFloat    = 32
+        private static let d = LumenDensity.current
 
-        static let s1: CGFloat = 4
-        static let s2: CGFloat = 8
-        static let s3: CGFloat = 12
-        static let s4: CGFloat = 16
-        static let s5: CGFloat = 24
-        static let s6: CGFloat = 32
-        static let s7: CGFloat = 48
-        static let s8: CGFloat = 64
-        static let s9: CGFloat = 96
-        static let s10: CGFloat = 128
+        static let inline  = d.space(8)
+        static let stack   = d.space(12)
+        static let group   = d.space(24)
+        static let pad     = d.space(24)
+        static let section = d.space(64)
+        static let page    = d.space(32)
+
+        static let s1  = d.space(4)
+        static let s2  = d.space(8)
+        static let s3  = d.space(12)
+        static let s4  = d.space(16)
+        static let s5  = d.space(24)
+        static let s6  = d.space(32)
+        static let s7  = d.space(48)
+        static let s8  = d.space(64)
+        static let s9  = d.space(96)
+        static let s10 = d.space(128)
+
+        /// ListItem 줄의 세로 여백(Still 14).
+        static let rowY = d.space(14)
+
+        /// 위 이름에 없는 Still 치수(헤더 높이, 칸 높이 등)를 밀도에 맞게 줄일 때 쓴다.
+        static func scaled(_ base: CGFloat) -> CGFloat { d.space(base) }
+
+        /// 창·열 너비, 헤더 높이 같은 큰 치수(Still 기준)를 밀도에 맞게 줄인다.
+        static func size(_ base: CGFloat) -> CGFloat { d.size(base) }
     }
 
     // MARK: - Radius
@@ -157,32 +169,51 @@ enum LumenShape {
 enum LumenTextStyle {
     case display, title1, title2, title3, bodyLarge, body, label, caption, codeBlock
 
-    var size: CGFloat {
-        switch self {
-        case .display: 56
-        case .title1: 40
-        case .title2: 28
-        case .title3: 20
-        case .bodyLarge: 18
-        case .body: 16
-        case .label, .codeBlock: 14
-        case .caption: 12
+    /// 글자 크기와 행간. 넓게·보통은 Still 그대로, 촘촘은 Still 단계 안에서 한 칸씩 작게,
+    /// 아주 촘촘은 예전 Lumen 크기(Still 밖)다.
+    private var metrics: (size: CGFloat, lineHeight: CGFloat) {
+        switch LumenDensity.current {
+        case .spacious, .regular:
+            switch self {
+            case .display: (56, 64)
+            case .title1: (40, 48)
+            case .title2: (28, 36)
+            case .title3: (20, 28)
+            case .bodyLarge: (18, 30)
+            case .body: (16, 26)
+            case .label: (14, 20)
+            case .caption: (12, 16)
+            case .codeBlock: (14, 22)
+            }
+        case .cozy:
+            switch self {
+            case .display: (40, 48)
+            case .title1: (28, 36)
+            case .title2: (20, 28)
+            case .title3: (18, 26)
+            case .bodyLarge: (16, 24)
+            case .body: (14, 20)
+            case .label: (12, 16)
+            case .caption: (12, 16)
+            case .codeBlock: (12, 18)
+            }
+        case .compact:
+            switch self {
+            case .display: (32, 40)
+            case .title1: (24, 30)
+            case .title2: (18, 24)
+            case .title3: (15, 20)
+            case .bodyLarge: (14, 20)
+            case .body: (13, 18)
+            case .label: (12, 16)
+            case .caption: (11, 14)
+            case .codeBlock: (12, 16)
+            }
         }
     }
 
-    var lineHeight: CGFloat {
-        switch self {
-        case .display: 64
-        case .title1: 48
-        case .title2: 36
-        case .title3: 28
-        case .bodyLarge: 30
-        case .body: 26
-        case .label: 20
-        case .caption: 16
-        case .codeBlock: 22
-        }
-    }
+    var size: CGFloat { metrics.size }
+    var lineHeight: CGFloat { metrics.lineHeight }
 
     /// em 단위 자간. 큰 제목일수록 살짝 좁힌다.
     var tracking: CGFloat {
@@ -376,8 +407,8 @@ struct LumenKbd: View {
         Text(label)
             .font(LumenFont.mono(LumenTextStyle.caption.size))
             .foregroundStyle(primary ? LumenTokens.Palette.ink : LumenTokens.Palette.inkMuted)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, LumenTokens.Space.scaled(6))
+            .padding(.vertical, LumenTokens.Space.scaled(2))
             .background(LumenTokens.Palette.surfaceRaised, in: LumenShape.rect(LumenTokens.Radius.xs))
             .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
     }

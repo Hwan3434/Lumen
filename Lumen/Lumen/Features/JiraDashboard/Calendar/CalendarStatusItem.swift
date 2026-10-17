@@ -63,7 +63,7 @@ final class CalendarStatusItem {
         guard let button = handle.buttonView,
               let buttonWindow = button.window else { return }
 
-        let size = NSSize(width: 380, height: 520)
+        let size = Constants.agendaPanelSize
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],

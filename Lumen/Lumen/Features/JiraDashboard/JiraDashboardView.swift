@@ -2,7 +2,7 @@ import SwiftUI
 
 private typealias P = LumenTokens.Palette
 
-/// 통합 Jira 패널 메인 뷰 — 1320×860pt 패널, 통합 헤더 + 탭 컨텐츠.
+/// 통합 Jira 패널 메인 뷰 — `Constants.jiraWindowSize` 패널, 통합 헤더 + 탭 컨텐츠.
 /// 탭: 대시보드 / 캘린더(월간·주간 토글). 모두 같은 JiraService.shared 데이터 위에서.
 ///
 /// 단축키: ⌘1 = 대시보드, ⌘2 = 캘린더(월간), ⌘3 = 캘린더(주간).
@@ -42,7 +42,7 @@ struct JiraDashboardView: View {
                 JiraFullPanelEmpty()
             }
         }
-        .frame(width: 1320, height: 860)
+        .frame(width: Constants.jiraWindowSize.width, height: Constants.jiraWindowSize.height)
         .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
         .onAppear {
             Task { await service.fetch() }
@@ -180,7 +180,7 @@ struct FilterChip: View {
                 Circle()
                     .strokeBorder(color, lineWidth: 2)
                     .background(Circle().fill(isOn ? color : .clear))
-                    .frame(width: 10, height: 10)
+                    .frame(width: LumenTokens.Space.scaled(10), height: LumenTokens.Space.scaled(10))
                 Text(label)
                     .lumenText(.label)
                     .foregroundStyle(isOn ? P.ink : P.inkFaint)
@@ -189,8 +189,8 @@ struct FilterChip: View {
                         .foregroundStyle(P.inkMuted)
                 }
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
+            .padding(.vertical, LumenTokens.Space.scaled(6))
+            .padding(.horizontal, LumenTokens.Space.scaled(12))
             .background(isOn ? P.surface : .clear, in: LumenShape.rect(LumenTokens.Radius.md))
             .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(P.borderSubtle, lineWidth: 1))
             .contentShape(Rectangle())

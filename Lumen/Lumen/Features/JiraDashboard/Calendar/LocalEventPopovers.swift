@@ -35,7 +35,7 @@ struct NewEventPopover: View {
             onPrimary: commit,
             secondary: nil
         )
-        .frame(width: 360)
+        .frame(width: LumenTokens.Space.size(360))
         .onAppear { DispatchQueue.main.async { titleFocused = true } }
     }
 
@@ -82,7 +82,7 @@ struct LocalEventEditPopover: View {
             onPrimary: save,
             secondary: ("삭제", delete)
         )
-        .frame(width: 360)
+        .frame(width: LumenTokens.Space.size(360))
     }
 
     private func save() {

@@ -33,7 +33,7 @@ struct IssuePreviewPopover: View {
             } else if let msg = errorMessage {
                 errorView(msg)
             } else {
-                Color.clear.frame(width: CalendarPreviewMetrics.width, height: 100)
+                Color.clear.frame(width: CalendarPreviewMetrics.width, height: LumenTokens.Space.size(100))
             }
         }
         .task { await load() }

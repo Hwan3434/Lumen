@@ -40,3 +40,18 @@ Lumen의 UI는 개인 디자인 시스템 **Still**을 따릅니다. 원본은 �
 - **아이콘은 Lucide만.** 크기는 16 / 20 / 24. 예외: 메뉴바의 날짜 숫자 아이콘(`17.square.fill`)은 Lucide에 없어 SF Symbol을 씁니다.
 - **모션**은 150 / 240 / 360ms와 Still 곡선(`Motion.easeOut/easeIn/easeMove`)만 씁니다. 반복 애니메이션(스피너, 반짝임)은 쓰지 않습니다.
 - **보이스**는 해요체입니다. 날짜 `2026. 10. 17 (토)`, 시간 `오후 2:30`, 범위는 반각 대시(`–`)를 씁니다.
+
+## 3. 화면 밀도와 테마 (설정 > UI)
+- **밀도 4단계** (`LumenDensity`, 앱을 켤 때 한 번 읽어서 바꾸면 재시작해야 반영돼요)
+
+| 단계 | 글자(목록 제목/보조) | 간격 | 창 크기 |
+|---|---|---|---|
+| 아주 촘촘하게 (`compact`) | 13 / 11px — Still 밖 예외 | Still의 0.5배 | 예전 Lumen 크기 |
+| 촘촘하게 (`cozy`) | 14 / 12px — Still 단계 안 | 0.67배 | 예전 크기에 가깝게 |
+| 보통 (`regular`) | Still 그대로 | 0.75배 | 중간 |
+| 넓게 (`spacious`, 기본값) | Still 그대로 | Still 그대로 | Still 크기 |
+
+- 뷰에서는 숫자를 직접 쓰지 않고 토큰만 써요. 간격은 `Space.*` / `Space.scaled(n)`, 창·열 너비와 헤더 높이 같은 큰 치수는 `Space.size(n)`, 아이콘은 `LumenIcon.Size.*.points`, 창 크기는 `Constants.*WindowSize`예요. `n`에는 넓게(Still) 기준 값을 적어요.
+- 반경과 색은 모든 밀도에서 같아요.
+- **테마**(`LumenAppearance`): 시스템 설정 따름 / 다크 / 라이트. `NSApp.appearance`를 바꾸므로 바로 반영돼요.
+

@@ -7,11 +7,12 @@ private typealias P = LumenTokens.Palette
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
 struct SettingsView: View {
     enum Tab: String, Hashable, CaseIterable {
-        case jira, hiddenApps
+        case jira, ui, hiddenApps
 
         var label: String {
             switch self {
             case .jira:       return "Jira"
+            case .ui:         return "UI"
             case .hiddenApps: return "숨긴 앱"
             }
         }
@@ -26,6 +27,7 @@ struct SettingsView: View {
 
         var icon: String {
             switch self {
+            case .ui:         return "palette"
             case .hiddenApps: return "eye-off"
             default:          return "circle-help"
             }
@@ -40,7 +42,7 @@ struct SettingsView: View {
             Rectangle().fill(P.borderSubtle).frame(width: 1)
             contentArea
         }
-        .frame(width: 760, height: 640)
+        .frame(width: Constants.settingsWindowSize.width, height: Constants.settingsWindowSize.height)
         .background(P.bg)
     }
 
@@ -61,7 +63,7 @@ struct SettingsView: View {
             }
             Spacer()
         }
-        .frame(width: 220)
+        .frame(width: LumenTokens.Space.size(220))
         .background(P.surface)
     }
 
@@ -78,6 +80,7 @@ struct SettingsView: View {
     private var tabContent: some View {
         switch selection {
         case .jira:       JiraSettingsTab(action: actionVM)
+        case .ui:         UISettingsTab(action: actionVM)
         case .hiddenApps: HiddenAppsSettingsTab(action: actionVM)
         }
     }
@@ -111,7 +114,7 @@ private struct SidebarRow: View {
             HStack(spacing: LumenTokens.Space.s3) {
                 tabIcon
                     .foregroundStyle(isSelected ? P.brand : P.inkMuted)
-                    .frame(width: 20, height: 20)
+                    .frame(width: LumenIcon.Size.regular.points, height: LumenIcon.Size.regular.points)
                 Text(tab.label)
                     .lumenText(.body, weight: isSelected ? .semibold : .medium)
                     .foregroundStyle(isSelected ? P.brand : P.ink)
@@ -213,7 +216,7 @@ struct LumenTextField: View {
             .tint(P.brand)
             .focused($focused)
         }
-        .frame(minHeight: 24)
+        .frame(minHeight: LumenTokens.Space.scaled(24))
         .lumenFieldChrome(focused: focused)
     }
 }
@@ -340,7 +343,7 @@ private struct JiraSettingsTab: View {
                             ForEach($projects) { $entry in
                                 HStack(spacing: LumenTokens.Space.inline) {
                                     LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
-                                        .frame(width: 160)
+                                        .frame(width: LumenTokens.Space.size(160))
                                     LumenTextField(text: $entry.name, placeholder: "별칭 (선택)")
                                     LumenIconButton(icon: "trash-2", label: "프로젝트 삭제") {
                                         projects.removeAll { $0.id == entry.id }

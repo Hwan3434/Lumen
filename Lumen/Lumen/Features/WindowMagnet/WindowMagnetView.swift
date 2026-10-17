@@ -19,7 +19,7 @@ struct WindowMagnetView: View {
                     Spacer()
                 }
                 .padding(.horizontal, LumenTokens.Space.pad)
-                .frame(height: 56)
+                .frame(height: LumenTokens.Space.size(56))
 
                 LumenHairline()
 
@@ -31,7 +31,7 @@ struct WindowMagnetView: View {
                                 .lumenText(.body, weight: selected ? .semibold : .medium)
                                 .foregroundStyle(selected ? P.brand : P.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 14)
+                                .padding(.vertical, LumenTokens.Space.scaled(14))
                                 .padding(.horizontal, LumenTokens.Space.s4)
                                 .background(selected ? P.brandSoft : .clear, in: LumenShape.rect(LumenTokens.Radius.md))
                                 .contentShape(Rectangle())

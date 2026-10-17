@@ -16,8 +16,8 @@ struct ProjectChip: View {
                 .lumenText(.caption, weight: .semibold)
                 .foregroundStyle(P.inkMuted)
         }
-        .padding(.vertical, 2)
-        .padding(.horizontal, 8)
+        .padding(.vertical, LumenTokens.Space.scaled(2))
+        .padding(.horizontal, LumenTokens.Space.scaled(8))
         .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(P.borderSubtle, lineWidth: 1))
     }
 }
@@ -36,7 +36,7 @@ struct PriorityDot: View {
                 Color.clear
             }
         }
-        .frame(width: 16, height: 16)
+        .frame(width: LumenIcon.Size.small.points, height: LumenIcon.Size.small.points)
     }
 }
 
@@ -314,7 +314,7 @@ struct JiraFullPanelError: View {
             }
             .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
         }
-        .frame(maxWidth: 480)
+        .frame(maxWidth: LumenTokens.Space.size(480))
         .padding(LumenTokens.Space.s6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -381,7 +381,7 @@ struct JiraHeader<LeadingNav: View, TrailingControls: View>: View {
             }
         }
         .padding(.horizontal, LumenTokens.Space.pad)
-        .frame(height: 72)
+        .frame(height: LumenTokens.Space.size(72))
     }
 }
 

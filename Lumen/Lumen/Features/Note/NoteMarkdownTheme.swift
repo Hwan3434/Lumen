@@ -78,7 +78,7 @@ extension MarkdownUI.Theme {
             HStack(spacing: 0) {
                 Rectangle()
                     .fill(P.borderStrong)
-                    .frame(width: 2)
+                    .frame(width: LumenTokens.Space.scaled(2))
                 configuration.label
                     .markdownTextStyle {
                         ForegroundColor(P.inkMuted)

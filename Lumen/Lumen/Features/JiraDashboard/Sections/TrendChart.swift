@@ -74,7 +74,7 @@ struct TrendChart: View {
                     }
                 }
             }
-            .frame(height: 80)
+            .frame(height: LumenTokens.Space.size(80))
 
             HStack(spacing: 0) {
                 ForEach(0..<30) { i in
@@ -90,7 +90,7 @@ struct TrendChart: View {
                     }
                 }
             }
-            .frame(height: 16)
+            .frame(height: LumenTokens.Space.scaled(16))
         }
         .padding(.horizontal, LumenTokens.Space.pad)
         .padding(.vertical, LumenTokens.Space.s4)

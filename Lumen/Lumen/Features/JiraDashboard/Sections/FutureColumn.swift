@@ -24,7 +24,7 @@ struct FutureColumn: View {
             }
             .padding(LumenTokens.Space.pad)
         }
-        .frame(width: 380)
+        .frame(width: Constants.jiraFutureColumnWidth)
     }
 
     private var backlogSection: some View {
@@ -140,10 +140,10 @@ struct SprintCard: View {
                     Capsule().fill(P.chartGrid)
                     Capsule()
                         .fill(jiraProjectColor(sprint.projectKey))
-                        .frame(width: geo.size.width * CGFloat(sprint.completionPct) / 100)
+                        .frame(width: geo.size.width * CGFloat(sprint.completionPct) / LumenTokens.Space.size(100))
                 }
             }
-            .frame(height: 8)
+            .frame(height: LumenTokens.Space.scaled(8))
 
             HStack {
                 Text("\(sprint.completedIssues) / \(sprint.totalIssues)건 완료")

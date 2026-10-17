@@ -64,7 +64,7 @@ struct SearchView: View {
             trailing: { LumenKbd(label: "⌘K") }
         )
         .padding(.horizontal, LumenTokens.Space.pad)
-        .frame(height: 64)
+        .frame(height: LumenTokens.Space.size(64))
         .overlay(alignment: .bottom) { LumenHairline() }
     }
 
@@ -101,7 +101,7 @@ struct SearchView: View {
                     .foregroundStyle(LumenTokens.Palette.ink)
                     .lineLimit(1)
             }
-            .frame(width: 96, height: 80)
+            .frame(width: LumenTokens.Space.size(96), height: LumenTokens.Space.size(80))
             .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
         }
         .buttonStyle(LumenListRowStyle())
@@ -157,7 +157,7 @@ struct SearchView: View {
             viewModel.selectedIndex = index
         } label: {
             rowContent(item: item, isSelected: isSelected)
-                .padding(.vertical, 14)
+                .padding(.vertical, LumenTokens.Space.scaled(14))
                 .padding(.horizontal, LumenTokens.Space.s4)
                 .contentShape(Rectangle())
         }
@@ -250,7 +250,7 @@ private struct AppRowContent: View {
             Image(nsImage: appItem.icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 24, height: 24)
+                .frame(width: LumenIcon.Size.large.points, height: LumenIcon.Size.large.points)
             Text(appItem.name)
                 .lumenText(.body, weight: isSelected ? .semibold : .medium)
                 .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
@@ -259,7 +259,7 @@ private struct AppRowContent: View {
             Spacer(minLength: LumenTokens.Space.inline)
             if hovered {
                 LumenIconButton(icon: "eye-off", label: "검색 결과에서 숨기기", action: onHide)
-                    .padding(.vertical, -8)
+                    .padding(.vertical, -LumenIconButton.inlineOverhang)
                     .transition(.opacity)
             } else {
                 LumenBadge(text: "앱")

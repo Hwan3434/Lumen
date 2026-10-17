@@ -6,7 +6,7 @@ private typealias P = LumenTokens.Palette
 struct TranslatorView: View {
     @State var viewModel: TranslatorViewModel
 
-    private let historyRailWidth: CGFloat = 280
+    private let historyRailWidth = LumenTokens.Space.size(280)
 
     var body: some View {
         ZStack {
@@ -62,7 +62,7 @@ struct TranslatorView: View {
         }
         .padding(.horizontal, LumenTokens.Space.pad)
         .draggableWindowHeader()
-        .frame(height: 56)
+        .frame(height: LumenTokens.Space.size(56))
     }
 
     // MARK: - Main column
@@ -104,7 +104,7 @@ struct TranslatorView: View {
                     .buttonStyle(LumenButtonStyle(variant: .primary, size: .small))
                 }
             }
-            .frame(minHeight: 32)
+            .frame(minHeight: LumenTokens.Space.scaled(32))
 
             outputBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -269,7 +269,7 @@ private struct LoadingLines: View {
                     ForEach([0.94, 0.82, 0.5], id: \.self) { ratio in
                         Capsule()
                             .fill(P.surface)
-                            .frame(width: geo.size.width * ratio, height: 16)
+                            .frame(width: geo.size.width * ratio, height: LumenTokens.Space.scaled(16))
                     }
                 }
             }

@@ -20,7 +20,7 @@ struct ResourceMonitorView: View {
             .padding(LumenTokens.Space.s6)
         }
         .scrollIndicators(.hidden)
-        .frame(width: 720, height: 860)
+        .frame(width: Constants.resourceWindowSize.width, height: Constants.resourceWindowSize.height)
         .background(P.bg)
     }
 
@@ -57,7 +57,7 @@ struct ResourceMonitorView: View {
                     }
                     Spacer()
                 }
-                .padding(.vertical, 14)
+                .padding(.vertical, LumenTokens.Space.scaled(14))
                 .padding(.horizontal, LumenTokens.Space.s4)
                 .lumenCard()
             } else {
@@ -192,7 +192,7 @@ struct ResourceMonitorView: View {
                     .foregroundStyle(P.inkFaint)
             }
             MiniAreaChart(values: values, maxValue: max)
-                .frame(height: 96)
+                .frame(height: LumenTokens.Space.size(96))
         }
     }
 

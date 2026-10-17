@@ -23,6 +23,9 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
                 monospaced: monospaced,
                 onSubmit: onSubmit
             )
+            // SUIT는 한글 글리프가 높아 NSTextField 기본 높이로는 입력 중 윗부분이 잘린다.
+            // 글꼴 줄 높이만큼 칸을 확보하고, 셀이 그 안에서 세로 가운데에 그린다.
+            .frame(height: ceil(fontSize * 1.6))
             trailing()
         }
     }
@@ -219,6 +222,9 @@ private struct TintedTextField: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSTextField {
         let tf = NSTextField()
+        tf.cell = CenteredTextFieldCell(textCell: "")
+        tf.isEditable = true
+        tf.isSelectable = true
         tf.delegate = context.coordinator
         tf.isBordered = false
         tf.drawsBackground = false
@@ -257,7 +263,9 @@ private struct TintedTextField: NSViewRepresentable {
             .foregroundColor: placeholderColor,
             .font: font,
         ]
-        tf.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: attrs)
+        (tf.cell as? CenteredTextFieldCell)?.centeredPlaceholder =
+            NSAttributedString(string: placeholder, attributes: attrs)
+        tf.needsDisplay = true
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
@@ -287,5 +295,51 @@ private struct TintedTextField: NSViewRepresentable {
         let fontSize: CGFloat
         let monospaced: Bool
         let placeholder: String
+    }
+}
+
+/// 칸 높이가 글자보다 클 때 글자와 편집기(field editor)를 세로 가운데에 놓는 셀.
+private final class CenteredTextFieldCell: NSTextFieldCell {
+    /// 표준 placeholder 속성에 넣으면 편집기가 칸 위쪽에 한 번 더 그리므로 셀이 따로 들고 그린다.
+    var centeredPlaceholder: NSAttributedString?
+
+    private func centered(_ rect: NSRect) -> NSRect {
+        var r = super.drawingRect(forBounds: rect)
+        let textHeight = cellSize(forBounds: rect).height
+        if textHeight < r.height {
+            r.origin.y += (r.height - textHeight) / 2
+            r.size.height = textHeight
+        }
+        return r
+    }
+
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        centered(rect)
+    }
+
+    override func titleRect(forBounds rect: NSRect) -> NSRect {
+        centered(rect)
+    }
+
+    /// 기본 셀은 안내 문구를 칸 위쪽에 붙여 그리므로, 비어 있을 때는 입력 글자와 같은 자리에 직접 그린다.
+    override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+        guard stringValue.isEmpty, let placeholder = centeredPlaceholder else {
+            super.drawInterior(withFrame: cellFrame, in: controlView)
+            return
+        }
+        let r = centered(cellFrame)
+        // 편집기 글자와 맞추려고 줄 앞 여백(lineFragmentPadding, 2pt)만큼 민다.
+        placeholder.draw(in: r.insetBy(dx: 2, dy: 0))
+    }
+
+    override func edit(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                       delegate: Any?, event: NSEvent?) {
+        super.edit(withFrame: centered(rect), in: controlView, editor: textObj, delegate: delegate, event: event)
+    }
+
+    override func select(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                         delegate: Any?, start selStart: Int, length selLength: Int) {
+        super.select(withFrame: centered(rect), in: controlView, editor: textObj, delegate: delegate,
+                     start: selStart, length: selLength)
     }
 }

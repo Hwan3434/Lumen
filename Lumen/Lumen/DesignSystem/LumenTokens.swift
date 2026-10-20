@@ -250,8 +250,9 @@ enum LumenWeight: CGFloat {
 enum LumenFont {
     private static let wghtAxis = NSNumber(value: 0x77676874) // 'wght'
     private static let registered: Void = {
-        for name in ["SUIT-Variable", "GeistMono-Variable"] {
-            if let url = Bundle.main.url(forResource: name, withExtension: "ttf") {
+        // SUIT는 woff2 판만 빈 한글 글리프를 빼고 배포한다. ttf는 없는 글자를 빈칸으로 그려 시스템 대체 글꼴이 안 붙는다.
+        for (name, ext) in [("SUIT-Variable", "woff2"), ("GeistMono-Variable", "ttf")] {
+            if let url = Bundle.main.url(forResource: name, withExtension: ext) {
                 CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
             }
         }

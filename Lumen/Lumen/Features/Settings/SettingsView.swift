@@ -7,13 +7,14 @@ private typealias P = LumenTokens.Palette
 /// 변경 사항은 앱 재시작 후 반영된다 (Service init 시 값이 캡처되는 구조).
 struct SettingsView: View {
     enum Tab: String, Hashable, CaseIterable {
-        case jira, ui, hiddenApps
+        case jira, ui, hiddenApps, power
 
         var label: String {
             switch self {
             case .jira:       return "Jira"
             case .ui:         return "UI"
             case .hiddenApps: return "숨긴 앱"
+            case .power:      return "전원"
             }
         }
 
@@ -29,6 +30,7 @@ struct SettingsView: View {
             switch self {
             case .ui:         return "palette"
             case .hiddenApps: return "eye-off"
+            case .power:      return "flame"
             default:          return "circle-help"
             }
         }
@@ -83,6 +85,7 @@ struct SettingsView: View {
         case .jira:       JiraSettingsTab(action: actionVM)
         case .ui:         UISettingsTab(action: actionVM)
         case .hiddenApps: HiddenAppsSettingsTab(action: actionVM)
+        case .power:      PowerSettingsTab(action: actionVM)
         }
     }
 

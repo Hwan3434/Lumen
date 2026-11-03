@@ -43,6 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FeatureRegistry.shared.register(caffeine)
         AppResourceMonitor.trace("feature_registered: Caffeine")
 
+        // 덮개 모드는 시스템 전역 설정을 바꾸므로 카페인과 달리 자동으로 켜지 않는다.
+        FeatureRegistry.shared.register(LidAwakeFeature.shared)
+        AppResourceMonitor.trace("feature_registered: LidAwake")
+
         let jiraDashboard = JiraDashboardFeature()
         FeatureRegistry.shared.register(jiraDashboard)
         AppResourceMonitor.trace("feature_registered: JiraDashboard")

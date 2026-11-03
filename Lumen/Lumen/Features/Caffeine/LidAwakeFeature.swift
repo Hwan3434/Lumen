@@ -40,11 +40,11 @@ final class LidAwakeFeature: BuiltInFeature {
     private init() {}
 
     var name: String {
-        isActive ? "덮개 모드 끄기" : "덮개 닫아도 깨어있기"
+        isActive || isOwned ? "덮개 모드 끄기" : "덮개 닫아도 깨어있기"
     }
 
     func activate() {
-        if isActive {
+        if isActive || isOwned {
             turnOff(toast: "덮개 모드를 껐어요")
         } else {
             turnOn()
@@ -80,10 +80,20 @@ final class LidAwakeFeature: BuiltInFeature {
 
     private func turnOn() {
         guard !isBusy else { return }
+        if let percent = BatteryWatcher.percentIfOnBattery(), percent <= Self.minimumBatteryPercent {
+            LumenToast.show(text: "배터리가 \(Self.minimumBatteryPercent)% 이하라 덮개 모드를 켤 수 없어요", duration: 4)
+            return
+        }
         isBusy = true
         Task {
             defer { isBusy = false }
             do {
+                // 사용자가 터미널에서 이미 막아 둔 상태면 소유하지 않는다 — 끌 때 사용자 설정을 지우게 되므로.
+                if try await SleepPolicyService.offMain({ SleepPolicyService.isSleepDisabled() }) == true {
+                    isSystemSleepDisabled = true
+                    LumenToast.show(text: "시스템에서 이미 잠자기가 막혀 있어요 (Lumen 밖에서 설정됨)", duration: 4)
+                    return
+                }
                 let ruleInstalled = try await SleepPolicyService.offMain { SleepPolicyService.isRuleInstalled() }
                 if !ruleInstalled {
                     guard confirmRuleInstall() else { return }
@@ -94,7 +104,7 @@ final class LidAwakeFeature: BuiltInFeature {
                 isOwned = true
                 isActive = true
                 isSystemSleepDisabled = true
-                startGuards()
+                startGuards(until: Date().addingTimeInterval(Self.duration))
                 statusHandle?.show()
                 LumenToast.show(text: "덮개를 닫아도 \(Int(Self.duration / 3600))시간 동안 깨어 있어요")
             } catch SleepPolicyService.Failure.cancelled {
@@ -105,14 +115,23 @@ final class LidAwakeFeature: BuiltInFeature {
         }
     }
 
-    private func turnOff(toast: String?) {
-        guard isActive, !isBusy else { return }
+    /// `sleepIfLidClosed`: 시간 제한·배터리처럼 사용자가 자리에 없을 수 있는 자동 끄기에서 true.
+    /// 덮개가 닫힌 채 `disablesleep 0`만 되돌리면 덮개를 다시 여닫기 전까지 잠들지 않을 수 있어 바로 재운다.
+    private func turnOff(toast: String?, sleepIfLidClosed: Bool = false) {
+        // 크래시 뒤 복구에 실패해 isActive는 false인데 시스템 값이 남은 경우(isOwned)도 끌 수 있어야 한다.
+        guard isActive || isOwned, !isBusy else { return }
         isBusy = true
+        let deadline = expiresAt
         stopGuards()
         Task {
             defer { isBusy = false }
             do {
-                try await SleepPolicyService.offMain { try SleepPolicyService.setSleepDisabled(false) }
+                try await SleepPolicyService.offMain {
+                    try SleepPolicyService.setSleepDisabled(false)
+                    if sleepIfLidClosed, SleepPolicyService.isLidClosed() {
+                        try? SleepPolicyService.sleepNow()
+                    }
+                }
                 isOwned = false
                 isActive = false
                 isSystemSleepDisabled = false
@@ -120,7 +139,10 @@ final class LidAwakeFeature: BuiltInFeature {
                 if let toast { LumenToast.show(text: toast) }
             } catch {
                 // 끄지 못했으면 안전장치를 다시 걸고 켜진 상태로 남겨 둔다 — 사용자가 다시 시도할 수 있게.
-                startGuards()
+                // 만료 시각은 늘리지 않되, 이미 지났으면 1분 뒤 다시 시도한다.
+                if isActive, let deadline {
+                    startGuards(until: max(deadline, Date().addingTimeInterval(60)))
+                }
                 LumenToast.show(text: "덮개 모드를 끄지 못했어요: \(error.localizedDescription)", duration: 4)
             }
         }
@@ -179,15 +201,18 @@ final class LidAwakeFeature: BuiltInFeature {
 
     // MARK: - 안전장치
 
-    private func startGuards() {
-        expiresAt = Date().addingTimeInterval(Self.duration)
+    private func startGuards(until deadline: Date) {
+        expiresAt = deadline
         expiryTimer?.invalidate()
-        expiryTimer = Timer.scheduledTimer(withTimeInterval: Self.duration, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: deadline.timeIntervalSinceNow, repeats: false) { [weak self] _ in
             guard let feature = self else { return }
             Task { @MainActor [feature] in
-                feature.turnOff(toast: "\(Int(Self.duration / 3600))시간이 지나 덮개 모드를 껐어요")
+                feature.turnOff(toast: "\(Int(Self.duration / 3600))시간이 지나 덮개 모드를 껐어요", sleepIfLidClosed: true)
             }
         }
+        // 메뉴가 열려 있는 동안(eventTracking 모드)에도 만료되도록 common 모드에 건다.
+        RunLoop.main.add(timer, forMode: .common)
+        expiryTimer = timer
         let watcher = battery ?? BatteryWatcher { [weak self] in self?.checkBattery() }
         battery = watcher
         watcher.start()
@@ -204,7 +229,7 @@ final class LidAwakeFeature: BuiltInFeature {
     private func checkBattery() {
         guard isActive, let percent = BatteryWatcher.percentIfOnBattery(),
               percent <= Self.minimumBatteryPercent else { return }
-        turnOff(toast: "배터리가 \(Self.minimumBatteryPercent)% 이하라 덮개 모드를 껐어요")
+        turnOff(toast: "배터리가 \(Self.minimumBatteryPercent)% 이하라 덮개 모드를 껐어요", sleepIfLidClosed: true)
     }
 
     // MARK: - Helpers
@@ -220,7 +245,8 @@ final class LidAwakeFeature: BuiltInFeature {
         alert.informativeText = """
         덮개를 닫아도 잠들지 않게 하려면 시스템 설정(pmset)을 바꿔야 해요. \
         매번 비밀번호를 묻지 않도록 /etc/sudoers.d/lumen 에 \
-        'pmset -a disablesleep 0/1' 두 명령만 허용하는 규칙을 추가해요. \
+        'pmset -a disablesleep 0/1'과 자동으로 꺼질 때 덮개가 닫혀 있으면 재우는 'pmset sleepnow', \
+        세 명령만 허용하는 규칙을 추가해요. \
         다른 명령에는 권한이 생기지 않고, 설정 > 전원에서 언제든 지울 수 있어요.
         """
         alert.addButton(withTitle: "계속")

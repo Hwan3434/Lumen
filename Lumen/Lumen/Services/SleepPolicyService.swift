@@ -1,11 +1,12 @@
 import Foundation
+import IOKit
 
 /// `pmset disablesleep` — 덮개를 닫거나 Apple 메뉴에서 잠자기를 눌러도 시스템이 잠들지 않게 하는
 /// **시스템 전역 설정**을 다룬다. 이 값은 root 권한이 필요하고 재부팅 뒤에도 남는다.
 ///
 /// 매번 비밀번호를 묻지 않도록, 최초 1회만 관리자 권한으로 `/etc/sudoers.d/lumen`에
-/// `pmset -a disablesleep 0` / `pmset -a disablesleep 1` **두 명령만** 비밀번호 없이 허용하는
-/// 규칙을 설치한다. 이후 토글은 `sudo -n`(비대화형)으로 실행한다.
+/// `pmset -a disablesleep 0` / `pmset -a disablesleep 1` / `pmset sleepnow` **세 명령만** 비밀번호 없이
+/// 허용하는 규칙을 설치한다. 이후 토글은 `sudo -n`(비대화형)으로 실행한다.
 ///
 /// 모든 함수는 외부 프로세스를 동기로 기다린다. UI에서는 `offMain`으로 감싸 부르고,
 /// 앱 종료 직전 복구처럼 반드시 끝까지 실행돼야 하는 경우에만 직접 부른다.
@@ -49,15 +50,34 @@ nonisolated enum SleepPolicyService {
 
     /// 규칙 파일이 있고, sudo가 실제로 비밀번호 없이 허용하는지까지 확인한다.
     /// (`/etc/sudoers`에 `#includedir`가 빠진 환경이면 파일이 있어도 false.)
+    /// `sleepnow`가 빠진 예전 규칙이면 false — 켤 때 다시 설치하게 한다.
     static func isRuleInstalled() -> Bool {
         guard FileManager.default.fileExists(atPath: sudoersPath) else { return false }
         return run(sudoPath, ["-n", "-l", pmsetPath, "-a", "disablesleep", "1"])?.status == 0
+            && run(sudoPath, ["-n", "-l", pmsetPath, "sleepnow"])?.status == 0
+    }
+
+    /// 덮개가 닫혀 있는지 (`IOPMrootDomain`의 `AppleClamshellState`). 덮개가 없는 Mac이면 false.
+    static func isLidClosed() -> Bool {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard service != IO_OBJECT_NULL else { return false }
+        defer { IOObjectRelease(service) }
+        let value = IORegistryEntryCreateCFProperty(service, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue()
+        return (value as? Bool) ?? false
     }
 
     // MARK: - 토글 (규칙 필요, 비밀번호 없음)
 
     static func setSleepDisabled(_ disabled: Bool) throws {
         let out = run(sudoPath, ["-n", pmsetPath, "-a", "disablesleep", disabled ? "1" : "0"])
+        guard let out, out.status == 0 else {
+            throw Failure.commandFailed(out?.stderr.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+        }
+    }
+
+    static func sleepNow() throws {
+        let out = run(sudoPath, ["-n", pmsetPath, "sleepnow"])
         guard let out, out.status == 0 else {
             throw Failure.commandFailed(out?.stderr.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
         }
@@ -71,7 +91,7 @@ nonisolated enum SleepPolicyService {
         return [
             // sudoers 파일이라 주석도 ASCII로만 쓴다.
             "# Added by Lumen (lid-closed awake mode). Remove from Lumen Settings > Power.",
-            "\(userName) ALL=(root) NOPASSWD: \(pmsetPath) -a disablesleep 0, \(pmsetPath) -a disablesleep 1",
+            "\(userName) ALL=(root) NOPASSWD: \(pmsetPath) -a disablesleep 0, \(pmsetPath) -a disablesleep 1, \(pmsetPath) sleepnow",
         ]
     }
 

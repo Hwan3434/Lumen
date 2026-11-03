@@ -22,13 +22,13 @@ final class SleepPolicyServiceTests: XCTestCase {
         XCTAssertFalse(SleepPolicyService.parseSleepDisabled("Currently in use:\n sleep 1\n"))
     }
 
-    /// 규칙은 정확히 pmset 두 명령만 허용해야 한다.
-    func testSudoersRuleAllowsOnlyTwoPmsetCommands() throws {
+    /// 규칙은 정확히 pmset 세 명령만 허용해야 한다.
+    func testSudoersRuleAllowsOnlyThreePmsetCommands() throws {
         let lines = try XCTUnwrap(SleepPolicyService.sudoersRule(for: "jane.doe"))
         let rule = try XCTUnwrap(lines.first { !$0.hasPrefix("#") })
         XCTAssertEqual(
             rule,
-            "jane.doe ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1"
+            "jane.doe ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow"
         )
         XCTAssertTrue(lines.allSatisfy { $0.allSatisfy(\.isASCII) }, "sudoers 파일은 ASCII만 쓴다")
     }

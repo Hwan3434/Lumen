@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import Combine
 
 private typealias P = LumenTokens.Palette
 
@@ -17,22 +16,22 @@ struct MonthGridView: View {
     /// 외부에서 "오늘로 다시 점프" 신호 — 보기 전환 시 부모가 increment.
     /// ZStack+opacity로 view가 항상 mount된 채라 onAppear가 한 번만 호출됨 → 매번 트리거 필요.
     var resetToTodayToken: Int = 0
+    /// ⌘N 신호 — 오늘 칸에 새 일정 팝오버를 띄운다.
+    var newItemToken: Int = 0
 
     /// 날짜 줄 + 막대 4줄 + "+N" 줄. WeekRow의 치수와 맞춘다.
     private var weekRowHeight: CGFloat {
-        WeekRow.topPadding + 4 * (WeekRow.laneHeight + WeekRow.laneSpacing)
+        WeekRow.topPadding + CGFloat(WeekRow.maxLanes) * (WeekRow.laneHeight + WeekRow.laneSpacing)
             + LumenTextStyle.caption.lineHeight + LumenTokens.Space.s1
     }
-    /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 "+N" 으로.
-    private let maxLanesPerWeek: Int = 4
 
     /// 가시 중앙 주의 시작일 — onScrollGeometryChange로 갱신.
     @State private var visibleAnchor: Date = Calendar.current.startOfDay(for: Date())
-    @State private var today: Date = Calendar.current.startOfDay(for: Date())
     @State private var weeks: [Date] = []
     /// 주 시작일 → 그 주에 그릴 막대 layout. items가 바뀔 때만 재계산.
     @State private var layoutByWeek: [Date: WeekLayout] = [:]
     @State private var scrollTarget: Date? = nil
+    @State private var newItemDate: Date? = nil
 
     private var firstWeekday: Int { DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue }
 
@@ -59,9 +58,10 @@ struct MonthGridView: View {
             rebuildLayout()
             scrollTarget = startOfWeek(Date())
         }
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
-            let newToday = Calendar.current.startOfDay(for: Date())
-            if newToday != today { today = newToday }
+        .onChange(of: newItemToken) { _, _ in
+            // ⌘N: 오늘 주로 옮기고, 그 행이 그려지면 바인딩을 보고 팝오버가 뜬다.
+            scrollTarget = startOfWeek(store.today)
+            newItemDate = store.today
         }
     }
 
@@ -123,8 +123,9 @@ struct MonthGridView: View {
                         WeekRow(
                             weekStart: weekStart,
                             layout: layoutByWeek[weekStart] ?? WeekLayout(weekStart: weekStart, bars: [], overflowByCol: [:]),
-                            today: today,
-                            colors: colors
+                            today: store.today,
+                            colors: colors,
+                            newItemDate: $newItemDate
                         )
                         .frame(height: weekRowHeight)
                         .id(weekKey(weekStart))
@@ -184,7 +185,7 @@ struct MonthGridView: View {
     private func rebuildLayout() {
         var dict: [Date: WeekLayout] = [:]
         for weekStart in weeks {
-            dict[weekStart] = layoutWeek(weekStart: weekStart, items: items, maxLanes: maxLanesPerWeek)
+            dict[weekStart] = layoutWeek(weekStart: weekStart, items: items, maxLanes: WeekRow.maxLanes)
         }
         layoutByWeek = dict
     }
@@ -202,7 +203,11 @@ private struct WeekRow: View {
     let layout: WeekLayout
     let today: Date
     let colors: [ScheduleGroupKey: Color]
+    /// 셀 더블클릭·⌘N 시 새 항목 popover의 anchor 날짜. 부모가 들고 있어야 ⌘N이 아직 안 그려진 주에도 닿는다.
+    @Binding var newItemDate: Date?
 
+    /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 그 날짜 칸 아래 "+N".
+    static let maxLanes = 4
     static var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 6 }
     static let laneSpacing: CGFloat = 2
     static var topPadding: CGFloat { LumenTextStyle.caption.lineHeight + 12 }  // 날짜 숫자 자리
@@ -213,8 +218,8 @@ private struct WeekRow: View {
     /// 막대 클릭 시 상세를 띄울 항목 id — nil이면 닫힘. ⌘클릭이면 secondary(Jira 댓글).
     @State private var selectedID: String? = nil
     @State private var selectedVariant: ScheduleDetailVariant = .primary
-    /// 셀 더블클릭 시 새 항목 popover의 anchor 날짜.
-    @State private var newItemDate: Date? = nil
+    /// "+N"을 눌러 그날 일정 전체를 볼 날짜.
+    @State private var overflowDay: Date? = nil
 
     var body: some View {
         let cal = Calendar.current
@@ -235,20 +240,37 @@ private struct WeekRow: View {
                     barView(bar: bar, cellW: cellW)
                 }
 
-                // 3) overflow 표시
+                // 3) 넘친 일정 — 누르면 그날 일정 전체를 팝오버로
                 ForEach(Array(layout.overflowByCol.keys), id: \.self) { col in
-                    if let n = layout.overflowByCol[col] {
-                        Text("+\(n)")
-                            .lumenText(.caption, weight: .medium)
-                            .monospacedDigit()
-                            .foregroundStyle(P.inkFaint)
-                            .padding(.horizontal, LumenTokens.Space.s1)
+                    if let n = layout.overflowByCol[col], let day = days[safe: col] {
+                        overflowButton(count: n, day: day)
                             .padding(.leading, CGFloat(col) * cellW + LumenTokens.Space.scaled(4))
-                            .padding(.top, topPadding + CGFloat(LumenTokens.Space.scaled(4)) * (laneHeight + laneSpacing) + 1)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(.top, topPadding + CGFloat(Self.maxLanes) * (laneHeight + laneSpacing))
                     }
                 }
             }
+        }
+    }
+
+    private func overflowButton(count: Int, day: Date) -> some View {
+        Button {
+            overflowDay = day
+        } label: {
+            Text("+\(count)")
+                .lumenText(.caption, weight: .medium)
+                .monospacedDigit()
+                .foregroundStyle(P.inkFaint)
+                .padding(.horizontal, LumenTokens.Space.s1)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(LumenDateFormat.shortDay.string(from: day)) 일정 \(count)개 더 보기")
+        .accessibilityLabel("\(LumenDateFormat.shortDay.string(from: day)) 일정 \(count)개 더 보기")
+        .popover(isPresented: Binding(
+            get: { overflowDay.map { Calendar.current.isDate($0, inSameDayAs: day) } ?? false },
+            set: { if !$0 { overflowDay = nil } }
+        ), arrowEdge: .top) {
+            DayItemsPopover(day: day).environment(store)
         }
     }
 

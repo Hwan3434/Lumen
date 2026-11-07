@@ -168,6 +168,17 @@ final class CalendarPlugin: SchedulePlugin {
         return AnyView(EKEventPreviewPopover(event: event, accent: accent))
     }
 
+    /// 아직 묻지 않았으면 가져올 때 시스템이 묻는다. 거부·제한된 경우만 안내한다.
+    var setupHint: String? {
+        guard settings.enabled else { return nil }
+        switch authorizationStatus {
+        case .fullAccess, .notDetermined:
+            return nil
+        default:
+            return "캘린더를 읽을 권한이 없어요. 시스템 설정 › 개인정보 보호 › 캘린더에서 Lumen을 켜 주세요."
+        }
+    }
+
     var hasSettingsTab: Bool { true }
 
     func makeSettingsTab(action: SettingsActionViewModel) -> AnyView {

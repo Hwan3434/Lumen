@@ -34,6 +34,8 @@ protocol SchedulePlugin: AnyObject, Observable {
                     dismiss: @escaping @MainActor () -> Void) async throws -> AnyView
     /// 빈 날짜를 더블클릭했을 때 새 항목을 만드는 뷰. 지원하지 않으면 nil.
     func newItemView(on day: Date, dismiss: @escaping @MainActor () -> Void) -> AnyView?
+    /// 켜져 있지만 사용자가 무언가 해야 가져올 수 있을 때(권한 거부 등) 목록 위에 띄울 안내. 없으면 nil.
+    var setupHint: String? { get }
     /// 설정창에 탭이 있는지. 내 일정처럼 설정이 없는 플러그인은 false.
     var hasSettingsTab: Bool { get }
     /// 설정창 탭 내용. 저장 버튼 줄은 `action`으로 제어한다(즉시 반영되는 탭은 숨긴다).
@@ -45,6 +47,7 @@ extension SchedulePlugin {
     var contributesToMenuBarLabel: Bool { false }
     func startObserving(_ onChange: @escaping @MainActor () -> Void) {}
     func newItemView(on day: Date, dismiss: @escaping @MainActor () -> Void) -> AnyView? { nil }
+    var setupHint: String? { nil }
     var hasSettingsTab: Bool { false }
     func makeSettingsTab(action: SettingsActionViewModel) -> AnyView { AnyView(EmptyView()) }
 }

@@ -11,7 +11,6 @@ final class ScheduleStatusItem {
     private var panel: NSPanel?
     private var localMonitor: Any?
     private var lastClosedAt: Date = .distantPast
-    private var refreshTimer: Timer?
 
     init(coordinator: StatusBarCoordinator, store: ScheduleStore) {
         self.store = store
@@ -26,38 +25,24 @@ final class ScheduleStatusItem {
 
         refresh()
         observeStore()
-        if handle.isVisible { startTimer() }
-    }
-
-    deinit {
-        refreshTimer?.invalidate()
     }
 
     func setVisible(_ visible: Bool) {
         if visible {
             handle.show()
             refresh()
-            startTimer()
         } else {
             closePanel()
             handle.hide()
-            refreshTimer?.invalidate()
-            refreshTimer = nil
         }
     }
 
-    /// 라벨이 보이는 동안만 1분마다 "다음 일정"을 다시 고른다. 숨기면 멈춘다.
-    private func startTimer() {
-        guard refreshTimer == nil else { return }
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.refresh() }
-        }
-    }
-
-    /// 스토어의 보이는 항목이 바뀌면 라벨을 다시 쓴다. 한 번 발화하면 다시 등록한다.
+    /// 스토어의 보이는 항목이나 시계가 바뀌면 라벨을 다시 쓴다. 한 번 발화하면 다시 등록한다.
+    /// 시계는 다음 일정의 시작·끝과 자정에만 넘어가므로 1분마다 깨우지 않는다.
     private func observeStore() {
         withObservationTracking {
             _ = store.visibleItems
+            _ = store.now
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.refresh()

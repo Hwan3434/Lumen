@@ -29,6 +29,23 @@ final class ScheduleSnapshotTests: XCTestCase {
         }
     }
 
+    /// 목록 열의 두 상태: 플러그인 하나가 실패한 경우, 연동이 하나도 없는 경우.
+    func testRenderAgendaErrorAndEmptyStates() async throws {
+        let size = NSSize(width: LumenTokens.Space.size(360), height: 520)
+
+        let failing = await Self.sampleStore()
+        if let jira = failing.plugins.first(where: { $0.displayName == "Jira" }) as? FakeSchedulePlugin {
+            jira.error = URLError(.userAuthenticationRequired)
+            await failing.refresh(jira.id, force: true)
+        }
+        try render(AgendaListView().environment(failing), size: size, named: "agenda-error.png")
+
+        let local = FakeSchedulePlugin(name: "내 일정", icon: "calendar-plus", groups: [("local", true)], id: .local)
+        let empty = ScheduleStore(plugins: [local])
+        await empty.refreshAll(force: true)
+        try render(AgendaListView().environment(empty), size: size, named: "agenda-empty.png")
+    }
+
     func testRenderTodayAgendaPopover() async throws {
         let store = await Self.sampleStore()
         try render(TodayAgendaPopover().environment(store), size: Constants.agendaPanelSize, named: "schedule-today.png")
@@ -76,10 +93,10 @@ final class ScheduleSnapshotTests: XCTestCase {
             task(jira.id, "ABC", "ABC-95", "릴리스 1.6", start: day(9), due: day(11), status: .todo),
         ]
 
-        let local = FakeSchedulePlugin(name: "내 일정", icon: "calendar-plus", groups: [("local", true)])
+        let local = FakeSchedulePlugin(name: "내 일정", icon: "calendar-plus", groups: [("내 일정", true)])
         local.items = [
-            event(local.id, "local", "자동차 정기 점검", day(1), nil, allDay: true),
-            event(local.id, "local", "본가 방문", day(14), day(15), allDay: true),
+            event(local.id, "내 일정", "자동차 정기 점검", day(1), nil, allDay: true),
+            event(local.id, "내 일정", "본가 방문", day(14), day(15), allDay: true),
         ]
 
         let store = ScheduleStore(plugins: [calendar, jira, local])

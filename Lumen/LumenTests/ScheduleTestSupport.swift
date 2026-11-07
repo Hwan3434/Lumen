@@ -19,8 +19,8 @@ final class FakeSchedulePlugin: SchedulePlugin {
     var error: Error? = nil
     var fetchCount = 0
 
-    init(name: String, icon: String = "star", groups: [(String, Bool)]) {
-        self.id = SchedulePluginID("\(name)-\(UUID().uuidString)")
+    init(name: String, icon: String = "star", groups: [(String, Bool)], id: SchedulePluginID? = nil) {
+        self.id = id ?? SchedulePluginID("\(name)-\(UUID().uuidString)")
         self.displayName = name
         self.iconName = icon
         self.groups = groups.map { ScheduleGroup(id: $0.0, name: $0.0, isVisible: $0.1) }

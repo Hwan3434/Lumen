@@ -160,7 +160,7 @@ struct TimelineView: View {
             Text(dayLabel(day))
                 .lumenText(.label, weight: isToday ? .bold : .regular)
                 .monospacedDigit()
-                .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
+                .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
             if let name = holidayName {
                 Text(name)
                     .lumenText(.caption)
@@ -184,10 +184,10 @@ struct TimelineView: View {
         }
     }
 
-    /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본. (MonthGridView와 같은 정책)
-    private func dayNumberColor(isToday: Bool, holidayName: String?) -> Color {
+    /// 날짜 숫자의 색 우선순위: today > 토·일·공휴일 > 기본. (MonthGridView와 같은 정책)
+    private func dayNumberColor(isToday: Bool, day: Date) -> Color {
         if isToday { return P.brand }
-        if holidayName != nil { return P.danger }
+        if CalendarDateUtils.isRedDay(day) { return P.danger }
         return P.ink
     }
 

@@ -287,12 +287,12 @@ private struct WeekRow: View {
                     Text(monthDayLabel(day))
                         .lumenText(.caption, weight: .semibold)
                         .monospacedDigit()
-                        .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
+                        .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
                 } else {
                     Text("\(dayNum)")
                         .lumenText(.caption, weight: isToday ? .bold : .regular)
                         .monospacedDigit()
-                        .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
+                        .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
                 }
                 if let name = holidayName {
                     Text(name)
@@ -358,10 +358,10 @@ private struct WeekRow: View {
         return f.string(from: day)
     }
 
-    /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본.
-    private func dayNumberColor(isToday: Bool, holidayName: String?) -> Color {
+    /// 날짜 숫자의 색 우선순위: today > 토·일·공휴일 > 기본.
+    private func dayNumberColor(isToday: Bool, day: Date) -> Color {
         if isToday { return P.brand }
-        if holidayName != nil { return P.danger }
+        if CalendarDateUtils.isRedDay(day) { return P.danger }
         return P.ink
     }
 }

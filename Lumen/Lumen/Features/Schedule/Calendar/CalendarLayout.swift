@@ -148,14 +148,18 @@ enum CalendarDateUtils {
         return Array(base[shift...] + base[..<shift])
     }
 
-    /// 요일별 색 — 일요일 `danger`, 토요일 `info`, 평일 `ink-muted`.
+    /// 요일별 색 — 토·일요일 `danger`, 평일 `ink-muted`.
     static func weekdayColor(for date: Date) -> Color {
         weekdayColor(weekday: Calendar.current.component(.weekday, from: date))
     }
 
     static func weekdayColor(weekday: Int) -> Color {
-        if weekday == 1 { return LumenTokens.Palette.danger }
-        if weekday == 7 { return LumenTokens.Palette.info }
+        if weekday == 1 || weekday == 7 { return LumenTokens.Palette.danger }
         return LumenTokens.Palette.inkMuted
+    }
+
+    /// 날짜 숫자를 빨갛게 칠할 날 — 토·일요일과 공휴일.
+    static func isRedDay(_ date: Date) -> Bool {
+        Calendar.current.isDateInWeekend(date) || KoreanHolidays.name(for: date) != nil
     }
 }

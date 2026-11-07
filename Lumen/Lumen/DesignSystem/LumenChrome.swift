@@ -99,6 +99,18 @@ enum LumenDateFormat {
     static let dayOnly: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "dd"; return f
     }()
+    /// "2026. 11. 7 (토)" — Still 날짜 표기.
+    static let dayWithWeekday: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy. M. d (E)"; return f
+    }()
+    /// "11. 7" — 연도 없는 짧은 날짜.
+    static let shortDay: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M. d"; return f
+    }()
+    /// "오후 2:30" — Still 시간 표기.
+    static let time: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"; return f
+    }()
 }
 
 // MARK: - LumenFooterBar

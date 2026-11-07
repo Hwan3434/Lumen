@@ -6,7 +6,6 @@ import SwiftUI
 /// `extension Constants`로 채운다:
 ///   - Core/Hotkeys/HotkeyDefinitions.swift  (KeyCode + 핫키 코드/모디파이어)
 ///   - Helpers/WindowMetrics.swift            (각 패널의 기본 사이즈)
-///   - Features/JiraDashboard/JiraConfig.swift (Jira 설정·기본값·팔레트)
 ///   - Features/WindowMagnet/MagnetConfig.swift (snap step / tolerance)
 ///   - Search/AppAliasMap.swift                 (앱 검색 alias 사전)
 enum Constants {}

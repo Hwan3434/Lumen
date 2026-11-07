@@ -3,12 +3,6 @@ import CoreGraphics
 @testable import Lumen
 
 final class ParserAndModelTests: XCTestCase {
-    override func tearDown() {
-        CredentialsStore.shared.setJiraProjectKeys([])
-        CredentialsStore.shared.setJiraProjectNames([:])
-        super.tearDown()
-    }
-
     func testCurrencyQueryParsesCommonInputs() {
         XCTAssertEqual(CurrencyQuery.parse("$100")?.amount, 100)
         XCTAssertEqual(CurrencyQuery.parse("$100")?.from, "USD")
@@ -27,10 +21,20 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(JiraStatusCategory(rawAPIKey: "custom"), .undefined)
     }
 
-    func testCredentialsStoreNormalizesProjectKeys() {
-        CredentialsStore.shared.setJiraProjectKeys([" abc ", "ABC", "def", "", "Def"])
+    func testJiraSettingsNormalizesProjects() {
+        let raw = [
+            JiraProjectSetting(key: " abc ", alias: " 결제 "),
+            JiraProjectSetting(key: "ABC"),
+            JiraProjectSetting(key: "def", isVisible: false),
+            JiraProjectSetting(key: ""),
+            JiraProjectSetting(key: "Def"),
+        ]
 
-        XCTAssertEqual(CredentialsStore.shared.jiraProjectKeys, ["ABC", "DEF"])
+        let normalized = JiraSettings.normalizedProjects(raw)
+
+        XCTAssertEqual(normalized.map(\.key), ["ABC", "DEF"], "대문자·공백 제거·중복 제거·빈 키 제거")
+        XCTAssertEqual(normalized.first?.alias, "결제")
+        XCTAssertEqual(normalized.last?.isVisible, false, "표시 여부는 그대로 남는다")
     }
 
     func testDateParsersHandleJiraDates() {
@@ -39,85 +43,77 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertNotNil(DateParsers.parseISO8601("2026-06-24T10:20:30+0900"))
     }
 
-    func testCalendarAdapterBuildsJiraItems() {
-        let sprint = SprintInfo(
-            id: 1,
-            name: "Sprint",
-            startDate: date("2026-06-22"),
-            endDate: date("2026-06-26"),
-            projectKey: "ABC",
-            totalIssues: 10,
-            completedIssues: 5
-        )
-        let epic = EpicInfo(
-            key: "ABC-1",
-            summary: "Epic",
-            projectKey: "ABC",
-            status: "To Do",
-            dueDate: date("2026-06-24")
-        )
-        let issue = JiraIssue(
-            id: "ABC-2",
-            key: "ABC-2",
-            summary: "Task",
-            status: "In Progress",
-            statusCategory: .indeterminate,
-            priority: "Medium",
-            startDate: date("2026-06-23"),
-            dueDate: date("2026-06-25"),
-            resolutionDate: nil,
-            created: nil,
-            issueType: "Task",
-            projectKey: "ABC"
-        )
-        let data = JiraDashboardData(
-            thisWeekCounts: JiraStatusCounts(),
-            projectStats: [],
-            todayIssues: [],
-            thisWeekIssues: [],
-            highestIncomplete: [],
-            overdueIncomplete: [],
-            completedLast30: [],
-            createdLast30: [],
-            nextWeekIssues: [],
-            backlogCountByProject: [:],
-            sprintInfos: [sprint],
-            epicInfos: [epic],
-            allIssuesInWindow: [issue],
-            lastUpdated: Date()
+    func testJiraPluginBuildsItems() {
+        let sprint = SprintInfo(id: 1, name: "Sprint", startDate: date("2026-06-22"),
+                                endDate: date("2026-06-26"), projectKey: "ABC")
+        let epic = jiraIssue(key: "ABC-1", summary: "Epic", category: .new, priority: "Medium",
+                             start: nil, due: date("2026-06-24"), type: "Epic")
+        let issue = jiraIssue(key: "ABC-2", summary: "Task", category: .indeterminate, priority: "Highest",
+                              start: date("2026-06-23"), due: date("2026-06-25"), type: "Task")
+        let done = jiraIssue(key: "ABC-3", summary: "Done", category: .done, priority: "Medium",
+                             start: nil, due: date("2026-06-20"), type: "Task")
+        let undated = jiraIssue(key: "ABC-4", summary: "No dates", category: .new, priority: "Medium",
+                                start: nil, due: nil, type: "Task")
+
+        let items = JiraPlugin.makeItems(
+            issues: [issue, done, undated], sprints: [sprint], epics: [epic],
+            settings: JiraSettings(), browseURL: URL(string: "https://x.atlassian.net/browse")
         )
 
-        let localEvent = LocalEvent(title: "Local", start: date("2026-06-24"))
-        let externalEvent = ExternalCalendarEvent(
-            id: "event-1",
-            title: "Calendar",
-            startDate: date("2026-06-24"),
-            endDate: date("2026-06-24"),
-            isAllDay: true,
-            calendarTitle: "Work",
-            sourceTitle: "Google",
-            calendarColor: CGColor(gray: 1, alpha: 1),
-            notes: nil,
-            location: "Seoul",
-            urlString: nil
-        )
+        XCTAssertEqual(items.map(\.id), ["jira.sprint.1", "jira.ABC-2", "jira.ABC-1"],
+                       "완료 이슈는 기본 숨김, 날짜 없는 이슈는 뺀다")
+        XCTAssertEqual(items.map(\.kind), [.span, .task, .task])
+        XCTAssertEqual(items[1].status, .inProgress)
+        XCTAssertEqual(items[1].priority, .urgent)
+        XCTAssertEqual(items[1].start, date("2026-06-23"))
+        XCTAssertEqual(items[1].end, date("2026-06-25"))
+        XCTAssertEqual(items[1].url?.absoluteString, "https://x.atlassian.net/browse/ABC-2")
+        XCTAssertEqual(items[2].subtitle, "ABC-1 · 에픽")
+        XCTAssertNil(items[2].end, "마감일만 있으면 한 시점")
+        XCTAssertTrue(items.allSatisfy { $0.group == "ABC" && $0.plugin == .jira })
 
-        let items = CalendarAdapter.buildItems(
-            from: data,
-            localEvents: [localEvent],
-            externalEvents: [externalEvent].compactMap { $0 }
-        )
+        var showDone = JiraSettings()
+        showDone.showDone = true
+        let withDone = JiraPlugin.makeItems(issues: [issue, done], sprints: [], epics: [epic, issue],
+                                            settings: showDone, browseURL: nil)
+        XCTAssertEqual(withDone.map(\.id), ["jira.ABC-2", "jira.ABC-3", "jira.ABC-1"],
+                       "담당 이슈이기도 한 에픽은 한 번만 들어간다")
+        XCTAssertTrue(withDone[1].isDone)
+    }
 
-        XCTAssertEqual(items.map(\.kind), [.sprint, .epic, .local, .googleCalendar, .task])
-        XCTAssertEqual(items.map(\.projectKey), ["ABC", "ABC", nil, nil, "ABC"])
+    func testCalendarPluginBuildsItemsWithUniqueIDs() throws {
+        // 반복 이벤트는 회차마다 같은 식별자를 쓰므로 시작 시각으로 id를 가른다.
+        let first = try XCTUnwrap(ExternalCalendarEvent(
+            id: "rec", title: "요가", startDate: dateTime("2026-06-22 19:30"), endDate: dateTime("2026-06-22 20:30"),
+            isAllDay: false, calendarIdentifier: "cal-1", calendarTitle: "개인", sourceTitle: "iCloud",
+            notes: nil, location: "스튜디오", urlString: nil))
+        let second = try XCTUnwrap(ExternalCalendarEvent(
+            id: "rec", title: "요가", startDate: dateTime("2026-06-24 19:30"), endDate: dateTime("2026-06-24 20:30"),
+            isAllDay: false, calendarIdentifier: "cal-1", calendarTitle: "개인", sourceTitle: "iCloud",
+            notes: nil, location: nil, urlString: nil))
+        // EventKit의 종일 끝은 다음날 0시다.
+        let trip = try XCTUnwrap(ExternalCalendarEvent(
+            id: "trip", title: "여행", startDate: date("2026-06-26"), endDate: date("2026-06-28"),
+            isAllDay: true, calendarIdentifier: "cal-2", calendarTitle: "가족", sourceTitle: nil,
+            notes: nil, location: nil, urlString: nil))
+
+        let items = [first, second, trip].map(CalendarPlugin.makeItem)
+
+        XCTAssertNotEqual(items[0].id, items[1].id)
+        XCTAssertTrue(items[0].hasTimeOfDay)
+        XCTAssertEqual(items[0].group, "cal-1")
+        XCTAssertEqual(items[0].location, "스튜디오")
+        XCTAssertEqual(items[0].subtitle, "개인")
+        XCTAssertTrue(items[2].isAllDay)
+        XCTAssertEqual(items[2].end, date("2026-06-27"), "종일 범위는 끝 날짜를 하루 당겨 포함 범위로")
     }
 
     func testWeekLayoutUsesSharedDisplayOrderAndReportsOverflow() {
         let weekStart = date("2026-06-21")
         let items = [
-            CalendarItem(id: "late", kind: .googleCalendar, title: "Late", start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
-            CalendarItem(id: "all-day", kind: .task, title: "All Day", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
-            CalendarItem(id: "early", kind: .googleCalendar, title: "Early", start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+            item("late", kind: .event, start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), allDay: false),
+            item("all-day", kind: .task, start: date("2026-06-22")),
+            item("early", kind: .event, start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), allDay: false),
         ]
 
         let layout = layoutWeek(weekStart: weekStart, items: items, maxLanes: 1)
@@ -129,13 +125,21 @@ final class ParserAndModelTests: XCTestCase {
 
     func testCalendarItemSortOrdersTimedItemsWithinDate() {
         let items = [
-            CalendarItem(id: "all-day", kind: .task, title: "All Day", start: date("2026-06-22"), end: nil, issueKey: nil, isDone: false, projectKey: "ABC"),
-            CalendarItem(id: "tomorrow", kind: .googleCalendar, title: "Tomorrow", start: dateTime("2026-06-23 09:00"), end: dateTime("2026-06-23 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
-            CalendarItem(id: "late", kind: .googleCalendar, title: "Late", start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
-            CalendarItem(id: "early", kind: .googleCalendar, title: "Early", start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), issueKey: nil, isDone: false, projectKey: nil, hasTimeOfDay: true),
+            item("all-day", kind: .task, start: date("2026-06-22")),
+            item("tomorrow", kind: .event, start: dateTime("2026-06-23 09:00"), end: dateTime("2026-06-23 10:00"), allDay: false),
+            item("late", kind: .event, start: dateTime("2026-06-22 15:00"), end: dateTime("2026-06-22 16:00"), allDay: false),
+            item("early", kind: .event, start: dateTime("2026-06-22 09:00"), end: dateTime("2026-06-22 10:00"), allDay: false),
         ]
 
         XCTAssertEqual(CalendarItemSort.ordered(items).map(\.id), ["early", "late", "all-day", "tomorrow"])
+    }
+
+    func testStartOfWeekFollowsFirstWeekday() {
+        // 2026-06-24는 수요일.
+        let wednesday = date("2026-06-24")
+        XCTAssertEqual(CalendarDateUtils.startOfWeek(of: wednesday, firstWeekday: 1), date("2026-06-21"))
+        XCTAssertEqual(CalendarDateUtils.startOfWeek(of: wednesday, firstWeekday: 2), date("2026-06-22"))
+        XCTAssertEqual(CalendarDateUtils.weekdaySymbols(firstWeekday: 2), ["월", "화", "수", "목", "금", "토", "일"])
     }
 
     func testCommentPageOrdersOldestFirst() {
@@ -199,41 +203,35 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(result.comments.first?.bodyText, "평문 본문", "ADF가 아닌 문자열 body도 받는다")
     }
 
-    func testCommentPageFallsBackWhenTotalMissing() {
-        let page: [String: Any] = [
-            "comments": [commentJSON(id: "1", author: nil, body: "hi", created: nil)],
-        ]
+    // MARK: - Helpers
 
-        let result = JiraRepository.parseCommentPage(page)
-
-        XCTAssertEqual(result.total, 1, "total이 없으면 파싱된 개수로 대체")
-        XCTAssertEqual(result.comments.first?.author, "알 수 없음")
-        XCTAssertNil(result.comments.first?.created)
-        XCTAssertTrue(JiraRepository.parseCommentPage([:]).comments.isEmpty, "빈 응답도 크래시 없이 처리")
-    }
-
-    /// Jira 댓글 한 건의 응답 형태 — body는 ADF 문서.
-    private func commentJSON(id: String, author: String?, body: String, created: String?) -> [String: Any] {
-        var dict: [String: Any] = [
-            "id": id,
-            "body": [
-                "type": "doc",
-                "content": [["type": "paragraph", "content": [["type": "text", "text": body]]]],
-            ],
-        ]
-        if let author { dict["author"] = ["displayName": author] }
-        if let created { dict["created"] = created }
-        return dict
-    }
-
-    private func date(_ value: String) -> Date {
-        DateParsers.ymd.date(from: value) ?? Date()
+    private func date(_ ymd: String) -> Date {
+        DateParsers.ymd.date(from: ymd)!
     }
 
     private func dateTime(_ value: String) -> Date {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return formatter.date(from: value) ?? Date()
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.date(from: value)!
+    }
+
+    private func item(_ id: String, kind: ScheduleItem.Kind, start: Date, end: Date? = nil, allDay: Bool = true) -> ScheduleItem {
+        ScheduleItem(id: id, plugin: .local, group: "g", title: id, start: start, end: end, isAllDay: allDay, kind: kind)
+    }
+
+    private func jiraIssue(key: String, summary: String, category: JiraStatusCategory, priority: String,
+                           start: Date?, due: Date?, type: String) -> JiraIssue {
+        JiraIssue(id: key, key: key, summary: summary, status: "", statusCategory: category, priority: priority,
+                  startDate: start, dueDate: due, issueType: type,
+                  projectKey: key.split(separator: "-").first.map(String.init) ?? "")
+    }
+
+    private func commentJSON(id: String, author: String, body: String, created: String) -> [String: Any] {
+        [
+            "id": id,
+            "author": ["displayName": author],
+            "body": ["type": "doc", "content": [["type": "paragraph", "content": [["type": "text", "text": body]]]]],
+            "created": created,
+        ]
     }
 }

@@ -4,11 +4,12 @@ import AppKit
 @testable import Lumen
 
 /// Jira 연결 없이 미리보기 팝오버의 실제 레이아웃을 눈으로 확인하기 위한 패널.
-/// mock IssueDetail을 주입해 오프스크린 렌더링하고 PNG로 떨군다.
+/// mock IssueDetail을 넘겨 오프스크린 렌더링하고 PNG로 떨군다.
 ///
 /// 출력 경로는 환경변수 `LUMEN_SNAPSHOT_DIR`, 없으면 임시 디렉터리.
 @MainActor
 final class IssuePreviewSnapshotTests: XCTestCase {
+    private let accent = LumenTokens.Palette.chart1
 
     func testRenderIssuePreviewVariants() throws {
         let withComments = IssueDetail.mock(
@@ -43,14 +44,14 @@ final class IssuePreviewSnapshotTests: XCTestCase {
 
         let panel = HStack(alignment: .top, spacing: 24) {
             labeled("01-미리보기(댓글수만)") {
-                IssuePreviewPopover(issueKey: withComments.key, injectedDetail: withComments)
+                IssuePreviewPopover(detail: withComments, accent: accent,
+                                    openURL: URL(string: "https://example.atlassian.net/browse/ABC-1421"))
             }
             labeled("02-미리보기(댓글없음)") {
-                IssuePreviewPopover(issueKey: noComments.key, injectedDetail: noComments)
+                IssuePreviewPopover(detail: noComments, accent: accent)
             }
             labeled("03-⌘클릭 댓글 팝오버") {
-                IssueCommentsPopover(issueKey: withComments.key,
-                                     injected: (total: 5, comments: commentList))
+                IssueCommentsPopover(issueKey: withComments.key, total: 5, comments: commentList)
             }
         }
         .padding(28)
@@ -74,78 +75,6 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         }
     }
 
-    /// 기한 초과 섹션의 펼침/접힘 두 상태를 나란히 확인한다.
-    func testRenderOverdueSectionCollapsedAndExpanded() throws {
-        let items = [
-            JiraIssue.mock(key: "ABC-1180", summary: "결제 실패 로그 수집기 배포", priority: "Highest",
-                           status: "진행중", category: .indeterminate, dueDaysAgo: 12),
-            JiraIssue.mock(key: "ABC-1204", summary: "정산 배치 재실행 스크립트 정리", priority: "High",
-                           status: "할 일", category: .new, dueDaysAgo: 5),
-            JiraIssue.mock(key: "PPAI-31", summary: "온보딩 A/B 결과 리포트", priority: "Medium",
-                           status: "진행중", category: .indeterminate, dueDaysAgo: 2),
-        ]
-
-        let panel = HStack(alignment: .top, spacing: 24) {
-            ForEach([true, false], id: \.self) { expanded in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(expanded ? "펼침" : "접힘")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
-                    let key = "snapshotOverdueExpanded-\(expanded)"
-                    IssueListSection(
-                        icon: "triangle-alert",
-                        iconColor: LumenTokens.Palette.danger,
-                        title: "기한 초과 미완료",
-                        items: items,
-                        emptyText: "기한 초과 없음",
-                        hideWhenEmpty: true,
-                        collapseKey: key
-                    )
-                    .frame(width: 380, alignment: .topLeading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(12)
-                    .background(Color(red: 0.11, green: 0.11, blue: 0.13))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-            }
-        }
-        .padding(28)
-        .background(Color(red: 0.05, green: 0.05, blue: 0.06))
-        .environment(\.colorScheme, .dark)
-
-        // @AppStorage가 읽어갈 값을 렌더 전에 심어둔다.
-        UserDefaults.standard.set(true, forKey: "snapshotOverdueExpanded-true")
-        UserDefaults.standard.set(false, forKey: "snapshotOverdueExpanded-false")
-        defer {
-            UserDefaults.standard.removeObject(forKey: "snapshotOverdueExpanded-true")
-            UserDefaults.standard.removeObject(forKey: "snapshotOverdueExpanded-false")
-        }
-
-        try render(panel, named: "overdue-section.png")
-    }
-
-    /// 세 컬럼의 모든 섹션이 접기 가능한지 — 전부 펼친 상태와 전부 접은 상태를 나란히.
-    func testRenderAllSectionsCollapsedAndExpanded() throws {
-        let issues = (1...4).map {
-            JiraIssue.mock(key: "ABC-\(1300 + $0)", summary: "작업 \($0)", priority: "High",
-                           status: "진행중", category: .indeterminate, dueDaysAgo: $0)
-        }
-        let data = JiraDashboardData.sectionMock(issues: issues)
-        let keys = [JiraSectionKey.overdue, JiraSectionKey.thisWeek, JiraSectionKey.highest,
-                    JiraSectionKey.nextWeek, JiraSectionKey.backlog, JiraSectionKey.sprints,
-                    JiraSectionKey.epics]
-
-        for expanded in [true, false] {
-            keys.forEach { UserDefaults.standard.set(expanded, forKey: $0) }
-            let content = DashboardContent(data: data,
-                                           selectedProject: .constant(PresentColumn.allKey))
-                .frame(width: 1160, height: 840)
-                .environment(\.colorScheme, .dark)
-            try render(content, named: "sections-\(expanded ? "expanded" : "collapsed").png")
-        }
-        keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
-    }
-
     /// 본문이 길 때 예약 높이를 정확히 쓰는지 — 화면 크기와 무관한 고정값이어야 한다.
     ///
     /// 예약 높이 자체가 유지되는지(= 늦게 도착한 본문이 잘리지 않는지)는 실제 popover를 띄우는
@@ -159,14 +88,13 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         let detail = IssueDetail.mock(key: "ABC-2001", summary: "긴 설명 렌더링 확인",
                                       status: "진행중", description: long, total: 0, comments: [])
 
-        let bare = NSHostingView(rootView: IssuePreviewPopover(issueKey: detail.key,
-                                                               injectedDetail: detail))
+        let bare = NSHostingView(rootView: IssuePreviewPopover(detail: detail, accent: accent))
         let size = bare.fittingSize
         print("[metrics] 긴 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
         XCTAssertEqual(size.height, CalendarPreviewMetrics.maxPopoverHeight, accuracy: 1,
                        "긴 본문은 상한에서 멈추고 그 안에서 스크롤돼야 한다")
 
-        let popover = IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
+        let popover = IssuePreviewPopover(detail: detail, accent: accent)
             .fixedSize(horizontal: false, vertical: true)
             .background(Color(red: 0.11, green: 0.11, blue: 0.13))
             .padding(24)
@@ -181,8 +109,7 @@ final class IssuePreviewSnapshotTests: XCTestCase {
                                       status: "할 일",
                                       description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
                                       total: 0, comments: [])
-        let bare = NSHostingView(rootView: IssuePreviewPopover(issueKey: detail.key,
-                                                               injectedDetail: detail))
+        let bare = NSHostingView(rootView: IssuePreviewPopover(detail: detail, accent: accent))
         let size = bare.fittingSize
         print("[metrics] 짧은 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
         XCTAssertLessThan(size.height, 250, "짧은 내용에 큰 창이 뜨면 안 된다")
@@ -209,41 +136,6 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         try png.write(to: out)
         window.setIsVisible(false)
         print("[snapshot] \(out.path) (\(png.count) bytes, \(Int(hosting.bounds.width))x\(Int(hosting.bounds.height)))")
-    }
-}
-
-private extension JiraIssue {
-    static func mock(key: String, summary: String, priority: String, status: String,
-                     category: JiraStatusCategory, dueDaysAgo: Int) -> JiraIssue {
-        JiraIssue(
-            id: key, key: key, summary: summary, status: status, statusCategory: category,
-            priority: priority, startDate: nil,
-            dueDate: Calendar.current.date(byAdding: .day, value: -dueDaysAgo, to: Date()),
-            resolutionDate: nil, created: nil, issueType: "Task",
-            projectKey: key.split(separator: "-").first.map(String.init) ?? "ABC"
-        )
-    }
-}
-
-private extension JiraDashboardData {
-    /// 세 컬럼의 섹션이 모두 그려지도록 각 목록을 채운 mock.
-    static func sectionMock(issues: [JiraIssue]) -> JiraDashboardData {
-        JiraDashboardData(
-            thisWeekCounts: JiraStatusCounts(),
-            projectStats: [],
-            todayIssues: [],
-            thisWeekIssues: issues,
-            highestIncomplete: issues,
-            overdueIncomplete: issues,
-            completedLast30: [],
-            createdLast30: [],
-            nextWeekIssues: issues,
-            backlogCountByProject: [:],
-            sprintInfos: [],
-            epicInfos: [],
-            allIssuesInWindow: [],
-            lastUpdated: Date()
-        )
     }
 }
 

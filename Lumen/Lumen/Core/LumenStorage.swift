@@ -42,6 +42,7 @@ enum LumenStorage {
         case resourceAnomalies
         case currencyRates
         case localEvents
+        case scheduleCacheDir
 
         var relativePath: String {
             switch self {
@@ -55,12 +56,13 @@ enum LumenStorage {
             case .resourceAnomalies:   return "resource_anomalies.json"
             case .currencyRates:       return "currency_rates.json"
             case .localEvents:         return "local_events.json"
+            case .scheduleCacheDir:    return "schedule_cache"
             }
         }
 
         var isDirectory: Bool {
             switch self {
-            case .clipboardImagesDir, .notesDir: return true
+            case .clipboardImagesDir, .notesDir, .scheduleCacheDir: return true
             default: return false
             }
         }

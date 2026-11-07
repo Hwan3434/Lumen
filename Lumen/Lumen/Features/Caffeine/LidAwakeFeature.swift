@@ -40,12 +40,12 @@ final class LidAwakeFeature: BuiltInFeature {
     private init() {}
 
     var name: String {
-        isActive || isOwned ? "덮개 모드 끄기" : "덮개 닫아도 깨어있기"
+        isActive || isOwned ? "클램쉘 모드 끄기" : "클램쉘 모드"
     }
 
     func activate() {
         if isActive || isOwned {
-            turnOff(toast: "덮개 모드를 껐어요")
+            turnOff(toast: "클램쉘 모드를 껐어요")
         } else {
             turnOn()
         }
@@ -59,9 +59,9 @@ final class LidAwakeFeature: BuiltInFeature {
         // 켜져 있을 때만 메뉴바에 보인다. 누르면 바로 끈다.
         statusHandle = coordinator.addItem(
             initialIcon: "flame",
-            accessibility: "덮개 모드",
+            accessibility: "클램쉘 모드",
             visible: false,
-            onClick: { [weak self] in self?.turnOff(toast: "덮개 모드를 껐어요") }
+            onClick: { [weak self] in self?.turnOff(toast: "클램쉘 모드를 껐어요") }
         )
     }
 
@@ -81,7 +81,7 @@ final class LidAwakeFeature: BuiltInFeature {
     private func turnOn() {
         guard !isBusy else { return }
         if let percent = BatteryWatcher.percentIfOnBattery(), percent <= Self.minimumBatteryPercent {
-            LumenToast.show(text: "배터리가 \(Self.minimumBatteryPercent)% 이하라 덮개 모드를 켤 수 없어요", duration: 4)
+            LumenToast.show(text: "배터리가 \(Self.minimumBatteryPercent)% 이하라 클램쉘 모드를 켤 수 없어요", duration: 4)
             return
         }
         isBusy = true
@@ -110,7 +110,7 @@ final class LidAwakeFeature: BuiltInFeature {
             } catch SleepPolicyService.Failure.cancelled {
                 // 비밀번호 창에서 취소 — 조용히 끝낸다.
             } catch {
-                LumenToast.show(text: "덮개 모드를 켜지 못했어요: \(error.localizedDescription)", duration: 4)
+                LumenToast.show(text: "클램쉘 모드를 켜지 못했어요: \(error.localizedDescription)", duration: 4)
             }
         }
     }
@@ -143,7 +143,7 @@ final class LidAwakeFeature: BuiltInFeature {
                 if isActive, let deadline {
                     startGuards(until: max(deadline, Date().addingTimeInterval(60)))
                 }
-                LumenToast.show(text: "덮개 모드를 끄지 못했어요: \(error.localizedDescription)", duration: 4)
+                LumenToast.show(text: "클램쉘 모드를 끄지 못했어요: \(error.localizedDescription)", duration: 4)
             }
         }
     }
@@ -162,9 +162,9 @@ final class LidAwakeFeature: BuiltInFeature {
             do {
                 try await SleepPolicyService.offMain { try SleepPolicyService.setSleepDisabled(false) }
                 isOwned = false
-                LumenToast.show(text: "지난번에 켜 둔 덮개 모드를 껐어요")
+                LumenToast.show(text: "지난번에 켜 둔 클램쉘 모드를 껐어요")
             } catch {
-                LumenToast.show(text: "덮개 모드가 켜진 채 남아 있어요. 설정 > 전원에서 확인해 주세요", duration: 5)
+                LumenToast.show(text: "클램쉘 모드가 켜진 채 남아 있어요. 설정 > 전원에서 확인해 주세요", duration: 5)
             }
         }
     }
@@ -190,7 +190,7 @@ final class LidAwakeFeature: BuiltInFeature {
                 statusHandle?.hide()
                 isActive = false
                 isOwned = false
-                LumenToast.show(text: "덮개 모드 권한을 지웠어요")
+                LumenToast.show(text: "클램쉘 모드 권한을 지웠어요")
             } catch SleepPolicyService.Failure.cancelled {
             } catch {
                 LumenToast.show(text: "권한을 지우지 못했어요: \(error.localizedDescription)", duration: 4)
@@ -207,7 +207,7 @@ final class LidAwakeFeature: BuiltInFeature {
         let timer = Timer(timeInterval: deadline.timeIntervalSinceNow, repeats: false) { [weak self] _ in
             guard let feature = self else { return }
             Task { @MainActor [feature] in
-                feature.turnOff(toast: "\(Int(Self.duration / 3600))시간이 지나 덮개 모드를 껐어요", sleepIfLidClosed: true)
+                feature.turnOff(toast: "\(Int(Self.duration / 3600))시간이 지나 클램쉘 모드를 껐어요", sleepIfLidClosed: true)
             }
         }
         // 메뉴가 열려 있는 동안(eventTracking 모드)에도 만료되도록 common 모드에 건다.
@@ -229,7 +229,7 @@ final class LidAwakeFeature: BuiltInFeature {
     private func checkBattery() {
         guard isActive, let percent = BatteryWatcher.percentIfOnBattery(),
               percent <= Self.minimumBatteryPercent else { return }
-        turnOff(toast: "배터리가 \(Self.minimumBatteryPercent)% 이하라 덮개 모드를 껐어요", sleepIfLidClosed: true)
+        turnOff(toast: "배터리가 \(Self.minimumBatteryPercent)% 이하라 클램쉘 모드를 껐어요", sleepIfLidClosed: true)
     }
 
     // MARK: - Helpers

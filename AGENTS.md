@@ -6,11 +6,12 @@
 - **Language & Framework**: SwiftUI (현재 Xcode 프로젝트 설정 기준 `SWIFT_VERSION = 5.0`, `MACOSX_DEPLOYMENT_TARGET = 26.2`).
 - **Package Manager**: Swift Package Manager. Sparkle 자동 업데이트 및 MarkdownUI를 사용합니다.
 - **Project Structure**:
-  - `Lumen/Lumen/Core`: 앱 인프라, 키체인 자격증명 보관소 (`CredentialsStore`), 디렉터리 경로 (`LumenStorage`).
+  - `Lumen/Lumen/Core`: 앱 인프라, 파일 기반 민감값 보관소 (`SecretStore`), 디렉터리 경로 (`LumenStorage`).
   - `Lumen/Lumen/DesignSystem`: 디자인 토큰 (`LumenTokens`), 커스텀 컴포넌트 (`LumenChrome`, `LumenInput`).
   - `Lumen/Lumen/Features`: 번역, 메모, 클립보드, 설정창 화면 구성 요소.
   - `Lumen/Lumen/Search`: 메인 검색 창 뷰 및 사용량 정보 패널 (`UsagePanelView`).
-  - `Lumen/Lumen/Services`: 데이터 수집·가공 서비스 (`JiraService`/`JiraRepository`, `ClipboardManager`, `CurrencyService`, `AppIndexer`).
+  - `Lumen/Lumen/Features/Schedule`: 일정 대시보드. 일정 출처는 플러그인(`Core/SchedulePlugin`, 등록은 `Core/SchedulePlugins`)이고 캘린더·Jira·내 일정이 `Plugins/` 아래에 있습니다. 새 출처를 붙이는 법은 `docs/schedule-plugins.md`.
+  - `Lumen/Lumen/Services`: 데이터 수집·가공 서비스 (`ClipboardManager`, `CurrencyService`, `AppIndexer`).
   - 번역은 외부 API가 아니라 Apple 온디바이스 `Translation` 프레임워크를 씁니다 (`TranslatorViewModel`).
 
 ## 2. 코드 스타일 및 구현 규칙
@@ -24,5 +25,5 @@
 - **Design Tokens**: UI 요소를 추가할 때는 반드시 `DESIGN.md` 및 `LumenTokens`에 사전 정의된 토큰을 조합하십시오. 하드코딩된 RGB 또는 HSL 값을 즉흥적으로 사용하지 마십시오.
 
 ## 4. 자격증명 관리 및 테스트
-- 사용자의 API 키나 개인 정보는 코드 내에 절대 하드코딩해서는 안 됩니다. 현재 자가서명 빌드 정책상 Jira 자격증명은 `SecretStore` 파일 저장소에 저장하며, 이는 암호화가 아니라 로컬 파일 난독화와 owner-only 권한(`0600`)에 의존합니다.
+- 사용자의 API 키나 개인 정보는 코드 내에 절대 하드코딩해서는 안 됩니다. 현재 자가서명 빌드 정책상 일정 플러그인 자격증명은 `PluginSecrets`를 거쳐 `SecretStore` 파일 저장소에 저장하며, 이는 암호화가 아니라 로컬 파일 난독화와 owner-only 권한(`0600`)에 의존합니다.
 - Xcode DerivedData로 인한 빌드 이슈 발생 시 `DerivedData/` 디렉터리를 청소하고 다시 빌드하는 절차를 권장하십시오.

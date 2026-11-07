@@ -40,9 +40,10 @@ final class TranslatorViewModel {
     var translationConfig: TranslationSession.Configuration? = nil
 
     private let maxHistory = 30
-    private let savePath: URL = LumenStorage.url(for: .translationHistory)
+    private let savePath: URL
 
-    init() {
+    init(savePath: URL = LumenStorage.url(for: .translationHistory)) {
+        self.savePath = savePath
         loadFromDisk()
     }
 
@@ -140,14 +141,11 @@ final class TranslatorViewModel {
         let items = history.map {
             SavedItem(id: $0.id.uuidString, original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, inputPronunciation: $0.inputPronunciation, date: $0.date)
         }
-        if let data = try? JSONEncoder().encode(items) {
-            try? data.write(to: savePath)
-        }
+        LumenStorage.write(items, to: savePath)
     }
 
     private func loadFromDisk() {
-        guard let data = try? Data(contentsOf: savePath),
-              let items = try? JSONDecoder().decode([SavedItem].self, from: data) else { return }
+        guard let items = LumenStorage.read([SavedItem].self, from: savePath) else { return }
         history = items.map {
             TranslationHistoryItem(id: UUID(uuidString: $0.id) ?? UUID(), original: $0.original, translated: $0.translated, pronunciation: $0.pronunciation, inputPronunciation: $0.inputPronunciation, date: $0.date)
         }

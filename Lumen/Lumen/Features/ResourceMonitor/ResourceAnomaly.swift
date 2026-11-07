@@ -39,7 +39,6 @@ final class ResourceAnomalyStore {
 
     private(set) var anomalies: [ResourceAnomaly] = []
 
-    private let savePath: URL = LumenStorage.url(for: .resourceAnomalies)
     private let diskQueue = DispatchQueue(label: "com.lumen.anomaly.disk", qos: .utility)
     private let maxStored = 200
 
@@ -66,17 +65,14 @@ final class ResourceAnomalyStore {
     }
 
     private func loadFromDisk() {
-        guard let data = try? Data(contentsOf: savePath),
-              let items = try? JSONDecoder().decode([ResourceAnomaly].self, from: data) else { return }
+        guard let items = LumenStorage.read([ResourceAnomaly].self, from: .resourceAnomalies) else { return }
         anomalies = items
     }
 
     private func scheduleSave() {
         let snapshot = anomalies
-        let path = savePath
         diskQueue.async {
-            guard let data = try? JSONEncoder().encode(snapshot) else { return }
-            try? data.write(to: path)
+            LumenStorage.write(snapshot, to: .resourceAnomalies)
         }
     }
 }

@@ -22,7 +22,7 @@ struct TimelineView: View {
     @State private var selectedID: String? = nil
     @State private var selectedVariant: ScheduleDetailVariant = .primary
     @State private var newItemDate: Date? = nil
-    @AppStorage("schedule.showLunar") private var showLunar = false
+    @AppStorage(ScheduleView.showLunarKey) private var showLunar = false
 
     private static let cal = Calendar.current
     private let halfRangeWeeks: Int = 13   // ±3개월
@@ -96,12 +96,9 @@ struct TimelineView: View {
     }
 
     private var weekLabel: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "yyyy년 M월"
         let weekStart = currentWeekStart()
         let middle = Self.cal.date(byAdding: .day, value: 3, to: weekStart) ?? weekStart
-        return f.string(from: middle)
+        return LumenDateFormat.yearMonthKo.string(from: middle)
     }
 
     // MARK: - Week unit (한 주 = 헤더 + 막대 layer)
@@ -263,16 +260,10 @@ struct TimelineView: View {
     }
 
     private func dayLabel(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "d일"
-        return f.string(from: d)
+        LumenDateFormat.dayKo.string(from: d)
     }
 
     private func monthShort(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M월"
-        return f.string(from: d)
+        LumenDateFormat.monthKo.string(from: d)
     }
 }

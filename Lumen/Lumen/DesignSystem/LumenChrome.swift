@@ -111,6 +111,22 @@ enum LumenDateFormat {
     static let time: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"; return f
     }()
+    /// "2026년 11월" — 달력 헤더.
+    static let yearMonthKo: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월"; return f
+    }()
+    /// "11월 7일" — 월간 달력 날짜 표기.
+    static let monthDayKo: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f
+    }()
+    /// "7일" — 타임라인 날짜 칸.
+    static let dayKo: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "d일"; return f
+    }()
+    /// "11월" — 타임라인 월 경계 표기.
+    static let monthKo: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월"; return f
+    }()
 }
 
 // MARK: - LumenFooterBar

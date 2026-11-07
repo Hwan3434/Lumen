@@ -88,13 +88,10 @@ struct MonthGridView: View {
     }
 
     private var monthLabel: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "yyyy년 M월"
         // 같은 주에 두 달이 걸쳐있으면 가운데 날(네 번째 날) 기준으로 결정.
         let cal = Calendar.current
         let middle = cal.date(byAdding: .day, value: 3, to: visibleAnchor) ?? visibleAnchor
-        return f.string(from: middle)
+        return LumenDateFormat.yearMonthKo.string(from: middle)
     }
 
     // MARK: - Weekday row
@@ -220,7 +217,7 @@ private struct WeekRow: View {
     @State private var selectedVariant: ScheduleDetailVariant = .primary
     /// "+N"을 눌러 그날 일정 전체를 볼 날짜.
     @State private var overflowDay: Date? = nil
-    @AppStorage("schedule.showLunar") private var showLunar = false
+    @AppStorage(ScheduleView.showLunarKey) private var showLunar = false
 
     var body: some View {
         let cal = Calendar.current
@@ -360,10 +357,7 @@ private struct WeekRow: View {
     }
 
     private func monthDayLabel(_ day: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M월 d일"
-        return f.string(from: day)
+        LumenDateFormat.monthDayKo.string(from: day)
     }
 
     /// 날짜 숫자의 색 우선순위: today > 토·일·공휴일 > 기본.

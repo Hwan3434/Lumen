@@ -16,8 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var promotedSparkleWindows: Set<ObjectIdentifier> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        AppResourceMonitor.resetTrace()
-        AppResourceMonitor.trace("applicationDidFinishLaunching:start")
+        MemoryTrace.reset()
+        MemoryTrace.record("applicationDidFinishLaunching:start")
 
         LumenStorage.purgeRetiredFilesIfNeeded()
         ScheduleMigration.runIfNeeded()
@@ -26,39 +26,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let translator = TranslatorFeature()
         FeatureRegistry.shared.register(translator)
-        AppResourceMonitor.trace("feature_registered: Translator")
+        MemoryTrace.record("feature_registered: Translator")
 
         let windowMagnet = WindowMagnetFeature()
         FeatureRegistry.shared.register(windowMagnet)
-        AppResourceMonitor.trace("feature_registered: WindowMagnet")
+        MemoryTrace.record("feature_registered: WindowMagnet")
 
         let clipboard = ClipboardFeature()
         FeatureRegistry.shared.register(clipboard)
-        AppResourceMonitor.trace("feature_registered: Clipboard")
+        MemoryTrace.record("feature_registered: Clipboard")
 
         let note = NoteFeature()
         FeatureRegistry.shared.register(note)
-        AppResourceMonitor.trace("feature_registered: Note")
+        MemoryTrace.record("feature_registered: Note")
 
         let caffeine = CaffeineFeature()
         FeatureRegistry.shared.register(caffeine)
-        AppResourceMonitor.trace("feature_registered: Caffeine")
+        MemoryTrace.record("feature_registered: Caffeine")
 
         // 덮개 모드는 시스템 전역 설정을 바꾸므로 카페인과 달리 자동으로 켜지 않는다.
         FeatureRegistry.shared.register(LidAwakeFeature.shared)
-        AppResourceMonitor.trace("feature_registered: LidAwake")
+        MemoryTrace.record("feature_registered: LidAwake")
 
         let schedule = ScheduleFeature()
         FeatureRegistry.shared.register(schedule)
-        AppResourceMonitor.trace("feature_registered: Schedule")
+        MemoryTrace.record("feature_registered: Schedule")
 
         let colorPicker = ColorPickerFeature()
         FeatureRegistry.shared.register(colorPicker)
-        AppResourceMonitor.trace("feature_registered: ColorPicker")
+        MemoryTrace.record("feature_registered: ColorPicker")
 
         let resourceMonitor = ResourceMonitorFeature()
         FeatureRegistry.shared.register(resourceMonitor)
-        AppResourceMonitor.trace("feature_registered: ResourceMonitor")
+        MemoryTrace.record("feature_registered: ResourceMonitor")
 
         // 윈도우 마그넷용 접근성 권한 (단축키와는 무관)
         if windowMagnet.isEnabled {
@@ -92,16 +92,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         hotkeyManager.start()
-        AppResourceMonitor.trace("hotkeys_registered")
+        MemoryTrace.record("hotkeys_registered")
 
         // Search 입력에서 환율 변환에 쓰는 USD-기준 환율 캐시 — 24h마다 백그라운드 갱신.
         CurrencyService.shared.refreshIfStale()
         let names = FeatureRegistry.shared.enabledFeatures.map(\.name).joined(separator: ", ")
-        AppResourceMonitor.trace("enabled_features: \(names)")
+        MemoryTrace.record("enabled_features: \(names)")
 
         appStatusBar = AppStatusBar(updater: updaterController.updater)
         appStatusBar.attachFeatures(FeatureRegistry.shared.enabledFeatures)
-        AppResourceMonitor.trace("statusbar_ready")
+        MemoryTrace.record("statusbar_ready")
 
         // SwiftUI Settings 창이 열리면 우리 floating panel이 가리므로, non-panel
         // 창이 key가 되는 순간 모든 visible KeyablePanel을 내린다. 두 가지 가드로

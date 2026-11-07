@@ -24,7 +24,7 @@ final class AppIndexer {
     func loadApps() -> [AppItem] {
         if !cachedApps.isEmpty { return cachedApps }
 
-        AppResourceMonitor.trace("AppIndexer:loadApps:enter")
+        MemoryTrace.record("AppIndexer:loadApps:enter")
 
         var apps: [AppItem] = []
         var seen = Set<String>()
@@ -51,7 +51,7 @@ final class AppIndexer {
         }
 
         cachedApps = apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        AppResourceMonitor.trace("AppIndexer:loadApps:exit(\(cachedApps.count))")
+        MemoryTrace.record("AppIndexer:loadApps:exit(\(cachedApps.count))")
         return cachedApps
     }
 
@@ -115,7 +115,7 @@ final class AppIndexer {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.cachedApps = []
-                AppResourceMonitor.trace("AppIndexer:directoryChanged")
+                MemoryTrace.record("AppIndexer:directoryChanged")
                 onChange()
             }
         }

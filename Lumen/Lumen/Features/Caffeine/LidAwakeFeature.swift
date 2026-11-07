@@ -12,7 +12,7 @@ import IOKit.ps
 ///
 /// 설정 > 전원 탭이 같은 상태를 보여주므로 `shared` 인스턴스 하나를 공유한다.
 @Observable
-final class LidAwakeFeature: BuiltInFeature {
+final class LidAwakeFeature: ToggleableFeature {
     static let shared = LidAwakeFeature()
 
     static let duration: TimeInterval = 2 * 60 * 60
@@ -39,12 +39,17 @@ final class LidAwakeFeature: BuiltInFeature {
 
     private init() {}
 
-    var name: String {
-        isActive || isOwned ? "클램쉘 모드 끄기" : "클램쉘 모드"
+    let name = "클램쉘 모드"
+
+    var isOn: Bool { isActive || isOwned }
+    var onStatus: String? {
+        guard isOn else { return nil }
+        guard let expiresAt else { return "켜져 있어요" }
+        return "\(LumenTime.relative(expiresAt, granularity: .calendar))에 자동으로 꺼져요"
     }
 
     func activate() {
-        if isActive || isOwned {
+        if isOn {
             turnOff(toast: "클램쉘 모드를 껐어요")
         } else {
             turnOn()

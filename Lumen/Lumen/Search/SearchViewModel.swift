@@ -1,19 +1,37 @@
 import AppKit
+import CoreServices
 import Observation
 
 enum SearchResultItem: Identifiable {
     case app(AppItem)
     case calculation(expression: String, result: String)
     case currency(input: String, result: String, copyValue: String)
+    case feature(BuiltInFeature)
 
     var id: String {
         switch self {
         case .app(let item): return "app_\(item.id)"
         case .calculation(let expr, _): return "calc_\(expr)"
         case .currency(let input, _, _): return "fx_\(input)"
+        case .feature(let feature): return "feature_\(ObjectIdentifier(feature).hashValue)"
         }
     }
 
+    /// 목록 묶음 이름. 이웃한 항목과 다르면 묶음 머리를 그린다.
+    var groupLabel: String {
+        switch self {
+        case .app: return "앱"
+        case .calculation: return "계산"
+        case .currency: return "환율"
+        case .feature: return "기능"
+        }
+    }
+}
+
+/// 상세 칸에 보여 줄 앱 정보. 항목을 선택했을 때만 읽는다.
+struct AppDetail {
+    let version: String?
+    let lastUsed: Date?
 }
 
 @Observable
@@ -22,13 +40,15 @@ final class SearchViewModel {
     var query = "" {
         didSet { updateResults() }
     }
-    var features: [BuiltInFeature] = []
     var results: [SearchResultItem] = []
     var selectedIndex = 0
 
     private let appIndexer = AppIndexer()
     private let usageTracker = UsageTracker.shared
     private var allApps: [AppItem] = []
+    @ObservationIgnored private var appDetails: [String: AppDetail] = [:]
+
+    var selectedItem: SearchResultItem? { results[safe: selectedIndex] }
 
     func loadApps() {
         AppResourceMonitor.trace("SearchVM:loadApps:enter")
@@ -76,14 +96,16 @@ final class SearchViewModel {
         }
 
         let matchedFeatures = FeatureRegistry.shared.search(query: query)
-        features = matchedFeatures
 
         let featureNames = Set(matchedFeatures.map { $0.name.lowercased() })
         let hiddenApps = HiddenAppsManager.shared
         let filteredApps = sorted.filter {
             !featureNames.contains($0.name.lowercased()) && !hiddenApps.isHidden($0.id)
         }
-        items.append(contentsOf: filteredApps.map { .app($0) })
+        // 빈 입력에서는 앱이 전부 나오므로 기능을 앞에 둬야 보인다. 입력 중에는 찾던 앱이 먼저다.
+        let appItems = filteredApps.map { SearchResultItem.app($0) }
+        let featureItems = matchedFeatures.map { SearchResultItem.feature($0) }
+        items.append(contentsOf: q.isEmpty ? featureItems + appItems : appItems + featureItems)
 
         results = items
         selectedIndex = 0
@@ -119,7 +141,33 @@ final class SearchViewModel {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(copyValue, forType: .string)
             onDismiss(true)
+        case .feature(let feature):
+            activate(feature, onDismiss: onDismiss)
         }
+    }
+
+    /// 켜고 끄기형은 창을 그대로 두어 스위치가 바뀌는 걸 보여 준다.
+    /// 창을 여는 기능은 검색창을 먼저 닫는다 — 다른 패널이 뜨면서 서로 가리지 않게.
+    func activate(_ feature: BuiltInFeature, onDismiss: (_ activatePreviousApp: Bool) -> Void) {
+        if feature is ToggleableFeature {
+            feature.activate()
+        } else {
+            onDismiss(true)
+            feature.activate()
+        }
+    }
+
+    /// 버전과 마지막 실행 시각. 처음 선택할 때 한 번 읽고 기억한다.
+    func detail(for app: AppItem) -> AppDetail {
+        if let cached = appDetails[app.id] { return cached }
+        // Bundle(url:)은 번들을 프로세스 끝까지 붙잡아 두므로 Info.plist만 읽는다.
+        let info = NSDictionary(contentsOf: app.path.appendingPathComponent("Contents/Info.plist"))
+        let version = info?["CFBundleShortVersionString"] as? String
+        let lastUsed = MDItemCreateWithURL(nil, app.path as CFURL)
+            .flatMap { MDItemCopyAttribute($0, kMDItemLastUsedDate) as? Date }
+        let detail = AppDetail(version: version, lastUsed: lastUsed)
+        appDetails[app.id] = detail
+        return detail
     }
 
     func hideApp(_ appID: String) {

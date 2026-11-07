@@ -9,7 +9,7 @@ extension Constants {
     }
 
     // MARK: - Search Window
-    static var searchWindowSize:     NSSize { size((680, 600), (680, 600), (720, 640), (760, 680)) }
+    static var searchWindowSize:     NSSize { size((870, 600), (870, 600), (920, 640), (970, 680)) }
     static var searchWindowWidth:    CGFloat { searchWindowSize.width }
     static var searchWindowHeight:   CGFloat { searchWindowSize.height }
 

@@ -1,19 +1,21 @@
 import AppKit
 import IOKit.pwr_mgt
 
-final class CaffeineFeature: BuiltInFeature {
+@Observable
+final class CaffeineFeature: ToggleableFeature {
     let featureDescription = "슬립 방지 (카페인)"
     let iconName = "coffee"
     let searchKeywords = ["카페인", "caffeine", "슬립", "sleep", "잠금", "화면"]
     let showInDefaultList = false
 
-    private var assertionID: IOPMAssertionID = 0
+    @ObservationIgnored private var assertionID: IOPMAssertionID = 0
     private(set) var isActive = false
-    private var statusHandle: StatusBarItemHandle?
+    @ObservationIgnored private var statusHandle: StatusBarItemHandle?
 
-    var name: String {
-        isActive ? "카페인 끄기" : "카페인 켜기"
-    }
+    let name = "카페인"
+
+    var isOn: Bool { isActive }
+    var onStatus: String? { isActive ? "직접 끌 때까지 화면이 잠들지 않아요" : nil }
 
     func activate() {
         toggle()

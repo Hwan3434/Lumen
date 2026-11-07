@@ -109,7 +109,7 @@ private struct AgendaSectionView: View {
     init(section: AgendaSection, today: Date) {
         self.section = section
         self.today = today
-        _expanded = AppStorage(wrappedValue: section.bucket.expandedByDefault,
+        _expanded = AppStorage(wrappedValue: true,
                                "schedule.agenda.\(section.bucket.rawValue).expanded")
     }
 

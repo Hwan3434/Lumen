@@ -45,7 +45,7 @@ struct SearchView: View {
                     .fill(LumenTokens.Palette.borderSubtle)
                     .frame(width: 1)
                 SearchDetailView(item: viewModel.selectedItem, viewModel: viewModel)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
             footer

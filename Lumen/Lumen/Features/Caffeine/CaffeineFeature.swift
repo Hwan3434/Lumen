@@ -6,7 +6,6 @@ final class CaffeineFeature: ToggleableFeature {
     let featureDescription = "슬립 방지 (카페인)"
     let iconName = "coffee"
     let searchKeywords = ["카페인", "caffeine", "슬립", "sleep", "잠금", "화면"]
-    let showInDefaultList = false
 
     @ObservationIgnored private var assertionID: IOPMAssertionID = 0
     private(set) var isActive = false

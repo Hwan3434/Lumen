@@ -87,4 +87,9 @@ final class ScheduleWindowController: PanelWindowController {
         let y = frame.midY - size.height / 2
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
     }
+
+    /// 열 때마다 ⌘T와 같이 오늘로 되돌린다. 지난번에 보던 달이나 주는 기억하지 않는다.
+    override func configureBeforeShow(_ panel: KeyablePanel) {
+        NotificationCenter.default.post(name: .scheduleCommand, object: ScheduleCommand.today)
+    }
 }

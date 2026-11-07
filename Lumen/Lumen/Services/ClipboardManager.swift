@@ -63,10 +63,33 @@ struct ClipboardItem: Identifiable, Equatable {
         return icon
     }
 
-    var typeLabel: String {
-        if fileURLs != nil { return "파일" }
-        if image != nil || imagePath != nil { return "이미지" }
-        return "텍스트"
+    enum Kind {
+        case text, image, file
+
+        /// 목록 행 오른쪽에 보이는 종류 문구.
+        var label: String {
+            switch self {
+            case .text:  return "텍스트"
+            case .image: return "이미지"
+            case .file:  return "파일"
+            }
+        }
+
+        /// 목록 행 왼쪽 `LumenIcon` 이름.
+        var icon: String {
+            switch self {
+            case .text:  return "align-left"
+            case .image: return "image"
+            case .file:  return "file"
+            }
+        }
+    }
+
+    /// 파일 → 이미지 → 텍스트 순으로 판정한다.
+    var kind: Kind {
+        if fileURLs != nil { return .file }
+        if image != nil || imagePath != nil { return .image }
+        return .text
     }
 
     var resolvedImage: NSImage? {

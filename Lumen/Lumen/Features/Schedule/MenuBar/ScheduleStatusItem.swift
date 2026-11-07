@@ -80,11 +80,14 @@ final class ScheduleStatusItem {
         panel.isReleasedWhenClosed = false
         panel.contentView = NSHostingView(rootView: TodayAgendaPopover().environment(store))
 
-        // 메뉴바 버튼 아래 정렬.
+        // 메뉴바 버튼 아래 정렬. 전체 화면처럼 메뉴바가 숨으면 버튼이 화면 위쪽 밖에 있으므로
+        // 그 화면의 보이는 영역 안으로 끌어당긴다.
         let buttonInWindow = button.convert(button.bounds, to: nil as NSView?)
         let buttonFrameInScreen = buttonWindow.convertToScreen(buttonInWindow)
-        let x = buttonFrameInScreen.midX - size.width / 2
-        let y = buttonFrameInScreen.minY - size.height - 6
+        let visible = (NSScreen.screens.first { $0.frame.minX <= buttonFrameInScreen.midX && buttonFrameInScreen.midX < $0.frame.maxX }
+            ?? NSScreen.main)?.visibleFrame ?? .infinite
+        let x = min(max(buttonFrameInScreen.midX - size.width / 2, visible.minX + 6), visible.maxX - size.width - 6)
+        let y = min(buttonFrameInScreen.minY, visible.maxY) - size.height - 6
         panel.setFrameOrigin(NSPoint(x: x, y: y))
         panel.orderFrontRegardless()
 

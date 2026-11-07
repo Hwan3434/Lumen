@@ -24,7 +24,6 @@ final class LidAwakeFeature: ToggleableFeature {
     let featureDescription = "덮개를 닫아도 잠들지 않게 (최대 2시간)"
     let iconName = "flame"
     let searchKeywords = ["덮개", "클램쉘", "clamshell", "lid", "disablesleep", "잠자기", "슬립", "sleep"]
-    let showInDefaultList = false
 
     private(set) var isActive = false
     private(set) var isBusy = false

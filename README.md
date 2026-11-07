@@ -116,7 +116,7 @@ Antigravity 등 AI 에이전트가 새 macOS에 Lumen을 자율 설치하기 위
 
 ## 데이터 위치
 
-- **자격증명**: macOS Keychain (`com.jh.Lumen` 서비스)
+- **자격증명**: `~/Library/Application Support/Lumen/secrets.dat` (기기 UUID로 난독화, 0600)
 - **노트**: `~/Library/Application Support/Lumen/notes/<id>.md` (탭마다 1파일)
 - **클립보드 / 숨긴 앱 / 환율 캐시**: `~/Library/Application Support/Lumen/`
 - **진단 로그**: `~/Library/Logs/Lumen/memory_trace.log`

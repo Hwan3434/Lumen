@@ -220,6 +220,7 @@ private struct WeekRow: View {
     @State private var selectedVariant: ScheduleDetailVariant = .primary
     /// "+N"을 눌러 그날 일정 전체를 볼 날짜.
     @State private var overflowDay: Date? = nil
+    @AppStorage("schedule.showLunar") private var showLunar = false
 
     var body: some View {
         let cal = Calendar.current
@@ -287,12 +288,12 @@ private struct WeekRow: View {
                     Text(monthDayLabel(day))
                         .lumenText(.caption, weight: .semibold)
                         .monospacedDigit()
-                        .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
+                        .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
                 } else {
                     Text("\(dayNum)")
                         .lumenText(.caption, weight: isToday ? .bold : .regular)
                         .monospacedDigit()
-                        .foregroundStyle(dayNumberColor(isToday: isToday, holidayName: holidayName))
+                        .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
                 }
                 if let name = holidayName {
                     Text(name)
@@ -301,6 +302,13 @@ private struct WeekRow: View {
                         .lineLimit(1)
                 }
                 Spacer()
+                if showLunar, let lunar = CalendarDateUtils.lunarLabel(for: day) {
+                    Text(lunar)
+                        .lumenText(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(P.inkFaint)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -358,10 +366,10 @@ private struct WeekRow: View {
         return f.string(from: day)
     }
 
-    /// 날짜 숫자의 색 우선순위: today > 공휴일 > 기본.
-    private func dayNumberColor(isToday: Bool, holidayName: String?) -> Color {
+    /// 날짜 숫자의 색 우선순위: today > 토·일·공휴일 > 기본.
+    private func dayNumberColor(isToday: Bool, day: Date) -> Color {
         if isToday { return P.brand }
-        if holidayName != nil { return P.danger }
+        if CalendarDateUtils.isRedDay(day) { return P.danger }
         return P.ink
     }
 }

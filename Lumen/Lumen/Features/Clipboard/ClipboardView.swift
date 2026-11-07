@@ -198,7 +198,7 @@ private struct ClipboardListRow: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s3) {
-            LumenIcon(typeIcon)
+            LumenIcon(item.kind.icon)
                 .foregroundStyle(P.inkMuted)
 
             Text(item.displayText)
@@ -217,7 +217,7 @@ private struct ClipboardListRow: View {
                 LumenIconButton(icon: "x", label: "삭제", action: onDelete)
                     .padding(.vertical, -LumenIconButton.inlineOverhang)
             } else {
-                Text(item.typeLabel)
+                Text(item.kind.label)
                     .lumenText(.label, weight: .regular)
                     .foregroundStyle(P.inkFaint)
             }
@@ -226,14 +226,6 @@ private struct ClipboardListRow: View {
         .padding(.horizontal, LumenTokens.Space.s4)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
-    }
-
-    private var typeIcon: String {
-        switch item.typeLabel {
-        case "이미지": return "image"
-        case "파일":   return "file"
-        default:       return "align-left"
-        }
     }
 
     private var fileCount: Int? {

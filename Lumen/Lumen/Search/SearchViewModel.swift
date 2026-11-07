@@ -51,12 +51,12 @@ final class SearchViewModel {
     var selectedItem: SearchResultItem? { results[safe: selectedIndex] }
 
     func loadApps() {
-        AppResourceMonitor.trace("SearchVM:loadApps:enter")
+        MemoryTrace.record("SearchVM:loadApps:enter")
         allApps = appIndexer.loadApps()
         updateResults()
         // 앱 설치·삭제 시 다시 읽어 열려 있는 검색창에도 반영한다.
         appIndexer.startWatching { [weak self] in self?.loadApps() }
-        AppResourceMonitor.trace("SearchVM:loadApps:exit(\(allApps.count))")
+        MemoryTrace.record("SearchVM:loadApps:exit(\(allApps.count))")
     }
 
     private func updateResults() {
@@ -126,14 +126,14 @@ final class SearchViewModel {
         let item = results[selectedIndex]
         switch item {
         case .app(let appItem):
-            AppResourceMonitor.trace("SearchVM:launchApp:enter(\(appItem.name))")
+            MemoryTrace.record("SearchVM:launchApp:enter(\(appItem.name))")
             usageTracker.recordUsage(for: appItem.id)
-            AppResourceMonitor.trace("SearchVM:launchApp:beforeOpen")
+            MemoryTrace.record("SearchVM:launchApp:beforeOpen")
             let config = NSWorkspace.OpenConfiguration()
             NSWorkspace.shared.openApplication(at: appItem.path, configuration: config) { _, _ in
-                AppResourceMonitor.trace("SearchVM:launchApp:openCompletion(\(appItem.name))")
+                MemoryTrace.record("SearchVM:launchApp:openCompletion(\(appItem.name))")
             }
-            AppResourceMonitor.trace("SearchVM:launchApp:afterOpen")
+            MemoryTrace.record("SearchVM:launchApp:afterOpen")
             onDismiss(false)
         case .calculation(_, let result):
             NSPasteboard.general.clearContents()

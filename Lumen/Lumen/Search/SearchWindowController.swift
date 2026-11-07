@@ -8,17 +8,17 @@ final class SearchWindowController: PanelWindowController {
 
     override func show() {
         let isFirstShow = panel == nil
-        AppResourceMonitor.trace("search:show:enter(firstShow=\(isFirstShow))")
+        MemoryTrace.record("search:show:enter(firstShow=\(isFirstShow))")
         super.show()
         // 메뉴바 상주 앱이라 몇 주씩 안 끄는 일이 흔하다. 앱 시작 때 한 번만 확인하면
         // 그동안 환율이 계속 낡은 채로 남으므로, 검색창을 열 때마다 다시 확인한다.
         // (24시간 이내면 즉시 리턴이라 비용은 사실상 없다.)
         CurrencyService.shared.refreshIfStale()
-        AppResourceMonitor.trace("search:show:exit")
+        MemoryTrace.record("search:show:exit")
     }
 
     override func didCreatePanel(_ panel: KeyablePanel) {
-        AppResourceMonitor.trace("search:panel_created")
+        MemoryTrace.record("search:panel_created")
     }
 
     override func createPanel() -> KeyablePanel {
@@ -58,7 +58,7 @@ final class SearchWindowController: PanelWindowController {
     }
 
     override func configureBeforeShow(_ panel: KeyablePanel) {
-        AppResourceMonitor.trace("search:configureBeforeShow:enter")
+        MemoryTrace.record("search:configureBeforeShow:enter")
         viewModel?.reset()
         let frame = NSScreen.underMouse.visibleFrame
         let x = frame.midX - Constants.searchWindowWidth / 2
@@ -70,6 +70,6 @@ final class SearchWindowController: PanelWindowController {
     }
 
     override func didShow(_ panel: KeyablePanel) {
-        AppResourceMonitor.trace("search:didShow")
+        MemoryTrace.record("search:didShow")
     }
 }

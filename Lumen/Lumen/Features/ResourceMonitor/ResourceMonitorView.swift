@@ -5,7 +5,7 @@ private typealias P = LumenTokens.Palette
 struct ResourceMonitorView: View {
     private var monitor: AppResourceMonitor { AppResourceMonitor.shared }
     private var store: ResourceAnomalyStore { ResourceAnomalyStore.shared }
-    @State private var traceOn = AppResourceMonitor.isTraceEnabled
+    @State private var traceOn = MemoryTrace.isEnabled
 
     var body: some View {
         ScrollView {
@@ -121,7 +121,7 @@ struct ResourceMonitorView: View {
                 get: { traceOn },
                 set: {
                     traceOn = $0
-                    AppResourceMonitor.isTraceEnabled = $0
+                    MemoryTrace.isEnabled = $0
                 }
             )) {
                 Text("추적 로그 기록")

@@ -12,10 +12,10 @@ final class UsageTracker {
     }
 
     func recordUsage(for appID: String) {
-        AppResourceMonitor.trace("UsageTracker:recordUsage:enter")
+        MemoryTrace.record("UsageTracker:recordUsage:enter")
         cache[appID, default: 0] += 1
         UserDefaults.standard.set(cache, forKey: key)
-        AppResourceMonitor.trace("UsageTracker:recordUsage:exit")
+        MemoryTrace.record("UsageTracker:recordUsage:exit")
     }
 
     func usageCount(for appID: String) -> Int {

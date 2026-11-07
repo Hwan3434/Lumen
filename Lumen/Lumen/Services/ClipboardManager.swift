@@ -133,9 +133,9 @@ final class ClipboardManager {
     private init() {}
 
     func startMonitoring() {
-        AppResourceMonitor.trace("ClipboardManager.loadFromDisk:start")
+        MemoryTrace.record("ClipboardManager.loadFromDisk:start")
         loadFromDisk()
-        AppResourceMonitor.trace("ClipboardManager.loadFromDisk:done (\(history.count)개)")
+        MemoryTrace.record("ClipboardManager.loadFromDisk:done (\(history.count)개)")
         lastChangeCount = NSPasteboard.general.changeCount
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let manager = self else { return }

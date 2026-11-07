@@ -121,6 +121,26 @@ class PanelWindowController: NSObject {
         fatalError("Subclass must override createPanel()")
     }
 
+    /// 모든 패널이 공유하는 기본 설정으로 KeyablePanel을 만든다. Subclass의 `createPanel()`에서 쓴다.
+    /// borderless·fullSizeContentView·nonactivatingPanel에 `extraStyle`을 더하고,
+    /// floating·모든 스페이스·투명 배경·그림자·닫아도 해제 안 함으로 설정한다.
+    func makePanel(size: NSSize, extraStyle: NSWindow.StyleMask = []) -> KeyablePanel {
+        let panel = KeyablePanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel, extraStyle],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = .canJoinAllSpaces
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isOpaque = false
+        panel.isReleasedWhenClosed = false
+        return panel
+    }
+
     /// panel 생성 직후 1회 호출 — 초기 위치 지정 등 1회성 설정.
     func didCreatePanel(_ panel: KeyablePanel) {}
 

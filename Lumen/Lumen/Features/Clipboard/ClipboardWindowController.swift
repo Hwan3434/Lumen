@@ -7,20 +7,7 @@ final class ClipboardWindowController: PanelWindowController {
     private var clipboardViewModel: ClipboardViewModel?
 
     override func createPanel() -> KeyablePanel {
-        let panel = KeyablePanel(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.collectionBehavior = .canJoinAllSpaces
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isOpaque = false
-        panel.isReleasedWhenClosed = false
+        let panel = makePanel(size: Self.panelSize)
 
         let vm = ClipboardViewModel()
         self.clipboardViewModel = vm

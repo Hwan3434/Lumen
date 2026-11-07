@@ -12,22 +12,9 @@ final class NoteWindowController: PanelWindowController {
     private var viewModel: NotesViewModel?
 
     override func createPanel() -> KeyablePanel {
-        let panel = KeyablePanel(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.collectionBehavior = .canJoinAllSpaces
+        let panel = makePanel(size: Self.panelSize, extraStyle: .resizable)
         // 사이드바 .draggable과 충돌해서 끔. 윈도우 이동은 ⌘+드래그로 별도 핸들링.
         panel.isMovableByWindowBackground = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isOpaque = false
-        panel.isReleasedWhenClosed = false
         panel.minSize = NSSize(width: 480, height: 320)
 
         let vm = NotesViewModel()

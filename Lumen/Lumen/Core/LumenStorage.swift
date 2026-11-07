@@ -76,15 +76,26 @@ enum LumenStorage {
 
     static func read<T: Decodable>(_ type: T.Type, from slot: Slot,
                                    decoder: JSONDecoder = JSONDecoder()) -> T? {
-        guard let data = try? Data(contentsOf: url(for: slot)) else { return nil }
+        read(type, from: url(for: slot), decoder: decoder)
+    }
+
+    /// 경로를 직접 받는 판 — 테스트가 임시 디렉터리를 주입할 때 쓴다.
+    static func read<T: Decodable>(_ type: T.Type, from fileURL: URL,
+                                   decoder: JSONDecoder = JSONDecoder()) -> T? {
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
         return try? decoder.decode(T.self, from: data)
     }
 
     /// JSON 인코딩 후 atomic 쓰기. 실패 시 silently drop — 호출부가 critical하면 직접 try.
     static func write<T: Encodable>(_ value: T, to slot: Slot,
                                     encoder: JSONEncoder = JSONEncoder()) {
+        write(value, to: url(for: slot), encoder: encoder)
+    }
+
+    static func write<T: Encodable>(_ value: T, to fileURL: URL,
+                                    encoder: JSONEncoder = JSONEncoder()) {
         guard let data = try? encoder.encode(value) else { return }
-        try? data.write(to: url(for: slot), options: .atomic)
+        try? data.write(to: fileURL, options: .atomic)
     }
 
     // MARK: - 제거된 기능이 남긴 파일 정리

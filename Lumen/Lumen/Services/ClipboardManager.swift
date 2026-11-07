@@ -101,7 +101,6 @@ final class ClipboardManager {
     private var timer: Timer?
     private let maxItems = 500
 
-    private let savePath: URL = LumenStorage.url(for: .clipboardHistory)
     private let imagesDir: URL = LumenStorage.url(for: .clipboardImagesDir)
 
     // 디스크 I/O 전용 직렬 큐 — 메인 스레드 블로킹 방지
@@ -135,8 +134,9 @@ final class ClipboardManager {
         work.cancel()
         saveWorkItem = nil
         let items = snapshotSavedItems()
-        if let data = try? JSONEncoder().encode(items) {
-            try? data.write(to: savePath)
+        // diskQueue는 직렬 큐라 sync로 넣으면 이미 실행 중인 저장이 끝난 뒤에 쓴다 — 같은 파일 동시 쓰기 방지.
+        diskQueue.sync {
+            LumenStorage.write(items, to: .clipboardHistory)
         }
     }
 
@@ -261,18 +261,15 @@ final class ClipboardManager {
     private func scheduleSave() {
         saveWorkItem?.cancel()
         let items = snapshotSavedItems()
-        let path = savePath
         let work = DispatchWorkItem {
-            guard let data = try? JSONEncoder().encode(items) else { return }
-            try? data.write(to: path)
+            LumenStorage.write(items, to: .clipboardHistory)
         }
         saveWorkItem = work
         diskQueue.asyncAfter(deadline: .now() + 2.0, execute: work)
     }
 
     private func loadFromDisk() {
-        guard let data = try? Data(contentsOf: savePath),
-              let items = try? JSONDecoder().decode([SavedItem].self, from: data) else { return }
+        guard let items = LumenStorage.read([SavedItem].self, from: .clipboardHistory) else { return }
         history = items.compactMap { saved in
             // 이미지 파일이 존재하는지 확인
             if let imgPath = saved.imagePath, !FileManager.default.fileExists(atPath: imgPath) {

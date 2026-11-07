@@ -21,15 +21,11 @@ extension Constants {
     // MARK: - Other panels
     static var noteWindowSize:       NSSize { size((720, 680), (760, 680), (820, 700), (880, 720)) }
     static var clipboardWindowSize:  NSSize { size((720, 560), (760, 600), (800, 640), (800, 640)) }
-    static var jiraWindowSize:       NSSize { size((1160, 840), (1200, 840), (1260, 860), (1320, 860)) }
+    static var scheduleWindowSize:   NSSize { size((1160, 840), (1200, 840), (1260, 860), (1320, 860)) }
     static var resourceWindowSize:   NSSize { size((560, 680), (600, 720), (660, 800), (720, 860)) }
     static var magnetWindowSize:     NSSize { size((300, 350), (340, 400), (360, 440), (400, 480)) }
     static var settingsWindowSize:   NSSize { size((600, 540), (660, 580), (700, 600), (760, 640)) }
     static var agendaPanelSize:      NSSize { size((320, 420), (340, 460), (360, 480), (380, 520)) }
-
-    // MARK: - Jira dashboard columns
-    static var jiraPastColumnWidth: CGFloat   { LumenDensity.current.pick(compact: 280, cozy: 300, regular: 320, spacious: 340) }
-    static var jiraFutureColumnWidth: CGFloat { LumenDensity.current.pick(compact: 320, cozy: 340, regular: 360, spacious: 380) }
 }
 
 extension NSScreen {

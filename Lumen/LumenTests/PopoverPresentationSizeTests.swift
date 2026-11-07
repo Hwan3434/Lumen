@@ -7,7 +7,7 @@ import AppKit
 ///
 /// macOS popover는 **표시되는 순간 크기가 고정**되고 그 뒤 내용이 커져도 창이 자라지 않는다.
 /// 그래서 "내용만큼, 단 550까지"를 지키려면 뜨는 시점에 이미 내용이 있어야 한다 —
-/// 조회를 먼저 하고 띄우는 책임은 `IssuePopoverPresenter`에 있고, 여기서는 그 결과를 잰다.
+/// 조회를 먼저 하고 띄우는 책임은 `ScheduleDetailPopover`에 있고, 여기서는 그 결과를 잰다.
 @MainActor
 final class PopoverPresentationSizeTests: XCTestCase {
 
@@ -23,7 +23,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
             total: 3, comments: [])
 
         let size = try present(name: "popover-long.png") {
-            IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
+            IssuePreviewPopover(detail: detail, accent: LumenTokens.Palette.chart1)
         }
         XCTAssertLessThanOrEqual(size.height,
                                  CalendarPreviewMetrics.maxPopoverHeight + popoverChrome,
@@ -39,7 +39,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
                                       description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
                                       total: 0, comments: [])
         let size = try present(name: "popover-short.png") {
-            IssuePreviewPopover(issueKey: detail.key, injectedDetail: detail)
+            IssuePreviewPopover(detail: detail, accent: LumenTokens.Palette.chart1)
         }
         XCTAssertLessThan(size.height, 250, "짧은 내용에 큰 창이 뜨면 안 된다")
     }
@@ -53,7 +53,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
                               body: "댓글 \(i)번 — 확인했습니다. 재현 조건과 로그를 함께 남깁니다.")
         }
         let big = try present(name: "popover-comments-many.png") {
-            IssueCommentsPopover(issueKey: "ABC-1421", injected: (total: 12, comments: many))
+            IssueCommentsPopover(issueKey: "ABC-1421", total: 12, comments: many)
         }
         XCTAssertLessThanOrEqual(big.height,
                                  CalendarPreviewMetrics.maxPopoverHeight + popoverChrome,
@@ -61,8 +61,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
         XCTAssertGreaterThan(big.height, 300, "댓글 12개가 로딩 크기에 갇히면 안 된다")
 
         let few = try present(name: "popover-comments-few.png") {
-            IssueCommentsPopover(issueKey: "ABC-1421",
-                                 injected: (total: 1, comments: Array(many.prefix(1))))
+            IssueCommentsPopover(issueKey: "ABC-1421", total: 1, comments: Array(many.prefix(1)))
         }
         XCTAssertLessThan(few.height, big.height, "댓글이 적으면 그만큼 작아야 한다")
     }
@@ -73,11 +72,10 @@ final class PopoverPresentationSizeTests: XCTestCase {
             id: "ev-1", title: "주간 스프린트 회고", startDate: Date(),
             endDate: Date().addingTimeInterval(3600), isAllDay: false,
             calendarTitle: "업무", sourceTitle: "Google",
-            calendarColor: NSColor.systemBlue.cgColor,
             notes: "지난 스프린트 회고 안건 정리", location: "회의실 A", urlString: nil))
 
         let size = try present(name: "popover-ekevent.png") {
-            EKEventPreviewPopover(event: event)
+            EKEventPreviewPopover(event: event, accent: LumenTokens.Palette.chart1)
         }
         XCTAssertLessThan(size.height, 300)
     }

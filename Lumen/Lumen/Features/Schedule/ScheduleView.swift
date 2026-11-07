@@ -2,17 +2,20 @@ import SwiftUI
 
 private typealias P = LumenTokens.Palette
 
-/// 일정 대시보드 패널의 루트 뷰. 헤더(제목, 월간/주간, 갱신 상태) 아래에 캘린더가 온다.
+/// 일정 대시보드 패널의 루트 뷰. 헤더(제목, 월간/주간, 갱신 상태), 왼쪽 일정 목록, 오른쪽 캘린더, 아래 단축키 줄.
 /// 모든 데이터는 `ScheduleStore.visibleItems` 하나에서 온다.
 struct ScheduleView: View {
     @Environment(ScheduleStore.self) private var store
 
     @State private var mode: CalendarMode
     @State private var anchorDate: Date = Date()
-    /// 보기 전환 시 increment — 자식 view가 onChange로 받아 오늘로 점프.
+    /// 보기 전환·⌘T 시 increment — 자식 view가 onChange로 받아 오늘로 점프.
     /// ZStack+opacity로 항상 mount된 채라 onAppear가 첫 한 번만 호출되는 부작용을 보완.
     @State private var monthResetToken: Int = 0
     @State private var weekResetToken: Int = 0
+    /// ⌘N 시 increment — 보이는 보기가 오늘 칸에 새 일정 팝오버를 띄운다.
+    @State private var monthNewItemToken: Int = 0
+    @State private var weekNewItemToken: Int = 0
 
     init() {
         _mode = State(initialValue: DashboardSettingsStore.shared.settings.defaultView)
@@ -24,7 +27,19 @@ struct ScheduleView: View {
             VStack(spacing: 0) {
                 header
                 LumenHairline()
-                calendarBody
+                HStack(spacing: 0) {
+                    AgendaListView()
+                        .frame(width: LumenTokens.Space.size(360))
+                    Rectangle().fill(P.borderSubtle).frame(width: 1)
+                    calendarBody
+                }
+                .frame(maxHeight: .infinity)
+                LumenFooterBar(actions: [
+                    .init(label: "새 일정", kbd: "⌘N"),
+                    .init(label: "오늘", kbd: "⌘T"),
+                    .init(label: "월간", kbd: "⌘1", primary: mode == .month),
+                    .init(label: "주간", kbd: "⌘2", primary: mode == .week),
+                ])
             }
         }
         .frame(width: Constants.scheduleWindowSize.width, height: Constants.scheduleWindowSize.height)
@@ -35,6 +50,22 @@ struct ScheduleView: View {
         .onReceive(NotificationCenter.default.publisher(for: .scheduleSwitchView)) { note in
             guard let newMode = note.object as? CalendarMode else { return }
             mode = newMode
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .scheduleCommand)) { note in
+            switch note.object as? ScheduleCommand {
+            case .today:
+                fireReset()
+            case .newItem:
+                switch mode {
+                case .month:
+                    monthResetToken &+= 1
+                    monthNewItemToken &+= 1
+                case .week:
+                    weekNewItemToken &+= 1
+                }
+            case nil:
+                break
+            }
         }
         .onChange(of: mode) { _, _ in fireReset() }
     }
@@ -54,7 +85,7 @@ struct ScheduleView: View {
                 Text("일정")
                     .lumenText(.title3)
                     .foregroundStyle(P.ink)
-                Text(LumenDateFormat.dayWithWeekday.string(from: Date()))
+                Text(LumenDateFormat.dayWithWeekday.string(from: store.now))
                     .lumenText(.caption)
                     .monospacedDigit()
                     .foregroundStyle(P.inkFaint)
@@ -68,10 +99,6 @@ struct ScheduleView: View {
             Spacer()
 
             HStack(spacing: LumenTokens.Space.inline) {
-                ForEach(store.failures) { failure in
-                    LumenBadge(text: "\(failure.plugin.displayName) 오류", tone: .danger)
-                        .help(failure.message)
-                }
                 if store.isRefreshing {
                     HStack(spacing: LumenTokens.Space.s1) {
                         LumenIcon("rotate-cw", size: .small)
@@ -103,13 +130,14 @@ struct ScheduleView: View {
     private var calendarBody: some View {
         let items = store.visibleItems
         ZStack {
-            MonthGridView(items: items, resetToTodayToken: monthResetToken)
+            MonthGridView(items: items, resetToTodayToken: monthResetToken, newItemToken: monthNewItemToken)
                 .padding(.horizontal, LumenTokens.Space.pad)
                 .padding(.bottom, LumenTokens.Space.pad)
                 .opacity(mode == .month ? 1 : 0)
                 .allowsHitTesting(mode == .month)
 
-            TimelineView(items: items, anchorDate: $anchorDate, resetToTodayToken: weekResetToken)
+            TimelineView(items: items, anchorDate: $anchorDate, resetToTodayToken: weekResetToken,
+                         newItemToken: weekNewItemToken)
                 .padding(.horizontal, LumenTokens.Space.pad)
                 .padding(.bottom, LumenTokens.Space.pad)
                 .opacity(mode == .week ? 1 : 0)

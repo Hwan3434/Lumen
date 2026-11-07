@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import Combine
 
 private typealias P = LumenTokens.Palette
 
@@ -16,8 +15,10 @@ struct TimelineView: View {
     @Binding var anchorDate: Date
     /// 외부에서 "이번 주로 다시 점프" 신호 — 보기 전환 시 부모가 increment.
     var resetToTodayToken: Int = 0
+    /// ⌘N 신호 — 오늘 날짜 머리에 새 일정 팝오버를 띄운다.
+    var newItemToken: Int = 0
 
-    @State private var today: Date = Calendar.current.startOfDay(for: Date())
+    private var today: Date { store.today }
     @State private var selectedID: String? = nil
     @State private var selectedVariant: ScheduleDetailVariant = .primary
     @State private var newItemDate: Date? = nil
@@ -68,9 +69,9 @@ struct TimelineView: View {
                 }
             }
         }
-        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
-            let newToday = Calendar.current.startOfDay(for: Date())
-            if newToday != today { today = newToday }
+        .onChange(of: newItemToken) { _, _ in
+            anchorDate = Date()
+            newItemDate = today
         }
     }
 

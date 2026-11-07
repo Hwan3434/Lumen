@@ -35,6 +35,7 @@ final class ScheduleFeature: BuiltInFeature {
 
     @MainActor
     func attachStatusBar(_ coordinator: StatusBarCoordinator) {
+        ScheduleStore.shared.startClock()
         let item = ScheduleStatusItem(coordinator: coordinator, store: ScheduleStore.shared)
         statusItem = item
         applyMenuBarSetting()

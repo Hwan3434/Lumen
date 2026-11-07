@@ -25,6 +25,13 @@ final class ScheduleStore {
     private(set) var states: [SchedulePluginID: PluginState] = [:]
     @ObservationIgnored private var running: [SchedulePluginID: Task<Void, Never>] = [:]
 
+    /// 화면 전체가 보는 시계. 오늘 표시, 날짜 묶음, 메뉴바 라벨이 이 값만 본다.
+    /// 1분마다 깨우지 않고 다음 경계(자정, 오늘 시간 일정의 시작·끝)에만 갱신한다.
+    private(set) var now = Date()
+    @ObservationIgnored private var clockTimer: Timer?
+
+    var today: Date { Calendar.current.startOfDay(for: now) }
+
     init(plugins: [any SchedulePlugin]) {
         self.plugins = plugins
         for plugin in plugins {
@@ -39,6 +46,51 @@ final class ScheduleStore {
                 Task { await self?.refresh(plugin.id, force: true) }
             }
         }
+    }
+
+    // MARK: - 시계
+
+    /// 시계를 켠다. 앱이 한 번 부른다(테스트에서 만든 스토어는 켜지 않는다).
+    /// 보이는 항목이 바뀌면(갱신, 칩으로 묶음 켜고 끄기) 다음 경계를 다시 잡는다.
+    func startClock() {
+        tick()
+        observeVisibleItemsForClock()
+    }
+
+    private func observeVisibleItemsForClock() {
+        withObservationTracking {
+            _ = visibleItems
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.tick()
+                self?.observeVisibleItemsForClock()
+            }
+        }
+    }
+
+    private func tick() {
+        now = Date()
+        clockTimer?.invalidate()
+        let next = Self.nextBoundary(after: now, items: visibleItems)
+        let timer = Timer(fire: next, interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.tick() }
+        }
+        timer.tolerance = 5
+        RunLoop.main.add(timer, forMode: .common)
+        clockTimer = timer
+    }
+
+    /// 다음에 화면이 바뀌어야 하는 시각: 다음 자정, 또는 그 전에 오는 오늘 시간 일정의 시작·끝 중 가장 이른 것(1초 여유).
+    nonisolated static func nextBoundary(after now: Date, items: [ScheduleItem]) -> Date {
+        let cal = Calendar.current
+        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)) ?? now.addingTimeInterval(3600)
+        var next = midnight
+        for item in items where item.hasTimeOfDay {
+            for edge in [item.start, item.end].compactMap({ $0 }) where edge > now && edge < next {
+                next = edge
+            }
+        }
+        return next.addingTimeInterval(1)
     }
 
     // MARK: - 조회

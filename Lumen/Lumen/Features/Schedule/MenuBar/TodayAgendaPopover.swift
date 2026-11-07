@@ -7,7 +7,7 @@ struct TodayAgendaPopover: View {
     @Environment(ScheduleStore.self) private var store
 
     var body: some View {
-        let items = store.items(on: Date())
+        let items = store.items(on: store.now)
         let groups = grouped(items: items)
         return VStack(alignment: .leading, spacing: 0) {
             header(count: items.count)
@@ -66,7 +66,7 @@ struct TodayAgendaPopover: View {
                 .padding(.horizontal, LumenTokens.Space.inline)
             VStack(spacing: 0) {
                 ForEach(items) { item in
-                    AgendaRow(item: item)
+                    ScheduleItemRow(item: item, popoverEdge: .trailing)
                 }
             }
         }
@@ -92,52 +92,5 @@ struct TodayAgendaPopover: View {
 
     private static var headerLabel: String {
         headerDateFormatter.string(from: Date()) + " 일정"
-    }
-}
-
-private struct AgendaRow: View {
-    @Environment(ScheduleStore.self) private var store
-    let item: ScheduleItem
-    @State private var showingDetail = false
-    @State private var variant: ScheduleDetailVariant = .primary
-
-    var body: some View {
-        Button {
-            variant = isCommandClick ? .secondary : .primary
-            showingDetail = true
-        } label: {
-            HStack(alignment: .top, spacing: LumenTokens.Space.s3) {
-                LumenDot(color: store.color(for: item))
-                    .padding(.top, LumenTokens.Space.scaled(8))
-                VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
-                    Text(item.title)
-                        .lumenText(.body, weight: .medium)
-                        .foregroundStyle(item.isDone ? P.inkFaint : P.ink)
-                        .strikethrough(item.isDone, color: P.inkFaint)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    HStack(spacing: LumenTokens.Space.s1) {
-                        if let subtitle = item.subtitle {
-                            Text(subtitle)
-                            Text("·")
-                        }
-                        Text(ScheduleItemFormat.shortLabel(item))
-                        if let loc = item.location, !loc.isEmpty {
-                            Text("·")
-                            Text(loc)
-                                .lineLimit(1)
-                        }
-                    }
-                    .lumenText(.caption)
-                    .foregroundStyle(P.inkFaint)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.vertical, LumenTokens.Space.s3)
-            .padding(.horizontal, LumenTokens.Space.inline)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(LumenListRowStyle())
-        .scheduleDetailPopover(item: item, variant: variant, isPresented: $showingDetail, arrowEdge: .trailing)
     }
 }

@@ -69,22 +69,9 @@ open -a /Applications/Lumen.app
 ## 4. 자격증명 (선택)
 
 ### 사용자가 GUI로 [USER ACTION]
-`⌘,` → Jira / OpenAI 탭에서 입력 → 저장 → 첫 키체인 prompt에서 **항상 허용**.
+`⌘,` → **일정 › Jira** 탭에서 사용을 켜고 워크스페이스 도메인, 이메일, API 토큰을 넣은 뒤 [저장] → [연결 확인]. 저장하면 바로 적용돼서 재시작은 필요 없어요.
 
-### 또는 에이전트가 키체인에 직접 주입
-```bash
-# Jira — 워크스페이스 slug만 넣으면 cloudId는 첫 fetch에서 자동 resolve됨
-security add-generic-password -s com.jh.Lumen -a jiraWorkspaceSlug -w "<your-workspace>" -U
-security add-generic-password -s com.jh.Lumen -a jiraEmail         -w "<EMAIL>"          -U
-security add-generic-password -s com.jh.Lumen -a jiraApiToken      -w "<TOKEN>"          -U
-
-# OpenAI
-security add-generic-password -s com.jh.Lumen -a openAIAPIKey -w "<API_KEY>" -U
-
-# 적용 위해 재시작 (앱은 init 시점에 키를 1회 캐싱)
-osascript -e 'tell application "Lumen" to quit'; sleep 1
-open -a /Applications/Lumen.app
-```
+자격증명은 키체인이 아니라 `~/Library/Application Support/Lumen/secrets.dat`(기기 UUID로 난독화, 0600)에 들어가므로 에이전트가 직접 주입하지 않아요. 캘린더 연동은 **일정 › 캘린더** 탭에서 켜고, 처음 한 번 macOS가 묻는 캘린더 권한을 허용해 주세요.
 
 ## 5. 검증
 
@@ -92,12 +79,6 @@ open -a /Applications/Lumen.app
 # 실행 중?
 pgrep -lf "/Applications/Lumen.app/Contents/MacOS/Lumen" >/dev/null \
   && echo "[OK] running" || echo "[FAIL]"
-
-# 자격증명 저장 여부
-for acct in jiraWorkspaceSlug jiraEmail jiraApiToken openAIAPIKey; do
-  security find-generic-password -s com.jh.Lumen -a "$acct" >/dev/null 2>&1 \
-    && echo "[OK] $acct" || echo "[--] $acct (미설정)"
-done
 ```
 
 ## 트러블슈팅

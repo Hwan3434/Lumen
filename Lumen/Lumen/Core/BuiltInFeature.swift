@@ -27,6 +27,14 @@ protocol BuiltInFeature: AnyObject {
     @MainActor func attachStatusBar(_ coordinator: StatusBarCoordinator)
 }
 
+/// 창을 여는 대신 켜고 끄는 기능(카페인, 클램쉘 모드). 검색창 상세 칸에 스위치로 보인다.
+/// `activate()`가 켜고 끄기를 맡는다. 검색창이 상태를 바로 따라가도록 구현체는 `@Observable`이어야 한다.
+protocol ToggleableFeature: BuiltInFeature {
+    var isOn: Bool { get }
+    /// 켜져 있을 때 상세 칸에 보여 줄 상태 한 줄(예: 언제 꺼지는지). 꺼져 있으면 nil.
+    var onStatus: String? { get }
+}
+
 extension BuiltInFeature {
     func setup() {}
     func teardown() {}

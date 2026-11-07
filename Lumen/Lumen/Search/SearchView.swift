@@ -38,14 +38,16 @@ struct SearchView: View {
     private var mainPanel: some View {
         VStack(spacing: 0) {
             searchInput
-            // Quick row가 빈 상태일 땐 search input의 자체 구분선 하나만
-            // 보이고 results 위에 또 그어지지 않도록 — quick row가 있는 경우에만
-            // 그 아래 구분선을 둔다.
-            if !viewModel.features.isEmpty {
-                quickRow
-                LumenHairline()
+            HStack(spacing: 0) {
+                resultsList
+                    .frame(width: LumenTokens.Space.size(340))
+                Rectangle()
+                    .fill(LumenTokens.Palette.borderSubtle)
+                    .frame(width: 1)
+                SearchDetailView(item: viewModel.selectedItem, viewModel: viewModel)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            resultsList
+            .frame(maxHeight: .infinity)
             footer
         }
     }
@@ -68,86 +70,34 @@ struct SearchView: View {
         .overlay(alignment: .bottom) { LumenHairline() }
     }
 
-    // MARK: - Quick row (built-in features)
-
-    private var quickRow: some View {
-        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
-            LumenSectionLabel(text: "빠른 실행")
-                .padding(.horizontal, LumenTokens.Space.pad)
-                .padding(.top, LumenTokens.Space.s4)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LumenTokens.Space.inline) {
-                    ForEach(viewModel.features, id: \.name) { feature in
-                        quickCard(feature: feature)
-                    }
-                }
-                .padding(.horizontal, LumenTokens.Space.pad)
-            }
-            .padding(.bottom, LumenTokens.Space.s4)
-        }
-    }
-
-    private func quickCard(feature: BuiltInFeature) -> some View {
-        Button {
-            onDismiss()
-            feature.activate()
-        } label: {
-            VStack(spacing: LumenTokens.Space.inline) {
-                LumenIcon(feature.iconName, size: .large)
-                    .foregroundStyle(LumenTokens.Palette.inkMuted)
-                Text(feature.name)
-                    .lumenText(.caption)
-                    .foregroundStyle(LumenTokens.Palette.ink)
-                    .lineLimit(1)
-            }
-            .frame(width: LumenTokens.Space.size(96), height: LumenTokens.Space.size(80))
-            .overlay(LumenShape.rect(LumenTokens.Radius.md).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
-        }
-        .buttonStyle(LumenListRowStyle())
-    }
-
     // MARK: - Results
 
     private var resultsList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            LumenSectionLabel(text: resultsHeaderLabel)
-                .padding(.horizontal, LumenTokens.Space.pad)
-                .padding(.top, LumenTokens.Space.s4)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, item in
+                        if index == 0 || viewModel.results[index - 1].groupLabel != item.groupLabel {
+                            LumenSectionLabel(text: item.groupLabel)
+                                .padding(.horizontal, LumenTokens.Space.s4)
+                                .padding(.top, LumenTokens.Space.s3)
+                                .padding(.bottom, LumenTokens.Space.s1)
+                        }
+                        resultRow(item: item, index: index)
+                    }
+                }
+                .padding(.horizontal, LumenTokens.Space.inline)
                 .padding(.bottom, LumenTokens.Space.inline)
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, item in
-                            resultRow(item: item, index: index)
-                        }
-                    }
-                    .padding(.horizontal, LumenTokens.Space.inline)
-                    .padding(.bottom, LumenTokens.Space.inline)
-                }
-                .scrollIndicators(.hidden)
-                .onChange(of: viewModel.selectedIndex) { _, newValue in
-                    withAnimation(LumenTokens.Motion.easeMove()) {
-                        if let item = viewModel.results[safe: newValue] {
-                            proxy.scrollTo(item.id, anchor: .center)
-                        }
+            }
+            .scrollIndicators(.hidden)
+            .onChange(of: viewModel.selectedIndex) { _, newValue in
+                withAnimation(LumenTokens.Motion.easeMove()) {
+                    if let item = viewModel.results[safe: newValue] {
+                        proxy.scrollTo(item.id, anchor: .center)
                     }
                 }
             }
         }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var resultsHeaderLabel: String {
-        if let first = viewModel.results.first {
-            switch first {
-            case .calculation: return "계산"
-            case .currency:    return "환율"
-            default:           break
-            }
-        }
-        return "결과"
     }
 
     @ViewBuilder
@@ -157,7 +107,7 @@ struct SearchView: View {
             viewModel.selectedIndex = index
         } label: {
             rowContent(item: item, isSelected: isSelected)
-                .padding(.vertical, LumenTokens.Space.scaled(14))
+                .padding(.vertical, LumenTokens.Space.scaled(12))
                 .padding(.horizontal, LumenTokens.Space.s4)
                 .contentShape(Rectangle())
         }
@@ -178,6 +128,9 @@ struct SearchView: View {
 
         case .currency(let input, let result, _):
             ConversionRow(icon: "circle-dollar-sign", input: input, result: result, isSelected: isSelected)
+
+        case .feature(let feature):
+            FeatureRowContent(feature: feature, isSelected: isSelected)
         }
     }
 
@@ -192,19 +145,20 @@ struct SearchView: View {
     }
 
     private var footerActionLabel: String {
-        if let item = viewModel.results[safe: viewModel.selectedIndex] {
-            switch item {
-            case .calculation, .currency: return "결과 복사"
-            case .app:                    return "열기"
-            }
+        switch viewModel.selectedItem {
+        case .calculation, .currency:
+            return "결과 복사"
+        case .feature(let feature as ToggleableFeature):
+            return feature.isOn ? "끄기" : "켜기"
+        case .app, .feature, nil:
+            return "열기"
         }
-        return "열기"
     }
 }
 
 // MARK: - Rows
 
-/// 계산·환율 결과 행: 입력 → 결과, 오른쪽에 복사 안내.
+/// 계산·환율 결과 행: 입력 → 결과. 복사 안내는 상세 칸이 맡는다.
 private struct ConversionRow: View {
     let icon: String
     let input: String
@@ -226,17 +180,13 @@ private struct ConversionRow: View {
                     .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
             }
             .lineLimit(1)
-            Spacer(minLength: LumenTokens.Space.inline)
-            HStack(spacing: LumenTokens.Space.s1) {
-                LumenIcon("copy", size: .small)
-                Text("복사").lumenText(.label, weight: .regular)
-            }
-            .foregroundStyle(LumenTokens.Palette.inkFaint)
+            Spacer(minLength: 0)
         }
     }
 }
 
 /// 앱 결과 행. 호버 시 우측 끝에 숨기기 버튼이 페이드인 — 클릭하면 onHide 콜백.
+/// 앱임은 묶음 머리("앱")가 알려 주므로 배지는 달지 않는다.
 /// 버튼 영역에서는 행 자체의 selection이 트리거되지 않도록 stop-propagation.
 private struct AppRowContent: View {
     let appItem: AppItem
@@ -261,12 +211,31 @@ private struct AppRowContent: View {
                 LumenIconButton(icon: "eye-off", label: "검색 결과에서 숨기기", action: onHide)
                     .padding(.vertical, -LumenIconButton.inlineOverhang)
                     .transition(.opacity)
-            } else {
-                LumenBadge(text: "앱")
             }
         }
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .animation(LumenTokens.Motion.easeOut(LumenTokens.Motion.fast), value: hovered)
+    }
+}
+
+/// 기능 결과 행. 켜고 끄기형이 켜져 있으면 오른쪽에 "켜짐" 배지.
+private struct FeatureRowContent: View {
+    let feature: BuiltInFeature
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: LumenTokens.Space.s3) {
+            LumenIcon(feature.iconName, size: .large)
+                .foregroundStyle(LumenTokens.Palette.inkMuted)
+            Text(feature.name)
+                .lumenText(.body, weight: isSelected ? .semibold : .medium)
+                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+                .lineLimit(1)
+            Spacer(minLength: LumenTokens.Space.inline)
+            if let toggle = feature as? ToggleableFeature, toggle.isOn {
+                LumenBadge(text: "켜짐", tone: .success)
+            }
+        }
     }
 }

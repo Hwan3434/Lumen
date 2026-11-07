@@ -15,6 +15,9 @@ final class AgendaBucketsTests: XCTestCase {
             task("this-week", due: "2026-06-27"),
             task("next-week", due: "2026-06-29"),
             task("later", due: "2026-07-10"),
+            task("month-edge", due: "2026-07-24"),
+            task("too-far", due: "2026-07-25"),
+            event("too-far-event", start: "2026-07-25 10:00", end: "2026-07-25 11:00"),
             // 시작일이 지났어도 마감이 내일이면 내일 묶음.
             task("range", start: "2026-06-20", due: "2026-06-25"),
         ]
@@ -26,7 +29,7 @@ final class AgendaBucketsTests: XCTestCase {
         XCTAssertEqual(Set(ids(sections, .tomorrow)), ["tomorrow", "range"])
         XCTAssertEqual(ids(sections, .thisWeek), ["this-week"])
         XCTAssertEqual(ids(sections, .nextWeek), ["next-week"])
-        XCTAssertEqual(ids(sections, .later), ["later"])
+        XCTAssertEqual(ids(sections, .later), ["later", "month-edge"], "한 달 뒤 같은 날까지만 들어온다")
         XCTAssertEqual(sections.map(\.bucket), AgendaBucket.allCases, "순서는 묶음 선언 순서")
     }
 

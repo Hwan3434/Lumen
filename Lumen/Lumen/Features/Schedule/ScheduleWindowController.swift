@@ -21,21 +21,8 @@ final class ScheduleWindowController: PanelWindowController {
     override var densityContentSize: NSSize? { Self.panelSize }
 
     override func createPanel() -> KeyablePanel {
-        let panel = KeyablePanel(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.collectionBehavior = .canJoinAllSpaces
+        let panel = makePanel(size: Self.panelSize, extraStyle: .resizable)
         panel.isMovableByWindowBackground = true
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isOpaque = false
-        panel.isReleasedWhenClosed = false
         panel.minSize = NSSize(width: 400, height: 400)
         panel.autoFocusTextField = false
 

@@ -8,20 +8,7 @@ final class TranslatorWindowController: PanelWindowController {
     private var enterMonitor: Any?
 
     override func createPanel() -> KeyablePanel {
-        let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.collectionBehavior = .canJoinAllSpaces
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isOpaque = false
-        panel.isReleasedWhenClosed = false
+        let panel = makePanel(size: NSSize(width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight))
 
         let vm = TranslatorViewModel()
         self.translatorViewModel = vm

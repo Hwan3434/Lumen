@@ -22,21 +22,8 @@ final class SearchWindowController: PanelWindowController {
     }
 
     override func createPanel() -> KeyablePanel {
-        let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: Constants.searchWindowWidth, height: Constants.searchWindowHeight),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.collectionBehavior = .canJoinAllSpaces
+        let panel = makePanel(size: NSSize(width: Constants.searchWindowWidth, height: Constants.searchWindowHeight))
         panel.isMovableByWindowBackground = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isOpaque = false
-        panel.isReleasedWhenClosed = false
 
         let vm = SearchViewModel()
         self.viewModel = vm

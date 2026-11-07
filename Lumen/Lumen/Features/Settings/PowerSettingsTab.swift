@@ -12,7 +12,7 @@ struct PowerSettingsTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: LumenTokens.Space.s7) {
-                SettingsSection(title: "덮개 닫아도 깨어있기") {
+                SettingsSection(title: "클램쉘 모드") {
                     VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
                         StatusRow(
                             title: "모드",

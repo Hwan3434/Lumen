@@ -34,6 +34,8 @@ final class SearchViewModel {
         AppResourceMonitor.trace("SearchVM:loadApps:enter")
         allApps = appIndexer.loadApps()
         updateResults()
+        // 앱 설치·삭제 시 다시 읽어 열려 있는 검색창에도 반영한다.
+        appIndexer.startWatching { [weak self] in self?.loadApps() }
         AppResourceMonitor.trace("SearchVM:loadApps:exit(\(allApps.count))")
     }
 

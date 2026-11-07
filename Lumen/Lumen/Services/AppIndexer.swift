@@ -65,11 +65,22 @@ final class AppIndexer {
             ?? bundle?.infoDictionary?["CFBundleName"] as? String
             ?? url.deletingPathExtension().lastPathComponent
 
+        // Finder에 보이는 현지화 이름("System Settings" → "시스템 설정")도 검색되게 별명에 더한다.
+        // Lumen 자체는 영어 전용이라 FileManager.displayName은 영어를 돌려주므로 Spotlight 값을 쓴다.
+        var aliases = Constants.appAliases[bundleID] ?? []
+        if let localizedName = MDItemCreateWithURL(nil, url as CFURL)
+            .flatMap({ MDItemCopyAttribute($0, kMDItemDisplayName) as? String })?
+            .replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards]),
+           localizedName.caseInsensitiveCompare(displayName) != .orderedSame,
+           !aliases.contains(where: { $0.caseInsensitiveCompare(localizedName) == .orderedSame }) {
+            aliases.append(localizedName)
+        }
+
         apps.append(AppItem(
             id: bundleID,
             name: displayName,
             path: url,
-            aliases: Constants.appAliases[bundleID] ?? []
+            aliases: aliases
         ))
     }
 

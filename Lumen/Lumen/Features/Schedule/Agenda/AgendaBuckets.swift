@@ -26,14 +26,6 @@ nonisolated enum AgendaBucket: String, CaseIterable, Identifiable {
         case .later:    return "calendar"
         }
     }
-
-    /// 처음 열었을 때 펼쳐 둘 묶음. 먼 미래는 접어 두어 오늘이 3초 안에 보이게 한다.
-    var expandedByDefault: Bool {
-        switch self {
-        case .overdue, .today, .tomorrow, .thisWeek: return true
-        case .nextWeek, .later: return false
-        }
-    }
 }
 
 nonisolated struct AgendaSection: Identifiable {

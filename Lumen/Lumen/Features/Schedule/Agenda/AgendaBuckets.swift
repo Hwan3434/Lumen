@@ -39,6 +39,7 @@ nonisolated struct AgendaSection: Identifiable {
 /// - 기간 항목(스프린트)은 매일 반복돼 소음이므로 넣지 않는다.
 /// - 할 일(마감형)은 마감일로 묶는다. 마감이 지났는데 완료하지 않았으면 "지난 기한", 완료했으면 뺀다.
 /// - 일정(이벤트)은 오늘 이후로 처음 걸치는 날로 묶는다. 이미 끝난 일정은 뺀다.
+/// - 앞으로의 일은 오늘부터 한 달 뒤 같은 날까지만 넣는다. 지난 기한은 이 제한을 받지 않는다.
 nonisolated enum AgendaBuckets {
     static func sections(items: [ScheduleItem], now: Date, firstWeekday: Int) -> [AgendaSection] {
         let cal = Calendar.current
@@ -48,6 +49,7 @@ nonisolated enum AgendaBuckets {
         let weekStart = CalendarDateUtils.startOfWeek(of: today, firstWeekday: firstWeekday)
         let nextWeekStart = cal.date(byAdding: .day, value: 7, to: weekStart)!
         let laterStart = cal.date(byAdding: .day, value: 14, to: weekStart)!
+        let horizon = cal.date(byAdding: .month, value: 1, to: today)!
 
         var grouped: [AgendaBucket: [ScheduleItem]] = [:]
         for item in items where item.kind != .span {
@@ -57,6 +59,8 @@ nonisolated enum AgendaBuckets {
                 let due = cal.startOfDay(for: item.end ?? item.start)
                 if due < today {
                     bucket = item.isDone ? nil : .overdue
+                } else if due > horizon {
+                    bucket = nil
                 } else {
                     bucket = dayBucket(due, today: today, tomorrow: tomorrow, dayAfter: dayAfter,
                                        nextWeekStart: nextWeekStart, laterStart: laterStart)
@@ -65,10 +69,10 @@ nonisolated enum AgendaBuckets {
                 let ended = item.hasTimeOfDay
                     ? (item.end ?? item.start) <= now
                     : cal.startOfDay(for: item.end ?? item.start) < today
-                if ended {
+                let firstDay = max(cal.startOfDay(for: item.start), today)
+                if ended || firstDay > horizon {
                     bucket = nil
                 } else {
-                    let firstDay = max(cal.startOfDay(for: item.start), today)
                     bucket = dayBucket(firstDay, today: today, tomorrow: tomorrow, dayAfter: dayAfter,
                                        nextWeekStart: nextWeekStart, laterStart: laterStart)
                 }

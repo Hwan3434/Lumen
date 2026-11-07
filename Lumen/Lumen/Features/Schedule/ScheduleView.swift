@@ -5,8 +5,11 @@ private typealias P = LumenTokens.Palette
 /// 일정 대시보드 패널의 루트 뷰. 헤더(제목, 월간/주간, 갱신 상태), 왼쪽 일정 목록, 오른쪽 캘린더, 아래 단축키 줄.
 /// 모든 데이터는 `ScheduleStore.visibleItems` 하나에서 온다.
 struct ScheduleView: View {
+    /// 음력 표시 설정 키. 달력 두 화면도 같은 키를 쓴다.
+    static let showLunarKey = "schedule.showLunar"
+
     @Environment(ScheduleStore.self) private var store
-    @AppStorage("schedule.showLunar") private var showLunar = false
+    @AppStorage(ScheduleView.showLunarKey) private var showLunar = false
 
     @State private var mode: CalendarMode
     @State private var anchorDate: Date = Date()

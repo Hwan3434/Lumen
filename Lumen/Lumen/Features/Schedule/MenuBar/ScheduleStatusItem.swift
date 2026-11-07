@@ -96,7 +96,7 @@ final class ScheduleStatusItem {
 
         // 외부 클릭/Esc 시 닫기.
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
-            if event.type == .keyDown, event.keyCode == 0x35 { // Escape
+            if event.type == .keyDown, Int(event.keyCode) == KeyCode.escape {
                 self?.closePanel()
                 return nil
             }

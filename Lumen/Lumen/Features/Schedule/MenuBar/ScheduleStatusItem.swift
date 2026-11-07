@@ -26,9 +26,7 @@ final class ScheduleStatusItem {
 
         refresh()
         observeStore()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.refresh() }
-        }
+        if handle.isVisible { startTimer() }
     }
 
     deinit {
@@ -39,9 +37,20 @@ final class ScheduleStatusItem {
         if visible {
             handle.show()
             refresh()
+            startTimer()
         } else {
             closePanel()
             handle.hide()
+            refreshTimer?.invalidate()
+            refreshTimer = nil
+        }
+    }
+
+    /// 라벨이 보이는 동안만 1분마다 "다음 일정"을 다시 고른다. 숨기면 멈춘다.
+    private func startTimer() {
+        guard refreshTimer == nil else { return }
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refresh() }
         }
     }
 
@@ -49,7 +58,7 @@ final class ScheduleStatusItem {
     private func observeStore() {
         withObservationTracking {
             _ = store.visibleItems
-        } onChange: {
+        } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.refresh()
                 self?.observeStore()

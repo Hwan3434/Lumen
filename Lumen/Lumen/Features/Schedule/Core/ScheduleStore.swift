@@ -122,6 +122,13 @@ final class ScheduleStore {
         await refreshAll(force: false)
     }
 
+    /// 메뉴바 라벨에 올리는 플러그인만 받는다. 앱을 켤 때 부른다 — 패널을 열기 전에는 그 밖의 플러그인(Jira)을 두드리지 않는다.
+    func refreshMenuBarPlugins() async {
+        for plugin in plugins where plugin.contributesToMenuBarLabel {
+            await refresh(plugin.id, force: false)
+        }
+    }
+
     func refreshAll(force: Bool) async {
         await withTaskGroup(of: Void.self) { group in
             for plugin in plugins {

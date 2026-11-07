@@ -39,15 +39,15 @@ final class ScheduleFeature: BuiltInFeature {
         statusItem = item
         applyMenuBarSetting()
         observeMenuBarSetting()
-        // 메뉴바 라벨은 패널을 열지 않아도 보여야 하므로 부팅 때 한 번 받아 둔다.
-        Task { await ScheduleStore.shared.refreshStale() }
+        // 메뉴바 라벨은 패널을 열지 않아도 보여야 하므로 라벨에 올리는 플러그인만 부팅 때 받아 둔다.
+        Task { await ScheduleStore.shared.refreshMenuBarPlugins() }
     }
 
     /// 설정 › 일정 › 대시보드의 메뉴바 라벨 스위치를 켜고 끄는 즉시 따라간다.
     private func observeMenuBarSetting() {
         withObservationTracking {
             _ = DashboardSettingsStore.shared.settings.menuBarLabel
-        } onChange: {
+        } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.applyMenuBarSetting()
                 self?.observeMenuBarSetting()

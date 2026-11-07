@@ -35,7 +35,8 @@ struct TimelineView: View {
     private var firstWeekday: Int { DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let colors = store.groupColors
+        return VStack(spacing: 0) {
             weekHeader
             GeometryReader { proxy in
                 let dayW = proxy.size.width / 7
@@ -43,7 +44,7 @@ struct TimelineView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(spacing: 0) {
                             ForEach(weeks, id: \.self) { weekStart in
-                                weekUnit(weekStart: weekStart, dayWidth: dayW, viewportHeight: proxy.size.height)
+                                weekUnit(weekStart: weekStart, dayWidth: dayW, viewportHeight: proxy.size.height, colors: colors)
                                     .id(weekKey(weekStart))
                             }
                         }
@@ -103,10 +104,10 @@ struct TimelineView: View {
 
     // MARK: - Week unit (한 주 = 헤더 + 막대 layer)
 
-    private func weekUnit(weekStart: Date, dayWidth: CGFloat, viewportHeight: CGFloat) -> some View {
+    private func weekUnit(weekStart: Date, dayWidth: CGFloat, viewportHeight: CGFloat,
+                          colors: [ScheduleGroupKey: Color]) -> some View {
         let days = (0..<7).compactMap { Self.cal.date(byAdding: .day, value: $0, to: weekStart) }
         let layout = layoutWeek(weekStart: weekStart, items: items, maxLanes: maxLanesVisible)
-        let colors = store.groupColors
         let weekW = dayWidth * 7
 
         let maxLane = layout.bars.map { $0.lane }.max() ?? -1

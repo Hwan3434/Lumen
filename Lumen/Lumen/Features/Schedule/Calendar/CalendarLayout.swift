@@ -162,4 +162,14 @@ enum CalendarDateUtils {
     static func isRedDay(_ date: Date) -> Bool {
         Calendar.current.isDateInWeekend(date) || KoreanHolidays.name(for: date) != nil
     }
+
+    /// 한국 음력(단기력). 중국 음력(`.chinese`)은 2028년 설날처럼 가끔 하루씩 어긋나 쓰지 않는다.
+    private static let koreanLunar = NSCalendar(calendarIdentifier: NSCalendar.Identifier("dangi"))
+
+    /// 음력 날짜 표기 — "음 9.28", 윤달이면 "윤 4.8".
+    static func lunarLabel(for date: Date) -> String? {
+        guard let comps = koreanLunar?.components([.month, .day], from: date),
+              let month = comps.month, let day = comps.day else { return nil }
+        return "\(comps.isLeapMonth == true ? "윤" : "음") \(month).\(day)"
+    }
 }

@@ -6,6 +6,7 @@ private typealias P = LumenTokens.Palette
 /// 모든 데이터는 `ScheduleStore.visibleItems` 하나에서 온다.
 struct ScheduleView: View {
     @Environment(ScheduleStore.self) private var store
+    @AppStorage("schedule.showLunar") private var showLunar = false
 
     @State private var mode: CalendarMode
     @State private var anchorDate: Date = Date()
@@ -95,6 +96,10 @@ struct ScheduleView: View {
                 items: CalendarMode.allCases.map { .init(value: $0, label: $0.label, icon: $0.iconName) },
                 selection: $mode
             )
+
+            Toggle("음력", isOn: $showLunar)
+                .toggleStyle(LumenSwitchStyle())
+                .fixedSize()
 
             Spacer()
 

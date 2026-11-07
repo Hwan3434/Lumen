@@ -220,6 +220,7 @@ private struct WeekRow: View {
     @State private var selectedVariant: ScheduleDetailVariant = .primary
     /// "+N"을 눌러 그날 일정 전체를 볼 날짜.
     @State private var overflowDay: Date? = nil
+    @AppStorage("schedule.showLunar") private var showLunar = false
 
     var body: some View {
         let cal = Calendar.current
@@ -301,6 +302,13 @@ private struct WeekRow: View {
                         .lineLimit(1)
                 }
                 Spacer()
+                if showLunar, let lunar = CalendarDateUtils.lunarLabel(for: day) {
+                    Text(lunar)
+                        .lumenText(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(P.inkFaint)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }

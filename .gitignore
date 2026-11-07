@@ -28,3 +28,6 @@ dist/
 
 # Claude Code background session worktrees
 .claude/worktrees/
+
+# graphify knowledge graph output
+graphify-out/

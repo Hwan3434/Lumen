@@ -7,7 +7,9 @@ import IOKit.ps
 /// 이 모드는 덮개 닫기·Apple 메뉴 잠자기까지 막는 **시스템 전역 설정**이라 재부팅 뒤에도 남는다.
 /// 덮개를 닫은 채 가방에 넣으면 배터리와 발열 문제로 이어지므로:
 ///   • 켜는 건 항상 사용자가 직접 한다 (앱 시작 시 자동 활성화 없음)
-///   • 끄는 길을 여러 개 둔다 — 시간 제한, 배터리 하한, 메뉴바 아이콘, 앱 종료
+///   • 끄는 길을 여러 개 둔다 — 배터리 시간 제한, 배터리 하한, 메뉴바 아이콘, 앱 종료
+///   • 전원이 꽂혀 있는 동안은 시간 제한 없이 켜 둔다. 외장 모니터를 끈 채 24시간 원격으로 쓰는 경우.
+///     전원을 뽑으면 그때부터 `batteryHours` 타이머가 돈다 — 가방에 넣는 경우.
 ///   • 크래시·강제 종료로 끄지 못했으면 다음 실행 때 복구한다 (`restoreIfLeftOn`)
 ///
 /// 설정 > 전원 탭이 같은 상태를 보여주므로 `shared` 인스턴스 하나를 공유한다.
@@ -15,13 +17,19 @@ import IOKit.ps
 final class LidAwakeFeature: ToggleableFeature {
     static let shared = LidAwakeFeature()
 
-    static let duration: TimeInterval = 2 * 60 * 60
+    static let batteryHourOptions = [1, 2, 4, 8]
     static let minimumBatteryPercent = 20
 
     /// Lumen이 켰다는 표시. 시스템 값이 1이어도 이 표시가 없으면 사용자가 터미널에서 직접 켠 것이므로 건드리지 않는다.
     private static let ownedKey = "lidAwake.ownedByLumen"
+    private static let batteryHoursKey = "lidAwake.batteryHours"
 
-    let featureDescription = "덮개를 닫아도 잠들지 않게 (최대 2시간)"
+    /// 전원을 뽑은 뒤 몇 시간 후에 끌지. 다음에 전원을 뽑을 때부터 적용된다.
+    var batteryHours: Int = UserDefaults.standard.object(forKey: LidAwakeFeature.batteryHoursKey) as? Int ?? 2 {
+        didSet { UserDefaults.standard.set(batteryHours, forKey: Self.batteryHoursKey) }
+    }
+
+    let featureDescription = "덮개를 닫아도 잠들지 않게 (전원 연결 중엔 계속)"
     let iconName = "flame"
     let searchKeywords = ["덮개", "클램쉘", "clamshell", "lid", "disablesleep", "잠자기", "슬립", "sleep"]
 
@@ -43,7 +51,7 @@ final class LidAwakeFeature: ToggleableFeature {
     var isOn: Bool { isActive || isOwned }
     var onStatus: String? {
         guard isOn else { return nil }
-        guard let expiresAt else { return "켜져 있어요" }
+        guard let expiresAt else { return isActive ? "전원이 연결된 동안 계속 켜져 있어요" : "켜져 있어요" }
         return "\(LumenTime.relative(expiresAt, granularity: .calendar))에 자동으로 꺼져요"
     }
 
@@ -108,9 +116,9 @@ final class LidAwakeFeature: ToggleableFeature {
                 isOwned = true
                 isActive = true
                 isSystemSleepDisabled = true
-                startGuards(until: Date().addingTimeInterval(Self.duration))
+                startGuards()
                 statusHandle?.show()
-                LumenToast.show(text: "덮개를 닫아도 \(Int(Self.duration / 3600))시간 동안 깨어 있어요")
+                LumenToast.show(text: "덮개를 닫아도 깨어 있어요. 전원을 뽑으면 \(batteryHours)시간 뒤 꺼져요")
             } catch SleepPolicyService.Failure.cancelled {
                 // 비밀번호 창에서 취소 — 조용히 끝낸다.
             } catch {
@@ -144,8 +152,8 @@ final class LidAwakeFeature: ToggleableFeature {
             } catch {
                 // 끄지 못했으면 안전장치를 다시 걸고 켜진 상태로 남겨 둔다 — 사용자가 다시 시도할 수 있게.
                 // 만료 시각은 늘리지 않되, 이미 지났으면 1분 뒤 다시 시도한다.
-                if isActive, let deadline {
-                    startGuards(until: max(deadline, Date().addingTimeInterval(60)))
+                if isActive {
+                    startGuards(resumeDeadline: deadline.map { max($0, Date().addingTimeInterval(60)) })
                 }
                 LumenToast.show(text: "클램쉘 모드를 끄지 못했어요: \(error.localizedDescription)", duration: 4)
             }
@@ -205,28 +213,49 @@ final class LidAwakeFeature: ToggleableFeature {
 
     // MARK: - 안전장치
 
-    private func startGuards(until deadline: Date) {
+    /// `resumeDeadline`: 끄기에 실패해 다시 걸 때, 배터리 중이면 이어서 쓸 만료 시각.
+    private func startGuards(resumeDeadline: Date? = nil) {
+        let watcher = battery ?? BatteryWatcher { [weak self] in self?.powerChanged() }
+        battery = watcher
+        watcher.start()
+        powerChanged(resumeDeadline: resumeDeadline)
+    }
+
+    /// 전원이 꽂혀 있으면 타이머 없이 켜 두고, 뽑혀 있으면 타이머를 건다.
+    /// 잔량 변화에도 불리므로 이미 돌고 있는 타이머는 다시 걸지 않는다. 다시 꽂으면 취소돼 다음에 뽑을 때 처음부터 센다.
+    private func powerChanged(resumeDeadline: Date? = nil) {
+        guard isActive else { return }
+        guard BatteryWatcher.isOnBattery() else {
+            cancelExpiry()
+            return
+        }
+        if expiryTimer == nil {
+            scheduleExpiry(at: resumeDeadline ?? Date().addingTimeInterval(TimeInterval(batteryHours) * 3600))
+        }
+        checkBattery()
+    }
+
+    private func scheduleExpiry(at deadline: Date) {
         expiresAt = deadline
-        expiryTimer?.invalidate()
         let timer = Timer(timeInterval: deadline.timeIntervalSinceNow, repeats: false) { [weak self] _ in
             guard let feature = self else { return }
             Task { @MainActor [feature] in
-                feature.turnOff(toast: "\(Int(Self.duration / 3600))시간이 지나 클램쉘 모드를 껐어요", sleepIfLidClosed: true)
+                feature.turnOff(toast: "전원을 뽑은 뒤 정한 시간이 지나 클램쉘 모드를 껐어요", sleepIfLidClosed: true)
             }
         }
         // 메뉴가 열려 있는 동안(eventTracking 모드)에도 만료되도록 common 모드에 건다.
         RunLoop.main.add(timer, forMode: .common)
         expiryTimer = timer
-        let watcher = battery ?? BatteryWatcher { [weak self] in self?.checkBattery() }
-        battery = watcher
-        watcher.start()
-        checkBattery()
     }
 
-    private func stopGuards() {
+    private func cancelExpiry() {
         expiryTimer?.invalidate()
         expiryTimer = nil
         expiresAt = nil
+    }
+
+    private func stopGuards() {
+        cancelExpiry()
         battery?.stop()
     }
 
@@ -289,11 +318,16 @@ private final class BatteryWatcher {
         self.source = nil
     }
 
+    /// 어댑터 없이 배터리로 동작 중인지. 배터리가 없는 Mac이면 false.
+    static func isOnBattery() -> Bool {
+        let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
+        return IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String? == kIOPSBatteryPowerValue
+    }
+
     /// 배터리로 동작 중일 때의 잔량(%). 어댑터 연결 중이거나 배터리가 없으면 nil.
     static func percentIfOnBattery() -> Int? {
+        guard isOnBattery() else { return nil }
         let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        guard let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String?,
-              type == kIOPSBatteryPowerValue else { return nil }
         let sources = IOPSCopyPowerSourcesList(info).takeRetainedValue() as [CFTypeRef]
         for source in sources {
             guard let desc = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],

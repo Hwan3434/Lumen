@@ -42,6 +42,7 @@ final class LidAwakeFeature: ToggleableFeature {
 
     @ObservationIgnored private var statusHandle: StatusBarItemHandle?
     @ObservationIgnored private var expiryTimer: Timer?
+    @ObservationIgnored private var systemCheckTimer: Timer?
     @ObservationIgnored private var battery: BatteryWatcher?
 
     private init() {}
@@ -218,7 +219,32 @@ final class LidAwakeFeature: ToggleableFeature {
         let watcher = battery ?? BatteryWatcher { [weak self] in self?.powerChanged() }
         battery = watcher
         watcher.start()
+        startSystemCheck()
         powerChanged(resumeDeadline: resumeDeadline)
+    }
+
+    /// 켜져 있는 동안 5초마다 시스템 값을 읽어, 터미널 등 Lumen 밖에서 끈 경우를 따라간다.
+    private func startSystemCheck() {
+        systemCheckTimer?.invalidate()
+        let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
+            guard let feature = self else { return }
+            Task { @MainActor [feature] in
+                await feature.followSystemValue()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        systemCheckTimer = timer
+    }
+
+    private func followSystemValue() async {
+        guard let disabled = try? await SleepPolicyService.offMain({ SleepPolicyService.isSleepDisabled() }),
+              !disabled, isActive, !isBusy else { return }
+        stopGuards()
+        isOwned = false
+        isActive = false
+        isSystemSleepDisabled = false
+        statusHandle?.hide()
+        LumenToast.show(text: "클램쉘 모드가 Lumen 밖에서 꺼졌어요")
     }
 
     /// 전원이 꽂혀 있으면 타이머 없이 켜 두고, 뽑혀 있으면 타이머를 건다.
@@ -256,6 +282,8 @@ final class LidAwakeFeature: ToggleableFeature {
 
     private func stopGuards() {
         cancelExpiry()
+        systemCheckTimer?.invalidate()
+        systemCheckTimer = nil
         battery?.stop()
     }
 

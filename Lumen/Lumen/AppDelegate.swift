@@ -5,8 +5,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let hotkeyManager = HotkeyManager()
     let searchWindowController = SearchWindowController()
     var appStatusBar: AppStatusBar!
+    /// 테스트는 실제 앱을 호스트로 띄운다(같은 번들 ID·설정·데이터 폴더). 그때 단축키 등록, 클립보드 기록,
+    /// 클램쉘 모드 복구(`restoreIfLeftOn`) 같은 시작 작업이 돌면 설치된 Lumen의 상태를 건드린다.
+    private static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
+        startingUpdater: !AppDelegate.isRunningTests,
         updaterDelegate: nil,
         userDriverDelegate: nil
     )
@@ -19,10 +23,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MemoryTrace.reset()
         MemoryTrace.record("applicationDidFinishLaunching:start")
 
-        LumenStorage.purgeRetiredFilesIfNeeded()
-        ScheduleMigration.runIfNeeded()
+        // 글꼴과 테마는 렌더 테스트도 쓰므로 가드보다 먼저 한다.
         LumenFont.register()
         LumenAppearance.saved.apply()
+        guard !Self.isRunningTests else { return }
+
+        LumenStorage.purgeRetiredFilesIfNeeded()
+        ScheduleMigration.runIfNeeded()
 
         let translator = TranslatorFeature()
         FeatureRegistry.shared.register(translator)
@@ -162,6 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard !Self.isRunningTests else { return }
         if let observer = keyWindowObserver {
             NotificationCenter.default.removeObserver(observer)
             keyWindowObserver = nil

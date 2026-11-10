@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 
-final class WindowMagnetManager {
+final class WindowMagnetService {
     enum Direction {
         case left
         case right

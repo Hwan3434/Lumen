@@ -14,7 +14,9 @@ sw_vers -productVersion   # 26.2+ 필요
 osascript -e 'tell application "Lumen" to quit' 2>/dev/null
 sleep 1
 
+# 예전 안내대로 /Applications 에 깐 사본도 지운다. 지금 설치 위치는 ~/Applications 다.
 [ -d /Applications/Lumen.app ] && rm -rf /Applications/Lumen.app
+[ -d ~/Applications/Lumen.app ] && rm -rf ~/Applications/Lumen.app
 
 tccutil reset All com.jh.Lumen 2>/dev/null
 ```
@@ -32,32 +34,34 @@ rm -rf Lumen.app "Lumen-${VERSION}.zip"
 curl -sL -o "Lumen-${VERSION}.zip" \
   "https://github.com/Hwan3434/Lumen/releases/download/${LATEST}/Lumen-${VERSION}.zip"
 unzip -q "Lumen-${VERSION}.zip"
-mv Lumen.app /Applications/
-xattr -dr com.apple.quarantine /Applications/Lumen.app 2>/dev/null
+# ~/Applications 에 둔다: 자동 업데이트(Sparkle)가 관리자 암호 없이 앱을 바꿔 끼울 수 있는 위치다.
+mkdir -p ~/Applications
+mv Lumen.app ~/Applications/
+xattr -dr com.apple.quarantine ~/Applications/Lumen.app 2>/dev/null
 
 INSTALLED=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
-  /Applications/Lumen.app/Contents/Info.plist)
+  ~/Applications/Lumen.app/Contents/Info.plist)
 [ "$INSTALLED" = "$VERSION" ] && echo "[OK] $VERSION" || echo "[FAIL] $INSTALLED ≠ $VERSION"
 ```
 
 ## 3. 첫 실행 + 권한 부여 [USER ACTION]
 
 ```bash
-open -a /Applications/Lumen.app
+open -a ~/Applications/Lumen.app
 ```
 
 사용자에게 안내:
 
 ```bash
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-# 손쉬운 사용 → + → /Applications/Lumen.app → ON
+# 손쉬운 사용 → + → ~/Applications/Lumen.app → ON
 ```
 
 권한 부여 후:
 
 ```bash
 osascript -e 'tell application "Lumen" to quit'; sleep 1
-open -a /Applications/Lumen.app
+open -a ~/Applications/Lumen.app
 ```
 
 ## 4. 자격증명 (선택)
@@ -71,7 +75,7 @@ open -a /Applications/Lumen.app
 
 ```bash
 # 실행 중?
-pgrep -lf "/Applications/Lumen.app/Contents/MacOS/Lumen" >/dev/null \
+pgrep -lf "$HOME/Applications/Lumen.app/Contents/MacOS/Lumen" >/dev/null \
   && echo "[OK] running" || echo "[FAIL]"
 ```
 

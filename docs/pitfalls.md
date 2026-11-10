@@ -16,7 +16,7 @@
 ## 비밀번호가 클립보드 기록에 남는다
 - 증상: 비밀번호 관리자에서 복사한 값이 기록과 `clipboard_history.json`에 평문으로 있었다.
 - 원인: 감시가 모든 문자열을 기록했다.
-- 규칙: `ClipboardManager.checkClipboard` 맨 앞의 Concealed/Transient 형식 검사를 지우지 않는다. 클립보드 쪽 저장 코드를 고칠 때 0600 권한 설정을 빠뜨리지 않는다.
+- 규칙: `ClipboardStore.checkClipboard` 맨 앞의 Concealed/Transient 형식 검사를 지우지 않는다. 클립보드 쪽 저장 코드를 고칠 때 0600 권한 설정을 빠뜨리지 않는다.
 
 ## 저장된 Jira 토큰이 사라진다
 - 증상: 업데이트나 Mac 이전 뒤 토큰이 비어 있고, 다시 넣으면 예전 값은 영영 없다.
@@ -47,7 +47,7 @@
 
 ## 큐끼리 서로 기다려 멈춘다
 - 증상: 앱이 멈춘다(교착).
-- 원인: `ClipboardManager.flushPendingSave()`는 메인에서 `diskQueue.sync`로 기다린다. 그 큐에서 `DispatchQueue.main.sync`를 부르면 서로 기다린다.
+- 원인: `ClipboardStore.flushPendingSave()`는 메인에서 `diskQueue.sync`로 기다린다. 그 큐에서 `DispatchQueue.main.sync`를 부르면 서로 기다린다.
 - 규칙: 디스크 큐에서 메인으로 돌아갈 때는 `main.async`.
 
 ## 날짜가 하루 밀린다
@@ -67,9 +67,6 @@
 
 ## 앱 번들 정보를 읽을 때
 - `Bundle(url:)`은 만든 번들을 프로세스가 끝날 때까지 들고 있다. 앱 목록을 만들 때는 `Contents/Info.plist`를 `NSDictionary`로 읽는다(`AppIndexer.makeItem`). `Bundle(url:)`은 그 파일이 없는 앱에만 쓴다.
-
-## 이름이 SwiftUI와 겹친다
-- `Features/Schedule/Calendar/TimelineView.swift`의 `TimelineView`는 SwiftUI의 `TimelineView`와 이름이 같다. 같은 파일에서 SwiftUI 쪽을 쓰려면 `SwiftUI.TimelineView`로 적는다.
 
 ## 디버그 빌드가 업데이트를 제안한다
 - `project.pbxproj`의 `MARKETING_VERSION`은 옛 값(1.0.75)이다. 릴리즈 스크립트가 명령줄로 버전을 덮으므로 배포에는 문제없지만, 로컬 디버그 빌드는 자기를 1.0.75로 알고 Sparkle이 업데이트를 띄울 수 있다. 디버그 빌드에서 그 창이 떠도 버그가 아니다.

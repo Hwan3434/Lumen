@@ -31,10 +31,15 @@ final class SearchLogicTests: XCTestCase {
         XCTAssertEqual(ranked(apps, query: "no"), ["Notes", "Keynote"])
     }
 
-    /// 지금 규칙을 고정한다: 실행 횟수가 이름 앞부분 일치보다 먼저다. 이 순서를 바꿀지는 따로 정할 일이다.
-    func testCurrentRuleUsageCountOutranksPrefixMatch() {
+    /// 앞부분 일치가 실행 횟수보다 먼저다(2026-11-11 주인 결정).
+    func testPrefixMatchOutranksUsageCount() {
         let apps = [app("Keynote"), app("Notes")]
-        XCTAssertEqual(ranked(apps, query: "no", usage: ["test.Keynote": 3]), ["Keynote", "Notes"])
+        XCTAssertEqual(ranked(apps, query: "no", usage: ["test.Keynote": 3]), ["Notes", "Keynote"])
+    }
+
+    func testUsageCountOrdersWithinPrefixMatches() {
+        let apps = [app("Notes"), app("Notion")]
+        XCTAssertEqual(ranked(apps, query: "no", usage: ["test.Notion": 2]), ["Notion", "Notes"])
     }
 
     // MARK: - 기능 검색

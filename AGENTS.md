@@ -21,11 +21,11 @@ xcodebuild -scheme Lumen -configuration Debug -destination 'platform=macOS' -der
 | 폴더 | 내용 |
 |---|---|
 | `AppDelegate.swift` | 시작과 종료. 기능 목록을 등록하는 곳 |
-| `Core/` | 기능 프로토콜(`BuiltInFeature`), `FeatureRegistry`, `HotkeyManager`, 패널 기반 클래스(`Window/`), 메뉴바(`AppStatusBar`, `StatusBarCoordinator`), 저장(`LumenStorage`, `SecretStore`), `MemoryTrace` |
+| `Core/` | 기능 프로토콜(`BuiltInFeature`), `FeatureRegistry`, `HotkeyRegistry`, 패널 기반 클래스(`Window/`), 메뉴바(`AppStatusBar`, `StatusBarCoordinator`), 저장(`LumenStorage`, `SecretStore`), `MemoryTrace` |
 | `DesignSystem/` | 토큰과 공통 부품. 규칙은 [DESIGN.md](DESIGN.md) |
 | `Features/<이름>/` | 기능 하나씩. Clipboard, Note, Translator, Schedule, Power(카페인, 클램쉘 모드), WindowMagnet, ColorPicker, ResourceMonitor, Settings |
 | `Search/` | ⌘Space 검색 패널. 기능이지만 다른 기능을 띄우는 바탕이라 `Features/` 밖에 둔다 |
-| `Services/` | 검색과 설정이 함께 쓰는 데이터(`AppIndexer`, `UsageTracker`, `HiddenAppsManager`, `CurrencyService`, `LoginItemManager`) |
+| `Services/` | 검색과 설정이 함께 쓰는 데이터(`AppIndexer`, `UsageTracker`, `HiddenAppsStore`, `CurrencyService`, `LoginItemService`) |
 | `Helpers/` | 기능에 속하지 않는 작은 도우미(`WindowMetrics`, `DateParsers`, `ArithmeticEvaluator` 등) |
 
 ## 꼭 지킬 규칙

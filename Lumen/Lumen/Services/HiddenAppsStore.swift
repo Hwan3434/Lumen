@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 @Observable
-final class HiddenAppsManager {
-    @MainActor static let shared = HiddenAppsManager()
+final class HiddenAppsStore {
+    @MainActor static let shared = HiddenAppsStore()
 
     /// 바꾸는 건 `hide`/`unhide`로만 한다. 읽기는 설정의 숨긴 앱 탭이 목록을 만들 때 쓴다.
     private(set) var hiddenIDs: Set<String>

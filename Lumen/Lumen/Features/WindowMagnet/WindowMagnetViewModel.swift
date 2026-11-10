@@ -3,7 +3,7 @@ import Observation
 
 struct MagnetOption {
     let label: String
-    let direction: WindowMagnetManager.Direction
+    let direction: WindowMagnetService.Direction
     let ratio: CGFloat
 }
 

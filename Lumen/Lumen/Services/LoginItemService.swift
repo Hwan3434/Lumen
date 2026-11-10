@@ -1,6 +1,6 @@
 import ServiceManagement
 
-enum LoginItemManager {
+enum LoginItemService {
     /// 시스템 설정 > 로그인 항목에서 끈 경우도 따라가도록 시스템 상태를 그대로 읽는다.
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled

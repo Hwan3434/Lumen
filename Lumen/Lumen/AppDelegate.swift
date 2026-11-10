@@ -2,7 +2,7 @@ import AppKit
 import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let hotkeyManager = HotkeyManager()
+    let hotkeys = HotkeyRegistry()
     let searchWindowController = SearchWindowController()
     var appStatusBar: AppStatusBar!
     /// 테스트는 실제 앱을 호스트로 띄운다(같은 번들 ID·설정·데이터 폴더). 그때 단축키 등록, 클립보드 기록,
@@ -41,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 메인 검색창 단축키
-        hotkeyManager.register(
+        hotkeys.register(
             keyCode: Constants.searchHotKeyCode,
             modifiers: Constants.searchHotKeyModifiers
         ) { [weak self] in
@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 떠있는 우리 패널로 키보드 포커스 복귀
-        hotkeyManager.register(
+        hotkeys.register(
             keyCode: Constants.focusHotKeyCode,
             modifiers: Constants.focusHotKeyModifiers
         ) {
@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for feature in FeatureRegistry.shared.enabledFeatures {
             for hotkey in feature.hotkeys {
-                hotkeyManager.register(
+                hotkeys.register(
                     keyCode: hotkey.keyCode,
                     modifiers: hotkey.modifiers,
                     action: hotkey.action
@@ -66,11 +66,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        hotkeyManager.start()
+        hotkeys.start()
         MemoryTrace.record("hotkeys_registered")
         // 다른 앱이 먼저 잡은 조합(⌘Space = Spotlight 기본값)은 등록이 실패해도 아무 반응이 없어 알려 준다.
-        if !hotkeyManager.failedRegistrations.isEmpty {
-            let labels = hotkeyManager.failedRegistrations.joined(separator: ", ")
+        if !hotkeys.failedRegistrations.isEmpty {
+            let labels = hotkeys.failedRegistrations.joined(separator: ", ")
             LumenToast.show(text: "\(labels) 단축키를 등록하지 못했어요. 다른 앱과 겹치는지 확인해 주세요", duration: 5)
         }
 
@@ -151,7 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(observer)
             sparkleWindowObserver = nil
         }
-        hotkeyManager.stop()
+        hotkeys.stop()
         FeatureRegistry.shared.teardownAll()
         appStatusBar?.teardown()
     }

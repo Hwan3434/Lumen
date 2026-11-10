@@ -2,7 +2,7 @@ import XCTest
 @testable import Lumen
 
 /// 클립보드 화면의 선택은 위치가 아니라 항목을 따라간다.
-/// 공용 `ClipboardManager.shared`의 메모리 속 기록만 잠깐 바꾸고 되돌린다. 저장을 부르는 함수(삭제, 다시 복사)는 쓰지 않는다.
+/// 공용 `ClipboardStore.shared`의 메모리 속 기록만 잠깐 바꾸고 되돌린다. 저장을 부르는 함수(삭제, 다시 복사)는 쓰지 않는다.
 @MainActor
 final class ClipboardViewModelTests: XCTestCase {
     private var saved: [ClipboardItem] = []
@@ -12,12 +12,12 @@ final class ClipboardViewModelTests: XCTestCase {
     }
 
     override func setUp() async throws {
-        saved = ClipboardManager.shared.history
-        ClipboardManager.shared.history = [text("가"), text("나"), text("다")]
+        saved = ClipboardStore.shared.history
+        ClipboardStore.shared.history = [text("가"), text("나"), text("다")]
     }
 
     override func tearDown() async throws {
-        ClipboardManager.shared.history = saved
+        ClipboardStore.shared.history = saved
     }
 
     func testSelectionStaysOnItemWhenNewCopyArrives() {
@@ -26,7 +26,7 @@ final class ClipboardViewModelTests: XCTestCase {
         vm.moveDown()
         XCTAssertEqual(vm.selectedItem?.text, "나")
 
-        ClipboardManager.shared.history.insert(text("새로 복사한 글"), at: 0)
+        ClipboardStore.shared.history.insert(text("새로 복사한 글"), at: 0)
 
         XCTAssertEqual(vm.selectedItem?.text, "나")
         XCTAssertEqual(vm.preview?.text, "나")

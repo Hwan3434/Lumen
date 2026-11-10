@@ -138,7 +138,7 @@ struct ScheduleView: View {
                 .opacity(mode == .month ? 1 : 0)
                 .allowsHitTesting(mode == .month)
 
-            TimelineView(items: items, anchorDate: $anchorDate, resetToTodayToken: weekResetToken,
+            WeekTimelineView(items: items, anchorDate: $anchorDate, resetToTodayToken: weekResetToken,
                          newItemToken: weekNewItemToken)
                 .padding(.horizontal, LumenTokens.Space.pad)
                 .padding(.bottom, LumenTokens.Space.pad)

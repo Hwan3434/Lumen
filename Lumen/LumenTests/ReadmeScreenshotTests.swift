@@ -59,12 +59,12 @@ final class ReadmeScreenshotTests: XCTestCase {
         try render(NoteView(viewModel: NotesViewModel(notesDir: dir)), size: Constants.noteWindowSize, named: "Note.png")
     }
 
-    /// 공용 `ClipboardManager.shared` 의 메모리 속 기록만 잠깐 바꿔 그리고 되돌린다. 디스크 저장은 부르지 않는다.
+    /// 공용 `ClipboardStore.shared` 의 메모리 속 기록만 잠깐 바꿔 그리고 되돌린다. 디스크 저장은 부르지 않는다.
     func testClipboard() throws {
-        let manager = ClipboardManager.shared
-        manager.stopMonitoring()
-        let saved = manager.history
-        defer { manager.history = saved }
+        let store = ClipboardStore.shared
+        store.stopMonitoring()
+        let saved = store.history
+        defer { store.history = saved }
 
         // 이미지 항목은 파일 경로만 들고 있으므로 예시 그림을 임시 파일로 둔다.
         let imageFile = FileManager.default.temporaryDirectory
@@ -78,7 +78,7 @@ final class ReadmeScreenshotTests: XCTestCase {
             ClipboardItem(date: now.addingTimeInterval(-minutesAgo * 60), text: s, fileURLs: nil,
                           sourceApp: app, sourceAppBundleID: bundle)
         }
-        manager.history = [
+        store.history = [
             text("회의는 목요일 오후 3시로 옮겼어요. 장소는 3층 회의실입니다.", "메모", "com.apple.Notes", 1),
             text("https://developer.apple.com/documentation/swiftui", "Safari", "com.apple.Safari", 4),
             text("git switch -c feat/new_panel", "터미널", "com.apple.Terminal", 9),

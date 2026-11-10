@@ -4,11 +4,11 @@ private typealias P = LumenTokens.Palette
 
 /// Settings → "숨긴 앱" 탭. SearchView에서 숨기기 버튼으로 숨긴 앱들을 모아 보여주고,
 /// 각 행에서 되돌리기 버튼으로 다시 검색 결과에 노출시킬 수 있다.
-/// HiddenAppsManager는 @Observable이라 토글 즉시 리스트가 갱신된다.
+/// HiddenAppsStore는 @Observable이라 토글 즉시 리스트가 갱신된다.
 struct HiddenAppsSettingsTab: View {
     let action: SettingsActionViewModel
 
-    @State private var manager = HiddenAppsManager.shared
+    @State private var store = HiddenAppsStore.shared
     /// 숨긴 앱 중 지금 설치돼 있는 것, 이름순. 지워진 앱은 빠진다(id는 저장소에 남는다).
     @State private var hiddenApps: [AppItem] = []
 
@@ -20,7 +20,7 @@ struct HiddenAppsSettingsTab: View {
                 } else {
                     LumenList(hiddenApps) { app in
                         HiddenAppRow(app: app) {
-                            manager.unhide(app.id)
+                            store.unhide(app.id)
                         }
                     }
                 }
@@ -32,7 +32,7 @@ struct HiddenAppsSettingsTab: View {
             action.hideActionBar()
         }
         // 숨긴 앱 몇 개만 찾으면 되므로 앱 폴더 전체를 훑지 않는다. 검색창에서 숨기거나 여기서 되돌리면 다시 만든다.
-        .onChange(of: manager.hiddenIDs, initial: true) { _, ids in
+        .onChange(of: store.hiddenIDs, initial: true) { _, ids in
             hiddenApps = ids
                 .compactMap { AppIndexer.item(forID: $0) }
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

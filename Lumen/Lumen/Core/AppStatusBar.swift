@@ -83,7 +83,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
             keyEquivalent: ""
         )
         loginItem.target = self
-        loginItem.state = LoginItemManager.isEnabled ? .on : .off
+        loginItem.state = LoginItemService.isEnabled ? .on : .off
         menu.addItem(loginItem)
 
         menu.addItem(NSMenuItem.separator())
@@ -116,7 +116,7 @@ final class AppStatusBar: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleLoginItem(_ sender: NSMenuItem) {
-        LoginItemManager.toggle()
+        LoginItemService.toggle()
     }
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {

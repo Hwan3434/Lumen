@@ -3,8 +3,8 @@ import Observation
 
 @Observable
 @MainActor
-final class ClipboardManager {
-    static let shared = ClipboardManager()
+final class ClipboardStore {
+    static let shared = ClipboardStore()
 
     var history: [ClipboardItem] = []
     private var lastChangeCount: Int = 0
@@ -20,9 +20,9 @@ final class ClipboardManager {
     private init() {}
 
     func startMonitoring() {
-        MemoryTrace.record("ClipboardManager.loadFromDisk:start")
+        MemoryTrace.record("ClipboardStore.loadFromDisk:start")
         loadFromDisk()
-        MemoryTrace.record("ClipboardManager.loadFromDisk:done (\(history.count)개)")
+        MemoryTrace.record("ClipboardStore.loadFromDisk:done (\(history.count)개)")
         lastChangeCount = NSPasteboard.general.changeCount
         let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.checkClipboard() }

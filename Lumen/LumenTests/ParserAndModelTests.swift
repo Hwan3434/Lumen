@@ -408,16 +408,16 @@ final class ParserAndModelTests: XCTestCase {
     /// AX 좌표는 주 모니터 왼쪽 위가 원점이고 아래로 자란다.
     func testMagnetFrameOnPrimaryScreen() {
         let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)   // 위쪽 25pt는 메뉴 막대
-        let left = WindowMagnetManager.snapFrame(direction: .left, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
+        let left = WindowMagnetService.snapFrame(direction: .left, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
         XCTAssertEqual(left, CGRect(x: 0, y: 25, width: 720, height: 875))
-        let right = WindowMagnetManager.snapFrame(direction: .right, ratio: 0.25, visibleFrame: visible, primaryScreenHeight: 900)
+        let right = WindowMagnetService.snapFrame(direction: .right, ratio: 0.25, visibleFrame: visible, primaryScreenHeight: 900)
         XCTAssertEqual(right, CGRect(x: 1080, y: 25, width: 360, height: 875))
     }
 
     /// 주 모니터와 높이·세로 위치가 다른 두 번째 모니터에서도 주 모니터 높이로 뒤집는다.
     func testMagnetFrameOnSecondaryScreenUsesPrimaryHeight() {
         let visible = CGRect(x: 1440, y: 200, width: 1920, height: 1080)
-        let frame = WindowMagnetManager.snapFrame(direction: .right, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
+        let frame = WindowMagnetService.snapFrame(direction: .right, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
         XCTAssertEqual(frame, CGRect(x: 2400, y: -380, width: 960, height: 1080))
     }
 

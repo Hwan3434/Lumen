@@ -26,10 +26,10 @@ final class ClipboardFeature: BuiltInFeature {
     }
 
     func setup() {
-        ClipboardManager.shared.startMonitoring()
+        ClipboardStore.shared.startMonitoring()
     }
 
     func teardown() {
-        ClipboardManager.shared.stopMonitoring()
+        ClipboardStore.shared.stopMonitoring()
     }
 }

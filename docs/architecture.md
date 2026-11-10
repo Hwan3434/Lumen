@@ -76,7 +76,7 @@ Lumen이 어떻게 짜여 있는지 적는다. 왜 그렇게 정했는지는 [de
 
 ## 단축키
 
-`Core/HotkeyManager.swift`가 Carbon `RegisterEventHotKey`로 등록한다. 입력 모니터링 권한이 필요 없다. 다른 앱이 이미 잡은 조합은 등록이 실패하고 `failedRegistrations`에 남는다. 사람이 읽는 라벨("⌘⇧V")은 `HotkeyManager.describe`가 만든다.
+`Core/HotkeyRegistry.swift`가 Carbon `RegisterEventHotKey`로 등록한다. 입력 모니터링 권한이 필요 없다. 다른 앱이 이미 잡은 조합은 등록이 실패하고 `failedRegistrations`에 남는다. 사람이 읽는 라벨("⌘⇧V")은 `HotkeyRegistry.describe`가 만든다.
 
 패널 안 단축키(노트의 ⌘N, 일정의 ⌘1 등)는 전역 단축키가 아니다. 각 윈도우 컨트롤러의 `onKeyEvent`/`onCommandKey`가 처리한다.
 

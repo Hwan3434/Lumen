@@ -4,7 +4,7 @@ private typealias P = LumenTokens.Palette
 
 struct WindowMagnetView: View {
     @State var viewModel = WindowMagnetViewModel()
-    let onSelect: (WindowMagnetManager.Direction, CGFloat) -> Void
+    let onSelect: (WindowMagnetService.Direction, CGFloat) -> Void
 
     var body: some View {
         VStack(spacing: 0) {

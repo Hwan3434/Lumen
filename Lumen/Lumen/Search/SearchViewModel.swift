@@ -70,35 +70,30 @@ final class SearchViewModel {
         MemoryTrace.record("SearchVM:loadApps:exit(\(allApps.count))")
     }
 
-    /// 검색어에 맞는 앱을 골라 순서를 매긴다: 실행 횟수 많은 순 → 검색어로 시작하는 이름·별명 먼저 → 이름순.
+    /// 검색어에 맞는 앱을 골라 순서를 매긴다: 검색어로 시작하는 이름·별명 먼저 → 실행 횟수 많은 순 → 이름순.
+    /// 앞부분 일치가 먼저인 이유: "no"를 치면 별명 중간에 "no"가 든 자주 쓰는 앱보다 Notes가 위에 와야 한다.
     static func rankedApps(_ apps: [AppItem], query: String, usageCount: (String) -> Int) -> [AppItem] {
         let q = query.lowercased()
-
-        let matchedApps: [AppItem]
-        if q.isEmpty {
-            matchedApps = apps
-        } else {
-            matchedApps = apps.filter { app in
-                if app.name.lowercased().contains(q) { return true }
-                return app.aliases.contains { $0.lowercased().contains(q) }
+        guard !q.isEmpty else {
+            return apps.sorted { a, b in
+                let aCount = usageCount(a.id), bCount = usageCount(b.id)
+                if aCount != bCount { return aCount > bCount }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
         }
 
-        return matchedApps.sorted { a, b in
-            let aCount = usageCount(a.id)
-            let bCount = usageCount(b.id)
-            if aCount != bCount { return aCount > bCount }
-
-            if !q.isEmpty {
-                let aPrefix = a.name.lowercased().hasPrefix(q)
-                    || a.aliases.contains { $0.lowercased().hasPrefix(q) }
-                let bPrefix = b.name.lowercased().hasPrefix(q)
-                    || b.aliases.contains { $0.lowercased().hasPrefix(q) }
-                if aPrefix != bPrefix { return aPrefix }
-            }
-
-            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        // 비교할 때마다 소문자로 바꾸지 않도록 한 번만 계산한다.
+        let scored: [(app: AppItem, prefix: Bool, count: Int)] = apps.compactMap { app in
+            let names = [app.name.lowercased()] + app.aliases.map { $0.lowercased() }
+            guard names.contains(where: { $0.contains(q) }) else { return nil }
+            return (app, names.contains { $0.hasPrefix(q) }, usageCount(app.id))
         }
+
+        return scored.sorted { a, b in
+            if a.prefix != b.prefix { return a.prefix }
+            if a.count != b.count { return a.count > b.count }
+            return a.app.name.localizedCaseInsensitiveCompare(b.app.name) == .orderedAscending
+        }.map(\.app)
     }
 
     /// `keepSelection`이 false면 맨 위 항목을 고른다(검색어가 바뀐 경우).
@@ -121,7 +116,7 @@ final class SearchViewModel {
         let matchedFeatures = FeatureRegistry.shared.search(query: query)
 
         let featureNames = Set(matchedFeatures.map { $0.name.lowercased() })
-        let hiddenApps = HiddenAppsManager.shared
+        let hiddenApps = HiddenAppsStore.shared
         let filteredApps = sorted.filter {
             !featureNames.contains($0.name.lowercased()) && !hiddenApps.isHidden($0.id)
         }
@@ -206,7 +201,7 @@ final class SearchViewModel {
     }
 
     func hideApp(_ appID: String) {
-        HiddenAppsManager.shared.hide(appID)
+        HiddenAppsStore.shared.hide(appID)
         updateResults(keepSelection: true)
     }
 

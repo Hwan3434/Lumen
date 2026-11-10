@@ -14,11 +14,11 @@ final class ClipboardViewModel {
     private var isPanelVisible = true
     @ObservationIgnored private var cachedPreview: ClipboardPreviewModel?
 
-    private var manager = ClipboardManager.shared
+    private var store = ClipboardStore.shared
 
-    /// manager.history를 직접 derive — @Observable이 history 변경을 추적해 패널이 자동 갱신된다.
+    /// store.history를 직접 derive — @Observable이 history 변경을 추적해 패널이 자동 갱신된다.
     var filteredItems: [ClipboardItem] {
-        let items = manager.history
+        let items = store.history
         guard !query.isEmpty else { return items }
         let q = query.lowercased()
         // searchKey는 item 생성 시 1회만 계산된 lowercased prefix.
@@ -41,12 +41,12 @@ final class ClipboardViewModel {
         return built
     }
 
-    var isHistoryEmpty: Bool { manager.history.isEmpty }
+    var isHistoryEmpty: Bool { store.history.isEmpty }
 
     /// 머리줄 숫자. 평소에는 "기록 수 / 최대", 검색 중에는 "찾은 수 / 기록 수".
     var countLabel: String {
-        let total = manager.history.count
-        return query.isEmpty ? "\(total) / \(manager.maxItems)" : "\(filteredItems.count) / \(total)"
+        let total = store.history.count
+        return query.isEmpty ? "\(total) / \(store.maxItems)" : "\(filteredItems.count) / \(total)"
     }
 
     // MARK: - 패널 열고 닫기
@@ -80,7 +80,7 @@ final class ClipboardViewModel {
 
     func copySelected() {
         guard let item = selectedItem else { return }
-        manager.copyToPasteboard(item)
+        store.copyToPasteboard(item)
     }
 
     // MARK: - 삭제
@@ -93,7 +93,7 @@ final class ClipboardViewModel {
     /// 선택한 항목을 지웠으면 같은 자리의 다음 항목을 고른다. 다른 항목을 지웠으면 선택은 그대로다.
     func delete(item: ClipboardItem) {
         let index = item == selectedItem ? filteredItems.firstIndex(of: item) : nil
-        manager.delete(id: item.id)
+        store.delete(id: item.id)
         if let index {
             let rest = filteredItems
             selectedID = (rest[safe: index] ?? rest.last)?.id
@@ -101,7 +101,7 @@ final class ClipboardViewModel {
     }
 
     func deleteAll() {
-        manager.deleteAll()
+        store.deleteAll()
         selectedID = nil
     }
 }

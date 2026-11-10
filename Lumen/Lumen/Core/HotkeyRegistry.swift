@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 
 @MainActor
-final class HotkeyManager {
+final class HotkeyRegistry {
     private var bindings: [UInt32: () -> Void] = [:]
     private var hotkeyRefs: [EventHotKeyRef?] = []
     private var eventHandlerRef: EventHandlerRef?
@@ -18,7 +18,7 @@ final class HotkeyManager {
         bindings[id] = action
         // start() 이후에 등록되는 핫키도 동작하도록 box에 바로 반영한다.
         // (start()가 bindings를 스냅샷으로 복사하므로 여기서 채우지 않으면 조용히 무시된다.)
-        HotkeyManagerBox.shared.bindings[id] = action
+        HotkeyRegistryBox.shared.bindings[id] = action
 
         var hotKeyID = EventHotKeyID()
         hotKeyID.signature = OSType(0x434C5350) // "CLSP"
@@ -48,7 +48,7 @@ final class HotkeyManager {
             let label = Self.describe(keyCode: keyCode, modifiers: modifiers)
             failedRegistrations.append(label)
             bindings.removeValue(forKey: id)
-            HotkeyManagerBox.shared.bindings.removeValue(forKey: id)
+            HotkeyRegistryBox.shared.bindings.removeValue(forKey: id)
             NSLog("[Lumen] 핫키 등록 실패: %@ (OSStatus=%d) — 다른 앱이 이미 쓰고 있는지 확인하세요.",
                   label, status)
         }
@@ -91,7 +91,7 @@ final class HotkeyManager {
 
         let handler: EventHandlerUPP = { _, event, userData -> OSStatus in
             guard let userData = userData else { return OSStatus(eventNotHandledErr) }
-            let manager = Unmanaged<HotkeyManagerBox>.fromOpaque(userData).takeUnretainedValue()
+            let box = Unmanaged<HotkeyRegistryBox>.fromOpaque(userData).takeUnretainedValue()
 
             var hotKeyID = EventHotKeyID()
             GetEventParameter(
@@ -104,7 +104,7 @@ final class HotkeyManager {
                 &hotKeyID
             )
 
-            if let action = manager.bindings[hotKeyID.id] {
+            if let action = box.bindings[hotKeyID.id] {
                 DispatchQueue.main.async {
                     action()
                 }
@@ -114,7 +114,7 @@ final class HotkeyManager {
         }
 
         // bindings는 register()에서 이미 box에 반영돼 있다 — 여기선 핸들러만 건다.
-        let box = HotkeyManagerBox.shared
+        let box = HotkeyRegistryBox.shared
 
         InstallEventHandler(
             GetApplicationEventTarget(),
@@ -138,11 +138,11 @@ final class HotkeyManager {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
         }
-        HotkeyManagerBox.shared.bindings.removeAll()
+        HotkeyRegistryBox.shared.bindings.removeAll()
     }
 }
 
-private class HotkeyManagerBox {
-    static let shared = HotkeyManagerBox()
+private class HotkeyRegistryBox {
+    static let shared = HotkeyRegistryBox()
     var bindings: [UInt32: () -> Void] = [:]
 }

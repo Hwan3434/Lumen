@@ -47,16 +47,16 @@ final class ClipboardItemKindTests: XCTestCase {
         let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
 
         let fromPNG = dir.appendingPathComponent("a.png")
-        XCTAssertTrue(ClipboardManager.writePNG(png, isPNG: true, to: fromPNG))
+        XCTAssertTrue(ClipboardStore.writePNG(png, isPNG: true, to: fromPNG))
         XCTAssertEqual(try Data(contentsOf: fromPNG), png)
 
         let fromTIFF = dir.appendingPathComponent("b.png")
-        XCTAssertTrue(ClipboardManager.writePNG(tiff, isPNG: false, to: fromTIFF))
+        XCTAssertTrue(ClipboardStore.writePNG(tiff, isPNG: false, to: fromTIFF))
         let loaded = try XCTUnwrap(NSBitmapImageRep(data: Data(contentsOf: fromTIFF)))
         XCTAssertEqual(loaded.pixelsWide, 12)
         XCTAssertEqual(loaded.pixelsHigh, 8)
 
-        XCTAssertFalse(ClipboardManager.writePNG(Data([0, 1, 2]), isPNG: false, to: dir.appendingPathComponent("c.png")))
+        XCTAssertFalse(ClipboardStore.writePNG(Data([0, 1, 2]), isPNG: false, to: dir.appendingPathComponent("c.png")))
     }
 
     // MARK: - 중복 판정

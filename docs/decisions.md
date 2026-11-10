@@ -8,10 +8,6 @@
 
 아래는 바꾸기 전에 주인에게 먼저 묻는다.
 
-- **설치 위치.** README와 `docs/agent-install.md`는 `/Applications`라고 적지만, `Info.plist`의 Sparkle 설정 주석은 `~/Applications`를 전제한다(관리자 암호 없이 앱 안에서 교체). 어느 쪽이 맞는지 정해지지 않았다.
-- **검색 순위.** 지금은 실행 횟수가 앞글자 일치보다 먼저다(`SearchViewModel.rankedApps`, 테스트 `testCurrentRuleUsageCountOutranksPrefixMatch`가 고정). 앞글자 일치를 먼저 두자는 제안이 있다.
-- **윈도우 마그넷 설명.** README는 "왼쪽·오른쪽 절반"이라고 쓰지만 코드는 화면 너비의 20, 40, 60, 80, 100%를 차례로 돈다(`Constants.magnetSteps`). README와 코드 중 어느 쪽을 고칠지 정해지지 않았다.
-- **`ClipboardManager` 같은 Manager 이름을 Store로 바꿀지.** 바꾸지 않은 상태다.
 - 클립보드 기록을 개수(500)가 아니라 용량으로 자를지, 기록에 없는 이미지 파일을 정리할지. 손대지 않았다.
 
 ## 앱 전체
@@ -27,7 +23,7 @@
 - 하지 말 것: 스스로 등록하는 구조(정적 등록, 리플렉션)를 만들지 않는다.
 
 ### 단축키는 그 기능이 갖는다 (2026-11-10)
-- 무엇: 기능 단축키는 각 기능의 `hotkeys`에 `kVK_*`로 적는다. 앱 전역 두 개(⌘Space, ⌘⇧L)만 `Core/Hotkeys/HotkeyDefinitions.swift`에 있다. `HotkeySpec`에는 설명 글이 없고, 라벨은 `HotkeyManager.describe`가 만든다.
+- 무엇: 기능 단축키는 각 기능의 `hotkeys`에 `kVK_*`로 적는다. 앱 전역 두 개(⌘Space, ⌘⇧L)만 `Core/Hotkeys/HotkeyDefinitions.swift`에 있다. `HotkeySpec`에는 설명 글이 없고, 라벨은 `HotkeyRegistry.describe`가 만든다.
 - 왜: 기능을 지우거나 고칠 때 공용 파일을 건드리지 않게. 손으로 적은 설명은 아무도 읽지 않아 틀려도 몰랐다.
 - 하지 말 것: 단축키 라벨을 문자열로 따로 적지 않는다.
 
@@ -57,9 +53,29 @@
 - 하지 말 것: 결과가 화면에 이미 보이는 동작에까지 토스트를 붙이지 않는다.
 
 ### 로그인 항목은 시스템 상태를 그대로 읽는다 (2026-11-10)
-- 무엇: `LoginItemManager.isEnabled`는 `SMAppService.mainApp.status == .enabled`다. 실패와 "승인 필요"는 토스트로 알린다.
+- 무엇: `LoginItemService.isEnabled`는 `SMAppService.mainApp.status == .enabled`다. 실패와 "승인 필요"는 토스트로 알린다.
 - 왜: UserDefaults에 따로 적어 두면 시스템 설정에서 끈 뒤에도 메뉴에 체크가 남았다.
 - 하지 말 것: 상태를 UserDefaults에 다시 복사하지 않는다. 예전 키 `launchAtLogin`은 사용자 설정에 남아 있지만 읽지 않는다.
+
+### 이름 끝말은 역할을 말한다 (2026-11-11)
+- 무엇: 타입 이름의 끝말을 아래 뜻으로만 쓴다. `Manager`는 쓰지 않는다.
+  - `Store`: 상태를 들고 파일이나 UserDefaults에 저장한다(`ClipboardStore`, `HiddenAppsStore`, `NoteStore`, `ScheduleStore`, `SecretStore`).
+  - `Service`: 자기 상태 없이 시스템이나 외부 기능을 감싼다(`LoginItemService`, `SleepPolicyService`, `CurrencyService`, `WindowMagnetService`).
+  - `Repository`: 네트워크로 가져온다(`JiraRepository`).
+  - `Registry`: 등록받고 찾아 준다(`FeatureRegistry`, `HotkeyRegistry`).
+  - 그 밖에 `Feature`, `WindowController`, `ViewModel`, `Tracker`, `Indexer`, `Monitor`, `Coordinator`는 이름 그대로다.
+- 왜: 주인이 이름을 중요하게 본다. `Manager`는 무엇을 하는지 말해 주지 않아 같은 일을 하는 타입이 다른 이름을 갖게 된다.
+- 하지 말 것: 새 타입에 `Manager`, `Helper`, `Handler` 같은 뜻 없는 끝말을 붙이지 않는다. 파일 이름과 타입 이름은 같게 둔다. SwiftUI·AppKit 타입과 같은 이름을 짓지 않는다(옛 `TimelineView`가 SwiftUI의 것을 가렸다).
+
+### 검색 순위는 앞부분 일치가 먼저 (2026-11-11)
+- 무엇: 검색어로 시작하는 이름·별명, 실행 횟수, 이름 순으로 정렬한다(`SearchViewModel.rankedApps`, `SearchLogicTests`가 고정).
+- 왜: 실행 횟수를 먼저 보면 "no"를 칠 때 별명 중간에 "no"가 든 자주 쓰는 앱이 Notes보다 위에 온다. 다른 런처도 앞부분 일치를 먼저 본다.
+- 하지 말 것: 실행 횟수를 다시 맨 앞에 두지 않는다.
+
+### 설치 위치는 `~/Applications` (2026-11-11)
+- 무엇: README와 `docs/agent-install.md`는 `~/Applications`에 설치하라고 안내한다.
+- 왜: 자동 업데이트(Sparkle)가 설치 도우미 없이(`SUEnableInstallerLauncherService = false`) 앱 안에서 교체한다. 관리자 소유인 `/Applications`에 두면 업데이트가 조용히 실패할 수 있다.
+- 하지 말 것: 안내를 `/Applications`로 되돌리지 않는다.
 
 ### UserDefaults 키 규칙은 새 키에만 (2026-11-10)
 - 무엇: 새 키는 `"<기능>.<이름>"`, 값을 가진 타입 안에 `private static let`. 규칙은 [architecture.md](architecture.md#저장).
@@ -107,7 +123,7 @@
 - 비밀번호 관리자가 붙이는 `org.nspasteboard.ConcealedType`, `TransientType` 항목은 기록하지 않는다. 기록 파일은 0600. 이 규칙 전에 기록된 항목은 사용자 파일에 남아 있다.
 - 항목은 이미지를 디코딩한 채 들고 있지 않고 PNG 경로만 갖는다. 복사할 때 메인 스레드는 바이트만 읽고, 변환과 쓰기는 `diskQueue`에서 한 뒤 메인에서 항목을 더한다. 쓰기가 실패하면 항목을 더하지 않는다.
 - 중복 판정: 글은 본문 전체, 파일은 전체 경로로 비교하고 이미지는 합치지 않는다. 같은 이름의 다른 파일이 합쳐지고 새 이미지가 옛 이미지를 지우던 버그 때문이다.
-- 기록에서 다시 복사할 때는 `ClipboardManager.copyToPasteboard(_:)`를 쓴다. 감시가 Lumen 자신의 쓰기를 새 항목으로 받지 않게 한다.
+- 기록에서 다시 복사할 때는 `ClipboardStore.copyToPasteboard(_:)`를 쓴다. 감시가 Lumen 자신의 쓰기를 새 항목으로 받지 않게 한다.
 - 하지 말 것: `ClipboardItem`에 `NSImage` 필드를 다시 두지 않는다. `diskQueue`에서 `main.sync`를 부르지 않는다(`flushPendingSave()`가 반대로 기다려 멈춘다).
 
 ### 목록 선택은 id로 (2026-11-10)

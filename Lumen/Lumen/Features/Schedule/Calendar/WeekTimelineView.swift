@@ -9,7 +9,7 @@ private typealias P = LumenTokens.Palette
 // 가로 스크롤은 자유 — LazyHStack에 주 단위 컨테이너를 쭉 나열. 한 컬럼 폭 = viewport_width / 7.
 // lane 알고리즘은 월간 그리드와 동일하고, 주간은 줄 수 제한 없이 세로 스크롤한다.
 
-struct TimelineView: View {
+struct WeekTimelineView: View {
     @Environment(ScheduleStore.self) private var store
     let items: [ScheduleItem]
     @Binding var anchorDate: Date

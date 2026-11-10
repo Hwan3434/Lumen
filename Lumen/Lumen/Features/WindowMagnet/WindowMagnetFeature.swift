@@ -9,8 +9,8 @@ final class WindowMagnetFeature: BuiltInFeature {
 
     var isEnabled: Bool { Constants.magnetEnabled }
 
-    let manager = WindowMagnetManager()
-    lazy var windowController = WindowMagnetWindowController(manager: manager)
+    let service = WindowMagnetService()
+    lazy var windowController = WindowMagnetWindowController(service: service)
 
     private static let hotkeyModifiers = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
 
@@ -20,14 +20,14 @@ final class WindowMagnetFeature: BuiltInFeature {
                 keyCode: UInt16(kVK_LeftArrow),
                 modifiers: Self.hotkeyModifiers,
                 action: { [weak self] in
-                    self?.manager.snapWindow(direction: .left)
+                    self?.service.snapWindow(direction: .left)
                 }
             ),
             HotkeySpec(
                 keyCode: UInt16(kVK_RightArrow),
                 modifiers: Self.hotkeyModifiers,
                 action: { [weak self] in
-                    self?.manager.snapWindow(direction: .right)
+                    self?.service.snapWindow(direction: .right)
                 }
             )
         ]

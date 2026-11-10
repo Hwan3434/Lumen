@@ -21,7 +21,8 @@ struct ResourceMonitorView: View {
         }
         .scrollIndicators(.hidden)
         .frame(width: Constants.resourceWindowSize.width, height: Constants.resourceWindowSize.height)
-        .background(P.bg)
+        // 숫자와 차트를 읽는 창이라 글래스 설정과 상관없이 불투명하게 둔다.
+        .lumenPanel(glass: false)
     }
 
     // MARK: - Anomalies
@@ -44,22 +45,8 @@ struct ResourceMonitorView: View {
             }
             let recent = store.recent(6)
             if recent.isEmpty {
-                HStack(spacing: LumenTokens.Space.s3) {
-                    LumenIcon("circle-check")
-                        .foregroundStyle(P.success)
-                    VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
-                        Text("이상 없어요")
-                            .lumenText(.body, weight: .medium)
-                            .foregroundStyle(P.ink)
-                        Text("기준값을 잡은 뒤(약 60초) 감지를 시작해요.")
-                            .lumenText(.caption)
-                            .foregroundStyle(P.inkFaint)
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, LumenTokens.Space.scaled(14))
-                .padding(.horizontal, LumenTokens.Space.s4)
-                .lumenCard()
+                LumenEmptyCard(icon: "circle-check", text: "이상 없어요",
+                               detail: "기준값을 잡은 뒤(약 60초) 감지를 시작해요.", tone: .success)
             } else {
                 LumenList(recent) { anomalyRow($0) }
             }

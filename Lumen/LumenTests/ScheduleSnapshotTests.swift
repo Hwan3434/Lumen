@@ -10,6 +10,9 @@ import AppKit
 @MainActor
 final class ScheduleSnapshotTests: XCTestCase {
 
+    override func setUp() async throws { SnapshotEnvironment.applyUIOverrides() }
+    override func tearDown() async throws { SnapshotEnvironment.restoreUI() }
+
     func testRenderDashboardMonthAndWeek() async throws {
         let store = await Self.sampleStore()
         let saved = DashboardSettingsStore.shared.settings.defaultView
@@ -125,11 +128,15 @@ final class ScheduleSnapshotTests: XCTestCase {
     /// 첫 레이아웃 뒤에 `afterFirstLayout`을 한 번 부르고(보기 전환 같은 상호작용), 다시 기다린 뒤 찍는다.
     private func render(_ view: some View, size: NSSize, named name: String,
                         afterFirstLayout: (() -> Void)? = nil) throws {
-        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
+        // 토큰 색은 앱 전체 appearance 를 따른다.
+        let previousAppearance = NSApp.appearance
+        NSApp.appearance = SnapshotEnvironment.appearance
+        defer { NSApp.appearance = previousAppearance }
+        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, SnapshotEnvironment.colorScheme))
         hosting.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless],
                               backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.appearance = SnapshotEnvironment.appearance
         window.contentView = hosting
         window.setIsVisible(true)
         hosting.layoutSubtreeIfNeeded()

@@ -59,7 +59,7 @@ extension MarkdownUI.Theme {
             FontFamily(.custom("Geist Mono"))
             FontSize(.em(0.875))
             ForegroundColor(P.ink)
-            BackgroundColor(P.surfaceRaised)
+            BackgroundColor(P.surface)
         }
         .codeBlock { configuration in
             configuration.label

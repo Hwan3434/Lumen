@@ -24,7 +24,7 @@ final class TranslatorViewModel {
     // 이 바인딩은 SwiftUI의 .translationTask에 사용됩니다.
     var translationConfig: TranslationSession.Configuration? = nil
 
-    private let maxHistory = 30
+    let maxHistory = 30
     private let savePath: URL
 
     init(savePath: URL = LumenStorage.url(for: .translationHistory)) {

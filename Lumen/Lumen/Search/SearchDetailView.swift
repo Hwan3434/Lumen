@@ -166,11 +166,7 @@ private struct LidAwakeHoursRow: View {
     @Bindable var lidAwake: LidAwakeFeature
 
     var body: some View {
-        HStack(spacing: LumenTokens.Space.s4) {
-            Text("전원을 뽑은 뒤 끄기")
-                .lumenText(.body, weight: .medium)
-                .foregroundStyle(P.ink)
-            Spacer(minLength: 0)
+        LumenSettingRow(title: "전원을 뽑은 뒤 끄기") {
             LumenSegmentedControl(
                 items: LidAwakeFeature.batteryHourOptions.map { .init(value: $0, label: "\($0)시간") },
                 selection: $lidAwake.batteryHours

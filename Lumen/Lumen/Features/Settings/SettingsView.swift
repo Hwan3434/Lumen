@@ -44,7 +44,7 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            Rectangle().fill(P.borderSubtle).frame(width: 1)
+            LumenHairline(.vertical)
             contentArea
         }
         .frame(width: Constants.settingsWindowSize.width, height: Constants.settingsWindowSize.height)
@@ -139,8 +139,7 @@ private struct SidebarRow: View {
                 LumenIcon(tab.icon)
                     .foregroundStyle(isSelected ? P.brand : P.inkMuted)
                 Text(tab.label)
-                    .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                    .foregroundStyle(isSelected ? P.brand : P.ink)
+                    .lumenRowTitle(selected: isSelected)
                 Spacer()
             }
             .padding(.vertical, LumenTokens.Space.s3)
@@ -149,103 +148,6 @@ private struct SidebarRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(LumenListRowStyle(isSelected: isSelected))
-    }
-}
-
-// MARK: - Reusable form primitives
-
-struct SettingsSection<Content: View>: View {
-    let title: String
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
-            Text(title)
-                .lumenText(.title3)
-                .foregroundStyle(P.ink)
-            content()
-        }
-    }
-}
-
-/// Still TextField 구조: 라벨(위) · 입력 상자 · 도움말(아래), 사이 간격 6.
-struct SettingsField<Content: View>: View {
-    let label: String
-    var hint: String? = nil
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .lumenText(.label)
-                .foregroundStyle(P.inkMuted)
-            content()
-            if let hint {
-                Text(hint)
-                    .lumenText(.caption)
-                    .foregroundStyle(P.inkFaint)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-struct LumenTextField: View {
-    @Binding var text: String
-    var placeholder: String
-    var monospaced: Bool = false
-    var secure: Bool = false
-
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        HStack(spacing: LumenTokens.Space.inline) {
-            if secure {
-                LumenIcon("lock")
-                    .foregroundStyle(P.inkFaint)
-            }
-            Group {
-                if secure {
-                    SecureField(placeholder, text: $text)
-                        .font(LumenFont.mono(LumenTextStyle.body.size))
-                        .textContentType(.password)
-                } else {
-                    TextField(placeholder, text: $text)
-                        .font(monospaced ? LumenFont.mono(LumenTextStyle.body.size) : LumenFont.style(.body))
-                }
-            }
-            .textFieldStyle(.plain)
-            .foregroundStyle(P.ink)
-            .tint(P.brand)
-            .focused($focused)
-        }
-        .frame(minHeight: LumenTokens.Space.scaled(24))
-        .lumenFieldChrome(focused: focused)
-    }
-}
-
-/// 즉시 적용되는 켜고 끄기 한 줄. 제목과 설명을 카드에 담는다.
-struct SwitchRow: View {
-    @Binding var on: Bool
-    let title: String
-    let description: String
-
-    var body: some View {
-        Toggle(isOn: $on) {
-            VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
-                Text(title)
-                    .lumenText(.body, weight: .medium)
-                    .foregroundStyle(P.ink)
-                Text(description)
-                    .lumenText(.label, weight: .regular)
-                    .foregroundStyle(P.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .toggleStyle(LumenSwitchStyle())
-        .padding(LumenTokens.Space.pad)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .lumenCard()
     }
 }
 

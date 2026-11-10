@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 
 final class NoteFeature: BuiltInFeature {
     let name = "메모"
-    let featureDescription = "빠른 메모장"
+    let featureDescription = "메모를 빠르게 적어요"
     let iconName = "sticky-note"
     let searchKeywords = ["메모", "노트", "note", "memo"]
 

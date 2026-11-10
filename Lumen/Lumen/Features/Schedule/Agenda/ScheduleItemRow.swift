@@ -35,16 +35,25 @@ struct ScheduleItemRow: View {
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: LumenTokens.Space.inline) {
-                    if let priority = item.priority {
+                    // 두 단계를 색만으로 가르지 않는다: 가장 높음은 글자가 붙은 배지, 높음은 깃발만.
+                    switch item.priority {
+                    case .urgent:
+                        LumenBadge(text: "긴급", tone: .danger, icon: "flag")
+                            .accessibilityLabel("우선순위 가장 높음")
+                    case .high:
                         LumenIcon("flag", size: .small)
-                            .foregroundStyle(priority == .urgent ? P.danger : P.warning)
-                            .accessibilityLabel(priority == .urgent ? "우선순위 가장 높음" : "우선순위 높음")
+                            .foregroundStyle(P.warning)
+                            .accessibilityLabel("우선순위 높음")
+                    case nil:
+                        EmptyView()
                     }
                     if let status = item.status {
                         LumenBadge(text: status.label, tone: status.tone, icon: status.iconName)
                     }
                 }
                 .frame(minHeight: LumenTextStyle.body.lineHeight)
+                // 배지 글자는 줄이지 않는다. 자리가 모자라면 제목이 두 줄로 내려간다.
+                .fixedSize()
             }
             .padding(.vertical, LumenTokens.Space.s3)
             .padding(.horizontal, LumenTokens.Space.s4)

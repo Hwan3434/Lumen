@@ -2,7 +2,7 @@ import AppKit
 
 final class ColorPickerFeature: BuiltInFeature {
     let name = "컬러 피커"
-    let featureDescription = "화면 색상 추출 → HEX 복사"
+    let featureDescription = "화면에서 색을 골라 HEX 값을 복사해요"
     let iconName = "pipette"
     let searchKeywords = ["컬러", "색상", "color", "picker", "스포이드", "hex", "rgb"]
 

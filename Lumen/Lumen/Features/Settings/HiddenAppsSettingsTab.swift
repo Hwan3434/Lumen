@@ -12,27 +12,20 @@ struct HiddenAppsSettingsTab: View {
     @State private var allApps: [AppItem] = []
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LumenTokens.Space.s7) {
-                SettingsSection(title: "숨긴 앱") {
-                    if hiddenApps.isEmpty {
-                        emptyState
-                    } else {
-                        LumenList(hiddenApps) { app in
-                            HiddenAppRow(app: app) {
-                                manager.unhide(app.id)
-                            }
+        SettingsTabContent {
+            SettingsSection(title: "숨긴 앱") {
+                if hiddenApps.isEmpty {
+                    LumenEmptyCard(icon: "eye", text: "숨긴 앱이 없어요")
+                } else {
+                    LumenList(hiddenApps) { app in
+                        HiddenAppRow(app: app) {
+                            manager.unhide(app.id)
                         }
                     }
-                    Text("검색창에서 앱 위에 마우스를 올리면 오른쪽에 숨기기 버튼이 나타나요. 숨긴 앱은 여기서 되돌리기 전까지 검색 결과에 보이지 않아요.")
-                        .lumenText(.caption)
-                        .foregroundStyle(P.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
+                LumenHint("검색창에서 앱 위에 마우스를 올리면 오른쪽에 숨기기 버튼이 나타나요. 숨긴 앱은 여기서 되돌리기 전까지 검색 결과에 보이지 않아요.")
             }
-            .padding(LumenTokens.Space.s6)
         }
-        .scrollIndicators(.hidden)
         .onAppear {
             // 토글이 곧 저장이라 ActionBar 숨김.
             action.hideActionBar()
@@ -53,20 +46,6 @@ struct HiddenAppsSettingsTab: View {
         allApps
             .filter { manager.isHidden($0.id) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
-
-    private var emptyState: some View {
-        HStack(spacing: LumenTokens.Space.s3) {
-            LumenIcon("eye")
-                .foregroundStyle(P.inkMuted)
-            Text("숨긴 앱이 없어요")
-                .lumenText(.body)
-                .foregroundStyle(P.inkMuted)
-            Spacer()
-        }
-        .padding(.vertical, LumenTokens.Space.scaled(14))
-        .padding(.horizontal, LumenTokens.Space.s4)
-        .lumenCard()
     }
 }
 

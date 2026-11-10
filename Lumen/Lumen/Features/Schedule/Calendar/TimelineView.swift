@@ -28,9 +28,9 @@ struct TimelineView: View {
     private let halfRangeWeeks: Int = 13   // ±3개월
     private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     /// 요일(caption) + 날짜(label) + 공휴일 이름(caption) + 위아래 여백.
-    private var dayHeaderHeight: CGFloat { LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + 12 }
-    private var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 10 }
-    private let laneSpacing: CGFloat = 3
+    private var dayHeaderHeight: CGFloat { LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + LumenTokens.Space.scaled(12) }
+    private var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + LumenTokens.Space.scaled(10) }
+    private let laneSpacing: CGFloat = 2
     /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
     private let maxLanesVisible: Int = 999
 
@@ -110,7 +110,7 @@ struct TimelineView: View {
         let weekW = dayWidth * 7
 
         let maxLane = layout.bars.map { $0.lane }.max() ?? -1
-        let requiredHeight = CGFloat(maxLane + 1) * (laneHeight + laneSpacing) + 20
+        let requiredHeight = CGFloat(maxLane + 1) * (laneHeight + laneSpacing) + LumenTokens.Space.scaled(20)
         let gridHeight = max(viewportHeight - dayHeaderHeight, requiredHeight)
 
         return VStack(spacing: 0) {
@@ -203,11 +203,10 @@ struct TimelineView: View {
                 let isWeekend = (weekday == 1 || weekday == 7)
                 let isToday = Self.cal.isDate(day, inSameDayAs: today)
                 Rectangle()
-                    .fill(isToday ? P.brandSoft : (isWeekend ? P.surface : Color.clear))
+                    // 주말 칸은 글래스가 켜져 있으면 깔지 않는다 — 불투명한 `surface`는 비치는 패널 위에서 그 칸만 막힌 판이 된다.
+                    .fill(isToday ? P.brandSoft : (isWeekend ? P.panelSurface : Color.clear))
                     .frame(width: dayWidth, height: height)
-                    .overlay(alignment: .leading) {
-                        Rectangle().fill(P.borderSubtle).frame(width: 1, height: height)
-                    }
+                    .overlay(alignment: .leading) { LumenHairline(.vertical) }
             }
         }
     }
@@ -218,7 +217,7 @@ struct TimelineView: View {
         let item = bar.item
         let leading = CGFloat(bar.startCol) * dayWidth + 2
         let width = dayWidth * CGFloat(bar.span) - 4
-        let topOffset = CGFloat(bar.lane) * (laneHeight + laneSpacing) + 6
+        let topOffset = CGFloat(bar.lane) * (laneHeight + laneSpacing) + LumenTokens.Space.scaled(6)
 
         return Button {
             selectedVariant = isCommandClick ? .secondary : .primary

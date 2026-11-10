@@ -212,6 +212,23 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-50 * 3600 - 5)), "2일 전")
     }
 
+    /// 절대 시각은 Still 표기("오후 2:30", "11. 7")를 쓴다. 24시간제나 "11월 7일"이 아니다.
+    func testCalendarTimeUsesStillFormat() {
+        let cal = Calendar.current
+        let todayAfternoon = cal.date(bySettingHour: 14, minute: 30, second: 0, of: Date())!
+        XCTAssertEqual(LumenTime.relative(todayAfternoon, granularity: .calendar), "오늘 오후 2:30")
+        XCTAssertEqual(LumenTime.relative(dateTime("2026-01-07 09:05"), granularity: .calendar), "1. 7 오전 9:05")
+    }
+
+    /// 넓게는 Still 값 그대로다. 단위 맞춤(2·4 단위)은 줄이는 밀도에만 적용한다.
+    func testSpaciousDensityKeepsStillSpacing() {
+        for base: CGFloat in [2, 3, 6, 9, 10, 12, 14, 16, 24] {
+            XCTAssertEqual(LumenDensity.spacious.space(base), base)
+        }
+        XCTAssertEqual(LumenDensity.cozy.space(14), 8)
+        XCTAssertEqual(LumenDensity.regular.space(10), 8)
+    }
+
     func testMagnetOptionsFollowSteps() {
         let options = WindowMagnetViewModel().options
         XCTAssertEqual(options.map(\.ratio), Constants.magnetSteps + Constants.magnetSteps)

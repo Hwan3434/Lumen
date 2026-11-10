@@ -14,9 +14,8 @@ struct GroupChipStrip: View {
             HStack(spacing: LumenTokens.Space.inline) {
                 ForEach(Array(plugins.enumerated()), id: \.element.id.rawValue) { idx, plugin in
                     if idx > 0 {
-                        Rectangle()
-                            .fill(P.borderSubtle)
-                            .frame(width: 1, height: LumenIcon.Size.small.points)
+                        LumenHairline(.vertical)
+                            .frame(height: LumenIcon.Size.small.points)
                     }
                     LumenIcon(plugin.iconName, size: .small)
                         .foregroundStyle(P.inkFaint)
@@ -48,7 +47,7 @@ struct FilterChip: View {
         Button {
             isOn.toggle()
         } label: {
-            HStack(spacing: LumenTokens.Space.s1 + 2) {
+            HStack(spacing: LumenTokens.Space.scaled(6)) {
                 Circle()
                     .strokeBorder(color, lineWidth: 2)
                     .background(Circle().fill(isOn ? color : .clear))

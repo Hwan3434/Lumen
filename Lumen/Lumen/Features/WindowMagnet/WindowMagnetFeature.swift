@@ -2,7 +2,7 @@ import AppKit
 
 final class WindowMagnetFeature: BuiltInFeature {
     let name = "윈도우 마그넷"
-    let featureDescription = "윈도우 좌우 스내핑"
+    let featureDescription = "창을 화면 왼쪽이나 오른쪽에 맞춰 붙여요"
     let iconName = "columns-2"
     let searchKeywords = ["magnet", "마그넷", "윈도우", "window", "스냅", "크기"]
 

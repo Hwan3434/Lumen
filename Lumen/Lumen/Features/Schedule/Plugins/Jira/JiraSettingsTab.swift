@@ -27,83 +27,75 @@ struct JiraSettingsTab: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LumenTokens.Space.s7) {
-                SettingsSection(title: "Jira") {
-                    SwitchRow(
-                        on: Binding(get: { plugin.settings.enabled }, set: { plugin.setEnabled($0) }),
-                        title: "사용",
-                        description: "끄면 대시보드와 메뉴바에서 Jira 항목이 사라져요. 연결 정보는 그대로 남아요."
-                    )
+        SettingsTabContent {
+            SettingsSection(title: "Jira") {
+                SwitchRow(
+                    on: Binding(get: { plugin.settings.enabled }, set: { plugin.setEnabled($0) }),
+                    title: "사용",
+                    description: "끄면 대시보드와 메뉴바에서 Jira 항목이 사라져요. 연결 정보는 그대로 남아요."
+                )
+            }
+
+            if plugin.settings.enabled {
+                SettingsSection(title: "연결") {
+                    LumenLabeledField(label: "워크스페이스 도메인",
+                                      hint: "https://{여기}.atlassian.net 에서 {여기} 부분만 적어 주세요. 예: your-workspace") {
+                        LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
+                    }
+                    LumenLabeledField(label: "이메일") {
+                        LumenTextField(text: $email, placeholder: "you@example.com")
+                    }
+                    LumenLabeledField(label: "API 토큰",
+                                      hint: "Atlassian 계정의 [보안] › [API 토큰]에서 만들 수 있어요. 저장하면 바로 적용돼요.") {
+                        LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
+                    }
+                    connectionRow
                 }
 
-                if plugin.settings.enabled {
-                    SettingsSection(title: "연결") {
-                        SettingsField(label: "워크스페이스 도메인",
-                                      hint: "https://{여기}.atlassian.net 에서 {여기} 부분만 적어 주세요. 예: your-workspace") {
-                            LumenTextField(text: $workspaceSlug, placeholder: "your-workspace", monospaced: true)
-                        }
-                        SettingsField(label: "이메일") {
-                            LumenTextField(text: $email, placeholder: "you@example.com")
-                        }
-                        SettingsField(label: "API 토큰",
-                                      hint: "Atlassian 계정의 [보안] › [API 토큰]에서 만들 수 있어요. 저장하면 바로 적용돼요.") {
-                            LumenTextField(text: $token, placeholder: "ATATT3xFfGF…", secure: true)
-                        }
-                        connectionRow
-                    }
-
-                    SettingsSection(title: "프로젝트") {
-                        VStack(alignment: .leading, spacing: LumenTokens.Space.inline) {
-                            ForEach($projects) { $entry in
-                                HStack(spacing: LumenTokens.Space.inline) {
-                                    LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
-                                        .frame(width: LumenTokens.Space.size(160))
-                                    LumenTextField(text: $entry.alias, placeholder: "별칭 (선택)")
-                                    LumenIconButton(icon: "trash-2", label: "프로젝트 삭제") {
-                                        projects.removeAll { $0.id == entry.id }
-                                    }
+                SettingsSection(title: "프로젝트") {
+                    VStack(alignment: .leading, spacing: LumenTokens.Space.inline) {
+                        ForEach($projects) { $entry in
+                            HStack(spacing: LumenTokens.Space.inline) {
+                                LumenTextField(text: $entry.key, placeholder: "예: PROJ", monospaced: true)
+                                    .frame(width: LumenTokens.Space.size(160))
+                                LumenTextField(text: $entry.alias, placeholder: "별칭 (선택)")
+                                LumenIconButton(icon: "trash-2", label: "프로젝트 삭제") {
+                                    projects.removeAll { $0.id == entry.id }
                                 }
                             }
-                            Button {
-                                projects.append(ProjectEntry(key: "", alias: "", isVisible: true))
-                            } label: {
-                                Label { Text("프로젝트 추가") } icon: { LumenIcon("plus") }
-                            }
-                            .buttonStyle(LumenButtonStyle(variant: .secondary))
                         }
-                        Text("키는 API 호출에 쓰는 대문자 식별자예요(예: PROJ). 별칭을 비워 두면 키가 그대로 보여요. 색은 캘린더 묶음 다음 순서로 자동으로 정해져요.")
-                            .lumenText(.caption)
-                            .foregroundStyle(P.inkFaint)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Button {
+                            projects.append(ProjectEntry(key: "", alias: "", isVisible: true))
+                        } label: {
+                            Label { Text("프로젝트 추가") } icon: { LumenIcon("plus") }
+                        }
+                        .buttonStyle(LumenButtonStyle(variant: .secondary))
                     }
+                    LumenHint("키는 API 호출에 쓰는 대문자 식별자예요(예: PROJ). 별칭을 비워 두면 키가 그대로 보여요. 색은 캘린더 묶음 다음 순서로 자동으로 정해져요.")
+                }
 
-                    SettingsSection(title: "가져올 항목") {
-                        VStack(alignment: .leading, spacing: 0) {
-                            fetchRow(title: "내 담당 이슈",
-                                     description: "시작일이나 마감일이 있는 이슈를 오늘 앞뒤 90일 범위로 가져와요.",
-                                     trailing: { Text("항상").lumenText(.label).foregroundStyle(P.inkMuted) })
-                            LumenHairline()
-                            fetchRow(title: "스프린트 기간",
-                                     description: "진행 중인 스프린트를 캘린더에 기간 막대로 보여줘요. 목록에는 나오지 않아요.",
-                                     trailing: { switchControl(get: { plugin.settings.showSprints }, set: { plugin.setShowSprints($0) }, label: "스프린트 기간") })
-                            LumenHairline()
-                            fetchRow(title: "에픽 마감",
-                                     description: "마감일이 있는 열린 에픽을 마감일에 표시해요.",
-                                     trailing: { switchControl(get: { plugin.settings.showEpics }, set: { plugin.setShowEpics($0) }, label: "에픽 마감") })
-                            LumenHairline()
-                            fetchRow(title: "완료한 이슈도 표시",
-                                     description: "끄면 완료한 이슈는 목록과 캘린더에서 숨겨요. 켜면 취소선으로 보여요.",
-                                     trailing: { switchControl(get: { plugin.settings.showDone }, set: { plugin.setShowDone($0) }, label: "완료한 이슈도 표시") })
-                        }
-                        .lumenCard()
+                SettingsSection(title: "가져올 항목") {
+                    VStack(alignment: .leading, spacing: 0) {
+                        fetchRow(title: "내 담당 이슈",
+                                 description: "시작일이나 마감일이 있는 이슈를 오늘 앞뒤 90일 범위로 가져와요.",
+                                 trailing: { Text("항상").lumenText(.label).foregroundStyle(P.inkMuted) })
+                        LumenHairline()
+                        fetchRow(title: "스프린트 기간",
+                                 description: "진행 중인 스프린트를 캘린더에 기간 막대로 보여줘요. 목록에는 나오지 않아요.",
+                                 trailing: { switchControl(get: { plugin.settings.showSprints }, set: { plugin.setShowSprints($0) }, label: "스프린트 기간") })
+                        LumenHairline()
+                        fetchRow(title: "에픽 마감",
+                                 description: "마감일이 있는 열린 에픽을 마감일에 표시해요.",
+                                 trailing: { switchControl(get: { plugin.settings.showEpics }, set: { plugin.setShowEpics($0) }, label: "에픽 마감") })
+                        LumenHairline()
+                        fetchRow(title: "완료한 이슈도 표시",
+                                 description: "끄면 완료한 이슈는 목록과 캘린더에서 숨겨요. 켜면 취소선으로 보여요.",
+                                 trailing: { switchControl(get: { plugin.settings.showDone }, set: { plugin.setShowDone($0) }, label: "완료한 이슈도 표시") })
                     }
+                    .lumenCard()
                 }
             }
-            .padding(LumenTokens.Space.s6)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .scrollIndicators(.hidden)
         .onAppear {
             loadFromPlugin()
             wireActionVM()
@@ -167,22 +159,10 @@ struct JiraSettingsTab: View {
     // MARK: - 가져올 항목
 
     private func fetchRow<Trailing: View>(title: String, description: String,
-                                          @ViewBuilder trailing: () -> Trailing) -> some View {
-        HStack(spacing: LumenTokens.Space.s3) {
-            VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
-                Text(title)
-                    .lumenText(.body, weight: .medium)
-                    .foregroundStyle(P.ink)
-                Text(description)
-                    .lumenText(.label, weight: .regular)
-                    .foregroundStyle(P.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: LumenTokens.Space.s3)
-            trailing()
-        }
-        .padding(.vertical, LumenTokens.Space.scaled(14))
-        .padding(.horizontal, LumenTokens.Space.pad)
+                                          @ViewBuilder trailing: @escaping () -> Trailing) -> some View {
+        LumenSettingRow(title: title, description: description, control: trailing)
+            .padding(.vertical, LumenTokens.Space.rowY)
+            .padding(.horizontal, LumenTokens.Space.pad)
     }
 
     private func switchControl(get: @escaping () -> Bool, set: @escaping (Bool) -> Void, label: String) -> some View {

@@ -24,7 +24,7 @@ struct IssuePreviewPopover: View {
     @ViewBuilder
     private var commentHint: some View {
         if detail.commentCount > 0 {
-            HStack(spacing: LumenTokens.Space.s1 + 2) {
+            HStack(spacing: LumenTokens.Space.scaled(6)) {
                 LumenIcon("messages-square", size: .small)
                 Text("댓글 \(detail.commentCount)개")
                     .lumenText(.label)

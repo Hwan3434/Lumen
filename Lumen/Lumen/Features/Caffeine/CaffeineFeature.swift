@@ -3,7 +3,7 @@ import IOKit.pwr_mgt
 
 @Observable
 final class CaffeineFeature: ToggleableFeature {
-    let featureDescription = "슬립 방지 (카페인)"
+    let featureDescription = "화면이 잠들지 않게 해요"
     let iconName = "coffee"
     let searchKeywords = ["카페인", "caffeine", "슬립", "sleep", "잠금", "화면"]
 

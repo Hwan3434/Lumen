@@ -56,7 +56,7 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                     .textSelection(.enabled)
 
                 if !metaRows.isEmpty {
-                    VStack(alignment: .leading, spacing: LumenTokens.Space.s1 + 2) {
+                    VStack(alignment: .leading, spacing: LumenTokens.Space.scaled(6)) {
                         ForEach(metaRows) { row in
                             HStack(alignment: .top, spacing: LumenTokens.Space.inline) {
                                 LumenIcon(row.icon, size: .small)

@@ -29,7 +29,7 @@ final class LidAwakeFeature: ToggleableFeature {
         didSet { UserDefaults.standard.set(batteryHours, forKey: Self.batteryHoursKey) }
     }
 
-    let featureDescription = "덮개를 닫아도 잠들지 않게 (전원 연결 중엔 계속)"
+    let featureDescription = "덮개를 닫아도 잠들지 않아요. 전원이 연결된 동안은 계속 켜져 있어요"
     let iconName = "flame"
     let searchKeywords = ["덮개", "클램쉘", "clamshell", "lid", "disablesleep", "잠자기", "슬립", "sleep"]
 

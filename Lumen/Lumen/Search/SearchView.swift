@@ -8,30 +8,26 @@ struct SearchView: View {
     @State private var pendingHide: (id: String, name: String)?
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            mainPanel
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
-        .alert(
-            "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
-            isPresented: Binding(
-                get: { pendingHide != nil },
-                set: { if !$0 { pendingHide = nil } }
-            ),
-            presenting: pendingHide
-        ) { item in
-            Button("숨기기", role: .destructive) {
-                viewModel.hideApp(item.id)
-                pendingHide = nil
+        mainPanel
+            .lumenPanel()
+            .alert(
+                "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
+                isPresented: Binding(
+                    get: { pendingHide != nil },
+                    set: { if !$0 { pendingHide = nil } }
+                ),
+                presenting: pendingHide
+            ) { item in
+                Button("숨기기", role: .destructive) {
+                    viewModel.hideApp(item.id)
+                    pendingHide = nil
+                }
+                Button("취소", role: .cancel) {
+                    pendingHide = nil
+                }
+            } message: { _ in
+                Text("검색 결과에 더 이상 보이지 않아요. 설정의 [숨긴 앱]에서 언제든 되돌릴 수 있어요.")
             }
-            Button("취소", role: .cancel) {
-                pendingHide = nil
-            }
-        } message: { _ in
-            Text("검색 결과에 더 이상 보이지 않아요. 설정의 [숨긴 앱]에서 언제든 되돌릴 수 있어요.")
-        }
     }
 
     private var mainPanel: some View {
@@ -40,9 +36,7 @@ struct SearchView: View {
             HStack(spacing: 0) {
                 resultsList
                     .frame(width: LumenTokens.Space.size(340))
-                Rectangle()
-                    .fill(LumenTokens.Palette.borderSubtle)
-                    .frame(width: 1)
+                LumenHairline(.vertical)
                 SearchDetailView(item: viewModel.selectedItem, viewModel: viewModel)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -201,14 +195,13 @@ private struct AppRowContent: View {
                 .interpolation(.high)
                 .frame(width: LumenIcon.Size.large.points, height: LumenIcon.Size.large.points)
             Text(appItem.name)
-                .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+                .lumenRowTitle(selected: isSelected)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: LumenTokens.Space.inline)
             if hovered {
                 LumenIconButton(icon: "eye-off", label: "검색 결과에서 숨기기", action: onHide)
-                    .padding(.vertical, -LumenIconButton.inlineOverhang)
+                    .inRow()
                     .transition(.opacity)
             }
         }
@@ -228,8 +221,7 @@ private struct FeatureRowContent: View {
             LumenIcon(feature.iconName, size: .large)
                 .foregroundStyle(LumenTokens.Palette.inkMuted)
             Text(feature.name)
-                .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+                .lumenRowTitle(selected: isSelected)
                 .lineLimit(1)
             Spacer(minLength: LumenTokens.Space.inline)
             if let toggle = feature as? ToggleableFeature, toggle.isOn {

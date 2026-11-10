@@ -1,9 +1,8 @@
 import SwiftUI
 import AppKit
-import CoreText
 
 // Still 디자인 시스템 토큰 (원본: claude.ai Design System 아티팩트 "Still", project/tokens.json).
-// 값은 여기에만 둔다. 뷰에서는 이 토큰과 아래 공용 부품만 조합하고 RGB·크기를 새로 만들지 않는다.
+// 값은 여기에만 둔다. 뷰에서는 이 토큰과 DesignSystem의 공용 부품만 조합하고 RGB·크기를 새로 만들지 않는다.
 // 색은 시스템 외관(다크/라이트)을 따라 자동으로 바뀐다.
 
 enum LumenTokens {
@@ -34,6 +33,11 @@ enum LumenTokens {
         static let onDanger      = dyn(dark: 0x0a0a0b, light: 0xffffff)
         static let info          = dyn(dark: 0x64a8ff, light: 0x0b67d0)
         static let infoSoft      = dyn(dark: (0x64a8ff, 0.12), light: (0x0b67d0, 0.08))
+
+        /// 줄이나 조용한(ghost) 버튼에 마우스를 올렸을 때 덧씌우는 반투명 막. Still에는 없는 Lumen 추가 토큰이다.
+        /// Still은 줄에 `surface-raised`, 조용한 버튼에 `surface`를 깔지만, Lumen은 같은 부품을 `bg`·`surface`·`surface-raised`
+        /// 위에 모두 올리고 라이트에서는 `surface-raised`와 `bg`가 같은 흰색이라, 불투명 색으로는 안 보이는 자리가 생긴다.
+        static let hover         = dyn(dark: (0xffffff, 0.06), light: (0x111113, 0.05))
 
         static let chart1        = dyn(dark: 0x1aa58f, light: 0x1a9e88)
         static let chart2        = dyn(dark: 0xd95926, light: 0xeb6834)
@@ -72,6 +76,8 @@ enum LumenTokens {
 
         /// ListItem 줄의 세로 여백(Still 14).
         static var rowY: CGFloat { d.space(14) }
+        /// 떠 있는 패널 머리 줄의 높이(Still 56). `LumenPanelHeader`와 그 옆에 나란히 놓는 사이드바 머리가 같이 쓴다.
+        static var panelHeader: CGFloat { d.size(56) }
 
         /// 위 이름에 없는 Still 치수(헤더 높이, 칸 높이 등)를 밀도에 맞게 줄일 때 쓴다.
         static func scaled(_ base: CGFloat) -> CGFloat { d.space(base) }
@@ -142,308 +148,5 @@ enum LumenShape {
     /// Still 곡률 규칙: `Radius.lg`(16) 이상은 연속 곡률(squircle), 그 아래는 일반 원호.
     static func rect(_ radius: CGFloat) -> RoundedRectangle {
         RoundedRectangle(cornerRadius: radius, style: radius >= LumenTokens.Radius.lg ? .continuous : .circular)
-    }
-}
-
-// MARK: - Typography
-
-/// Still 타입 스케일 가운데 Lumen이 쓰는 7단계 + 코드. 본문·제목은 SUIT, 코드는 Geist Mono.
-enum LumenTextStyle {
-    case title1, title2, title3, bodyLarge, body, label, caption, codeBlock
-
-    /// 글자 크기와 행간. 넓게·보통은 Still 그대로, 촘촘은 Still 단계 안에서 한 칸씩 작게,
-    /// 아주 촘촘은 예전 Lumen 크기(Still 밖)다.
-    private var metrics: (size: CGFloat, lineHeight: CGFloat) {
-        switch LumenDensity.current {
-        case .spacious, .regular:
-            switch self {
-            case .title1: (40, 48)
-            case .title2: (28, 36)
-            case .title3: (20, 28)
-            case .bodyLarge: (18, 30)
-            case .body: (16, 26)
-            case .label: (14, 20)
-            case .caption: (12, 16)
-            case .codeBlock: (14, 22)
-            }
-        case .cozy:
-            switch self {
-            case .title1: (28, 36)
-            case .title2: (20, 28)
-            case .title3: (18, 26)
-            case .bodyLarge: (16, 24)
-            case .body: (14, 20)
-            case .label: (12, 16)
-            case .caption: (12, 16)
-            case .codeBlock: (12, 18)
-            }
-        case .compact:
-            switch self {
-            case .title1: (24, 30)
-            case .title2: (18, 24)
-            case .title3: (15, 20)
-            case .bodyLarge: (14, 20)
-            case .body: (13, 18)
-            case .label: (12, 16)
-            case .caption: (11, 14)
-            case .codeBlock: (12, 16)
-            }
-        }
-    }
-
-    var size: CGFloat { metrics.size }
-    var lineHeight: CGFloat { metrics.lineHeight }
-
-    /// em 단위 자간. 큰 제목일수록 살짝 좁힌다.
-    var tracking: CGFloat {
-        switch self {
-        case .title1: -0.025
-        case .title2: -0.02
-        case .title3: -0.01
-        default: 0
-        }
-    }
-
-    var defaultWeight: LumenWeight {
-        switch self {
-        case .title1: .bold
-        case .title2, .title3: .semibold
-        case .label: .medium
-        default: .regular
-        }
-    }
-
-    var isMono: Bool { self == .codeBlock }
-}
-
-/// Still이 허용하는 굵기 네 단계.
-enum LumenWeight: CGFloat {
-    case regular = 400, medium = 500, semibold = 600, bold = 700
-}
-
-enum LumenFont {
-    private static let wghtAxis = NSNumber(value: 0x77676874) // 'wght'
-    private static let registered: Void = {
-        // SUIT는 woff2 판만 빈 한글 글리프를 빼고 배포한다. ttf는 없는 글자를 빈칸으로 그려 시스템 대체 글꼴이 안 붙는다.
-        for (name, ext) in [("SUIT-Variable", "woff2"), ("GeistMono-Variable", "ttf")] {
-            if let url = Bundle.main.url(forResource: name, withExtension: ext) {
-                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-            }
-        }
-    }()
-    @MainActor private static var cache: [String: Font] = [:]
-
-    /// 앱 시작 시 한 번 불러 글꼴을 등록한다. MarkdownUI처럼 이름으로 글꼴을 찾는 곳도 쓸 수 있게.
-    static func register() { _ = registered }
-
-    static func sans(_ size: CGFloat, _ weight: LumenWeight = .regular) -> Font {
-        font(family: "SUIT Variable", size: size, weight: weight)
-    }
-
-    static func mono(_ size: CGFloat, _ weight: LumenWeight = .regular) -> Font {
-        font(family: "Geist Mono", size: size, weight: weight)
-    }
-
-    static func style(_ style: LumenTextStyle, weight: LumenWeight? = nil) -> Font {
-        let w = weight ?? style.defaultWeight
-        return style.isMono ? mono(style.size, w) : sans(style.size, w)
-    }
-
-    /// AppKit 쪽(NSTextView 등)에서 쓰는 같은 글꼴.
-    static func nsFont(family: String = "SUIT Variable", size: CGFloat, weight: LumenWeight = .regular) -> NSFont {
-        _ = registered
-        let desc = NSFontDescriptor(fontAttributes: [
-            .family: family,
-            .variation: [wghtAxis: weight.rawValue],
-        ])
-        return NSFont(descriptor: desc, size: size) ?? .systemFont(ofSize: size)
-    }
-
-    @MainActor private static var lineSpacingCache: [String: CGFloat] = [:]
-
-    /// Still 행간(lineHeight)을 맞추려면 글꼴 자체 높이를 뺀 나머지를 lineSpacing으로 준다.
-    /// 모든 Text의 body에서 불리므로 스타일별로 한 번만 계산한다.
-    static func extraLineSpacing(_ style: LumenTextStyle) -> CGFloat {
-        MainActor.assumeIsolated {
-            let key = "\(LumenDensity.current.rawValue)|\(style)"
-            if let cached = lineSpacingCache[key] { return cached }
-            let f = nsFont(family: style.isMono ? "Geist Mono" : "SUIT Variable", size: style.size)
-            let spacing = max(0, style.lineHeight - (f.ascender - f.descender + f.leading))
-            lineSpacingCache[key] = spacing
-            return spacing
-        }
-    }
-
-    private static func font(family: String, size: CGFloat, weight: LumenWeight) -> Font {
-        MainActor.assumeIsolated {
-            let key = "\(family)|\(size)|\(weight.rawValue)"
-            if let f = cache[key] { return f }
-            let f = Font(nsFont(family: family, size: size, weight: weight))
-            cache[key] = f
-            return f
-        }
-    }
-}
-
-extension View {
-    /// Still 글자 스타일: 글꼴 + 행간 + 자간. 한글은 단어 단위 줄바꿈이 SwiftUI 기본이다.
-    func lumenText(_ style: LumenTextStyle, weight: LumenWeight? = nil) -> some View {
-        self
-            .font(LumenFont.style(style, weight: weight))
-            .lineSpacing(LumenFont.extraLineSpacing(style))
-            .tracking(style.size * style.tracking)
-    }
-}
-
-// MARK: - Elevation
-
-/// Still 깊이 3단계. 다크에서는 위쪽 안쪽 하이라이트 + 그림자, 라이트에서는 그림자만.
-struct LumenElevation: ViewModifier {
-    let level: Int
-    let radius: CGFloat
-    @Environment(\.colorScheme) private var scheme
-
-    func body(content: Content) -> some View {
-        let dark = scheme == .dark
-        content
-            .overlay(alignment: .top) {
-                if dark {
-                    Rectangle()
-                        .fill(Color.white.opacity(level == 1 ? 0.04 : 0.06))
-                        .frame(height: 1)
-                        .allowsHitTesting(false)
-                }
-            }
-            .clipShape(LumenShape.rect(radius))
-            .modifier(Shadows(level: level, dark: dark))
-    }
-
-    private struct Shadows: ViewModifier {
-        let level: Int
-        let dark: Bool
-
-        func body(content: Content) -> some View {
-            switch (level, dark) {
-            case (1, true):
-                content
-            case (1, false):
-                content.shadow(color: .black.opacity(0.05), radius: 1, y: 1)
-            case (2, true):
-                content.shadow(color: .black.opacity(0.5), radius: 12, y: 8)
-            case (2, false):
-                content
-                    .shadow(color: .black.opacity(0.06), radius: 1.5, y: 1)
-                    .shadow(color: .black.opacity(0.08), radius: 8, y: 6)
-            case (_, true):
-                content.shadow(color: .black.opacity(0.6), radius: 32, y: 24)
-            default:
-                content
-                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-                    .shadow(color: .black.opacity(0.14), radius: 24, y: 20)
-            }
-        }
-    }
-}
-
-extension View {
-    func lumenElevation(_ level: Int, radius: CGFloat) -> some View {
-        modifier(LumenElevation(level: level, radius: radius))
-    }
-
-    /// 층 1: 카드, 리스트 그룹. `surface` + `border-subtle` + `elevation-1`, `radius-lg`.
-    func lumenCard(radius: CGFloat = LumenTokens.Radius.lg) -> some View {
-        self
-            .background(LumenTokens.Palette.surface)
-            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
-            .lumenElevation(1, radius: radius)
-    }
-
-    /// 층 2: 팝오버, 메뉴, 툴팁. `surface-raised` + `border-subtle` + `elevation-2`.
-    func lumenPopover(radius: CGFloat = LumenTokens.Radius.md) -> some View {
-        self
-            .background(LumenTokens.Palette.surfaceRaised)
-            .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
-            .lumenElevation(2, radius: radius)
-    }
-}
-
-// MARK: - Small shared parts
-
-/// 묶음 이름. `label` 굵기 500 `ink-muted`.
-struct LumenSectionLabel: View {
-    let text: String
-    var body: some View {
-        Text(text)
-            .lumenText(.label)
-            .foregroundStyle(LumenTokens.Palette.inkMuted)
-    }
-}
-
-/// 단축키 표시. Still Code 부품(Geist Mono, `surface-raised`, `border-subtle`, `radius-xs`).
-struct LumenKbd: View {
-    let label: String
-    var primary: Bool = false
-    var body: some View {
-        Text(label)
-            .font(LumenFont.mono(LumenTextStyle.caption.size))
-            .foregroundStyle(primary ? LumenTokens.Palette.ink : LumenTokens.Palette.inkMuted)
-            .padding(.horizontal, LumenTokens.Space.scaled(6))
-            .padding(.vertical, LumenTokens.Space.scaled(2))
-            .background(LumenTokens.Palette.surfaceRaised, in: LumenShape.rect(LumenTokens.Radius.xs))
-            .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
-    }
-}
-
-/// 1px 구분선 `border-subtle`.
-struct LumenHairline: View {
-    var body: some View {
-        Rectangle()
-            .fill(LumenTokens.Palette.borderSubtle)
-            .frame(height: 1)
-    }
-}
-
-/// 떠 있는 패널(런처, 메모 등) 바탕. 층 3: `bg` + `border-subtle`, `radius-xl`.
-/// Still은 떠 있는 레이어에 반투명 블러를 허용한다 — 설정 > UI의 글래스 정도만큼 `bg`를 비치게 한다.
-/// 그림자는 창 밖으로 그려져야 해서 NSPanel의 `hasShadow`가 맡는다.
-struct LumenPanelBackground: View {
-    var radius: CGFloat = LumenTokens.Radius.xl
-
-    var body: some View {
-        LumenGlassFill()
-            .clipShape(LumenShape.rect(radius))
-        .overlay(LumenShape.rect(radius).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
-    }
-}
-
-/// 글래스 바탕: 설정 > UI의 투명도만큼 시스템 블러 위에 `bg`를 깐다. 0%면 불투명한 `bg`.
-/// 떠 있는 패널과 설정 창이 같이 쓴다.
-struct LumenGlassFill: View {
-    var body: some View {
-        ZStack {
-            if LumenGlass.isOn {
-                VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
-            }
-            LumenTokens.Palette.bg.opacity(LumenGlass.backgroundOpacity)
-        }
-    }
-}
-
-/// NSVisualEffectView를 SwiftUI에서 쓰기 위한 래퍼.
-struct VisualEffectBlur: NSViewRepresentable {
-    let material: NSVisualEffectView.Material
-    let blendingMode: NSVisualEffectView.BlendingMode
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = NSVisualEffectView()
-        v.material = material
-        v.blendingMode = blendingMode
-        v.state = .active
-        return v
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
     }
 }

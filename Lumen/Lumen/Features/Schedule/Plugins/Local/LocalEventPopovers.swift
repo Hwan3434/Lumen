@@ -118,17 +118,8 @@ private struct EventForm: View {
                 .foregroundStyle(P.ink)
 
             VStack(alignment: .leading, spacing: LumenTokens.Space.stack) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("제목")
-                        .lumenText(.label)
-                        .foregroundStyle(P.inkMuted)
-                    TextField("", text: $title)
-                        .textFieldStyle(.plain)
-                        .font(LumenFont.style(.body))
-                        .foregroundStyle(P.ink)
-                        .tint(P.brand)
-                        .focused(titleFocused)
-                        .lumenFieldChrome(focused: titleFocused.wrappedValue)
+                LumenLabeledField(label: "제목") {
+                    LumenTextField(text: $title, focus: titleFocused)
                         .onSubmit { onPrimary() }
                 }
 

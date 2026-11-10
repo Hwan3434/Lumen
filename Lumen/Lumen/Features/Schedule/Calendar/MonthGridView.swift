@@ -205,9 +205,9 @@ private struct WeekRow: View {
 
     /// 한 주에 보일 수 있는 막대(레인) 최대 갯수. 넘는 건 그 날짜 칸 아래 "+N".
     static let maxLanes = 4
-    static var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + 6 }
+    static var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + LumenTokens.Space.scaled(6) }
     static let laneSpacing: CGFloat = 2
-    static var topPadding: CGFloat { LumenTextStyle.caption.lineHeight + 12 }  // 날짜 숫자 자리
+    static var topPadding: CGFloat { LumenTextStyle.caption.lineHeight + LumenTokens.Space.scaled(12) }  // 날짜 숫자 자리
     private var laneHeight: CGFloat { Self.laneHeight }
     private var laneSpacing: CGFloat { Self.laneSpacing }
     private var topPadding: CGFloat { Self.topPadding }

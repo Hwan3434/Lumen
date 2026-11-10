@@ -9,22 +9,17 @@ struct TranslatorView: View {
     private var historyRailWidth: CGFloat { LumenTokens.Space.size(280) }
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            VStack(spacing: 0) {
-                titleStrip
-                LumenHairline()
-                HStack(spacing: 0) {
-                    mainColumn
-                    Rectangle().fill(P.borderSubtle).frame(width: 1)
-                    historyRail
-                        .frame(width: historyRailWidth)
-                }
-                footer
+        VStack(spacing: 0) {
+            header
+            HStack(spacing: 0) {
+                mainColumn
+                LumenHairline(.vertical)
+                historyRail
+                    .frame(width: historyRailWidth)
             }
+            footer
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
+        .lumenPanel()
         .translationTask(viewModel.translationConfig) { session in
             do {
                 let text = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -42,27 +37,17 @@ struct TranslatorView: View {
         }
     }
 
-    // MARK: - Title strip
+    // MARK: - Header
 
-    private var titleStrip: some View {
-        HStack(spacing: LumenTokens.Space.s3) {
-            HStack(spacing: LumenTokens.Space.inline) {
-                LumenIcon("languages")
-                    .foregroundStyle(P.inkMuted)
-                Text("번역")
-                    .lumenText(.body, weight: .semibold)
-                    .foregroundStyle(P.ink)
-            }
+    private var header: some View {
+        LumenPanelHeader(icon: "languages", title: "번역") {
             Text("자동 감지")
                 .lumenText(.caption)
                 .foregroundStyle(P.inkFaint)
             LumenBadge(text: viewModel.providerName)
-            Spacer()
+        } trailing: {
             LumenKbd(label: "⌘⇧C")
         }
-        .padding(.horizontal, LumenTokens.Space.pad)
-        .draggableWindowHeader()
-        .frame(height: LumenTokens.Space.size(56))
     }
 
     // MARK: - Main column
@@ -101,7 +86,7 @@ struct TranslatorView: View {
                     } label: {
                         Label { Text("결과 복사") } icon: { LumenIcon("copy", size: .small) }
                     }
-                    .buttonStyle(LumenButtonStyle(variant: .primary, size: .small))
+                    .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
                 }
             }
             .frame(minHeight: LumenTokens.Space.scaled(32))
@@ -148,7 +133,7 @@ struct TranslatorView: View {
                     .foregroundStyle(P.inkMuted)
                 LumenSectionLabel(text: "기록")
                 Spacer()
-                Text("\(viewModel.history.count) / 30")
+                Text("\(viewModel.history.count) / \(viewModel.maxHistory)")
                     .lumenText(.caption)
                     .monospacedDigit()
                     .foregroundStyle(P.inkFaint)
@@ -235,8 +220,7 @@ private struct HistoryItemRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
             Text(item.original)
-                .lumenText(.label, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? P.brand : P.ink)
+                .lumenRowTitle(selected: isSelected, style: .label)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Text(item.translated)

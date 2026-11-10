@@ -101,6 +101,10 @@ private struct ToastBody: View {
     let text: String
     let swatch: Color?
 
+    /// 패널이 자기 그림자를 직접 그리므로(`hasShadow = false`) 그림자가 패널 가장자리에서 잘리지 않을 여유.
+    /// 그림자(elevation-2)는 밀도에 따라 줄지 않아 간격 토큰이 아닌 고정값을 쓴다.
+    private static let shadowRoom: CGFloat = 28
+
     var body: some View {
         HStack(spacing: LumenTokens.Space.inline) {
             if let swatch {
@@ -120,7 +124,7 @@ private struct ToastBody: View {
         .background(LumenTokens.Palette.surfaceRaised, in: Capsule())
         .overlay(Capsule().strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
         .lumenElevation(2, radius: LumenTokens.Radius.full)
-        .padding(LumenTokens.Space.s5)
+        .padding(Self.shadowRoom)
         .fixedSize()
     }
 }

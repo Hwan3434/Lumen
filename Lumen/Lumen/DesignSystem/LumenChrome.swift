@@ -6,7 +6,8 @@ import AppKit
 // `.nonactivatingPanel` 스타일의 NSPanel은 `isMovableByWindowBackground = true`로도 안 움직여
 // (`kCGSPreventsActivationTagBit` 이슈), `mouseDown(with:)`이 자기에게 직접 와서 `performDrag`를
 // 불러야 AppKit drag tracking이 시작된다. 헤더 같은 특정 영역에만 깔아 그 영역에서만 윈도우 이동.
-// SwiftUI `.overlay`로 깔고, 자식 hit-test가 우선해야 하는 인터랙티브 요소(버튼 등)는 ZStack 위에 둔다.
+// 패널 머리 줄은 `LumenPanelHeader`가 이 영역을 깔아 준다. 직접 쓸 때는 ZStack 맨 아래에 깔고,
+// 그 위 내용 가운데 누를 수 없는 것에는 `.allowsHitTesting(false)`를 붙여 mouseDown이 여기까지 내려오게 한다.
 
 struct WindowDragArea: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { DragView() }
@@ -21,16 +22,50 @@ struct WindowDragArea: NSViewRepresentable {
     }
 }
 
-/// 헤더 빈 공간으로 윈도우 이동을 가능케 하는 표준 래퍼.
-/// 콘텐츠는 hit-test에서 빠지고, 그 아래 깔린 `WindowDragArea`가 mouseDown을 받는다.
-/// 헤더 안에 인터랙티브 요소(버튼 등)가 있어야 하면 이 모디파이어를 쓰지 말고
-/// `ZStack { WindowDragArea(); HStack { ... non-interactive .allowsHitTesting(false); interactive } }`
-/// 형태로 직접 구성한다 (Note 헤더가 그 예).
-extension View {
-    func draggableWindowHeader() -> some View {
-        ZStack {
-            WindowDragArea()
-            self.allowsHitTesting(false)
+// MARK: - Panel header
+
+/// 떠 있는 패널의 머리 줄: 아이콘 + 제목 + 보조 표시(`accessory`), 오른쪽 끝에 버튼·단축키(`trailing`), 아래 구분선.
+/// 빈 곳을 끌면 창이 움직인다. 왼쪽 내용은 hit-test에서 빠져 끌기를 막지 않고, `trailing`만 누를 수 있다 —
+/// 그래서 눌러야 하는 것은 반드시 `trailing`에 둔다.
+struct LumenPanelHeader<Accessory: View, Trailing: View>: View {
+    let icon: String
+    let title: String
+    @ViewBuilder let accessory: () -> Accessory
+    @ViewBuilder let trailing: () -> Trailing
+
+    init(icon: String, title: String,
+         @ViewBuilder accessory: @escaping () -> Accessory = { EmptyView() },
+         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) {
+        self.icon = icon
+        self.title = title
+        self.accessory = accessory
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                WindowDragArea()
+                HStack(spacing: LumenTokens.Space.s3) {
+                    HStack(spacing: LumenTokens.Space.s3) {
+                        HStack(spacing: LumenTokens.Space.inline) {
+                            LumenIcon(icon)
+                                .foregroundStyle(LumenTokens.Palette.inkMuted)
+                            Text(title)
+                                .lumenText(.body, weight: .semibold)
+                                .foregroundStyle(LumenTokens.Palette.ink)
+                                .lineLimit(1)
+                        }
+                        accessory()
+                    }
+                    .allowsHitTesting(false)
+                    Spacer(minLength: 0)
+                    trailing()
+                }
+                .padding(.horizontal, LumenTokens.Space.pad)
+            }
+            .frame(height: LumenTokens.Space.panelHeader)
+            LumenHairline()
         }
     }
 }
@@ -43,7 +78,7 @@ enum LumenTime {
         case minutesAndHours
         /// "방금" / "N분" / "N시간" / "어제" / "N일" — 접미사 "전" 없음. 클립보드/번역 히스토리 톤.
         case shortNoSuffix
-        /// "오늘 HH:mm" / "어제 HH:mm" / "M월 d일 HH:mm" — 절대 시간을 한국어 prefix로 감쌈. 클립보드 메타 톤.
+        /// "오늘 오후 2:30" / "어제 오후 2:30" / "11. 7 오후 2:30" — 절대 시간. 클립보드 메타, 앱 마지막 실행, 환율 기준 시각.
         case calendar
     }
 
@@ -82,9 +117,9 @@ enum LumenTime {
     private static func calendar(_ date: Date) -> String {
         let cal = Calendar.current
         let f = calendarFormatter
-        if cal.isDateInToday(date)         { f.dateFormat = "오늘 HH:mm" }
-        else if cal.isDateInYesterday(date){ f.dateFormat = "어제 HH:mm" }
-        else                               { f.dateFormat = "M월 d일 HH:mm" }
+        if cal.isDateInToday(date)         { f.dateFormat = "오늘 a h:mm" }
+        else if cal.isDateInYesterday(date){ f.dateFormat = "어제 a h:mm" }
+        else                               { f.dateFormat = "M. d a h:mm" }
         return f.string(from: date)
     }
 }
@@ -124,6 +159,23 @@ enum LumenDateFormat {
     static let monthKo: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월"; return f
     }()
+}
+
+// MARK: - Kbd
+
+/// 단축키 표시. Still Code 부품(Geist Mono, `surface-raised`, `border-subtle`, `radius-xs`).
+struct LumenKbd: View {
+    let label: String
+    var primary: Bool = false
+    var body: some View {
+        Text(label)
+            .font(LumenFont.mono(LumenTextStyle.caption.size))
+            .foregroundStyle(primary ? LumenTokens.Palette.ink : LumenTokens.Palette.inkMuted)
+            .padding(.horizontal, LumenTokens.Space.scaled(6))
+            .padding(.vertical, LumenTokens.Space.scaled(2))
+            .background(LumenTokens.Palette.surfaceRaised, in: LumenShape.rect(LumenTokens.Radius.xs))
+            .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
+    }
 }
 
 // MARK: - LumenFooterBar

@@ -26,28 +26,25 @@ struct ScheduleView: View {
     }
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            VStack(spacing: 0) {
-                header
-                LumenHairline()
-                HStack(spacing: 0) {
-                    AgendaListView()
-                        .frame(width: LumenTokens.Space.size(360))
-                    Rectangle().fill(P.borderSubtle).frame(width: 1)
-                    calendarBody
-                }
-                .frame(maxHeight: .infinity)
-                LumenFooterBar(actions: [
-                    .init(label: "새 일정", kbd: "⌘N"),
-                    .init(label: "오늘", kbd: "⌘T"),
-                    .init(label: "월간", kbd: "⌘1", primary: mode == .month),
-                    .init(label: "주간", kbd: "⌘2", primary: mode == .week),
-                ])
+        VStack(spacing: 0) {
+            header
+            LumenHairline()
+            HStack(spacing: 0) {
+                AgendaListView()
+                    .frame(width: LumenTokens.Space.size(360))
+                LumenHairline(.vertical)
+                calendarBody
             }
+            .frame(maxHeight: .infinity)
+            LumenFooterBar(actions: [
+                .init(label: "새 일정", kbd: "⌘N"),
+                .init(label: "오늘", kbd: "⌘T"),
+                .init(label: "월간", kbd: "⌘1", primary: mode == .month),
+                .init(label: "주간", kbd: "⌘2", primary: mode == .week),
+            ])
         }
         .frame(width: Constants.scheduleWindowSize.width, height: Constants.scheduleWindowSize.height)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
+        .lumenPanel()
         .onAppear {
             Task { await store.refreshStale() }
         }

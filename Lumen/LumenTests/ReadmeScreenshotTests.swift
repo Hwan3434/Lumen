@@ -10,6 +10,9 @@ final class ReadmeScreenshotTests: XCTestCase {
 
     private var outDir: URL!
 
+    override func setUp() async throws { SnapshotEnvironment.applyUIOverrides() }
+    override func tearDown() async throws { SnapshotEnvironment.restoreUI() }
+
     override func setUpWithError() throws {
         let dir = ProcessInfo.processInfo.environment["LUMEN_SNAPSHOT_DIR"]
         try XCTSkipUnless(dir != nil, "README 스크린샷은 LUMEN_SNAPSHOT_DIR 를 줄 때만 만든다")
@@ -102,12 +105,12 @@ final class ReadmeScreenshotTests: XCTestCase {
     private func render(_ view: some View, size: NSSize, named name: String) throws {
         // 토큰 색은 앱 전체 appearance 를 따른다. 창에만 dark 를 주면 설정 화면처럼 배경이 밝게 섞인다.
         let previousAppearance = NSApp.appearance
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        NSApp.appearance = SnapshotEnvironment.appearance
         defer { NSApp.appearance = previousAppearance }
-        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
+        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, SnapshotEnvironment.colorScheme))
         hosting.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.appearance = SnapshotEnvironment.appearance
         window.contentView = hosting
         window.setIsVisible(true)
         hosting.layoutSubtreeIfNeeded()

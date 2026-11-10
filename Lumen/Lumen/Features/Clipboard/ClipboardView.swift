@@ -7,27 +7,21 @@ struct ClipboardView: View {
     @State private var showDeleteAllConfirm = false
 
     private var listColumnWidth: CGFloat { LumenTokens.Space.size(360) }
-    private let totalCapacity = 500
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            VStack(spacing: 0) {
-                titleStrip
-                LumenHairline()
-                HStack(spacing: 0) {
-                    listColumn
-                        .frame(width: listColumnWidth)
-                    Rectangle().fill(P.borderSubtle).frame(width: 1)
-                    previewColumn
-                        .frame(maxWidth: .infinity)
-                }
-                .frame(maxHeight: .infinity)
-                footer
+        VStack(spacing: 0) {
+            header
+            HStack(spacing: 0) {
+                listColumn
+                    .frame(width: listColumnWidth)
+                LumenHairline(.vertical)
+                previewColumn
+                    .frame(maxWidth: .infinity)
             }
+            .frame(maxHeight: .infinity)
+            footer
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
+        .lumenPanel()
         .confirmationDialog(
             "클립보드 기록을 모두 지울까요?",
             isPresented: $showDeleteAllConfirm,
@@ -40,17 +34,10 @@ struct ClipboardView: View {
         }
     }
 
-    // MARK: - Title strip
+    // MARK: - Header
 
-    private var titleStrip: some View {
-        HStack(spacing: LumenTokens.Space.s3) {
-            HStack(spacing: LumenTokens.Space.inline) {
-                LumenIcon("clipboard-list")
-                    .foregroundStyle(P.inkMuted)
-                Text("클립보드")
-                    .lumenText(.body, weight: .semibold)
-                    .foregroundStyle(P.ink)
-            }
+    private var header: some View {
+        LumenPanelHeader(icon: "clipboard-list", title: "클립보드") {
             Text(countLabel)
                 .lumenText(.caption)
                 .monospacedDigit()
@@ -60,23 +47,19 @@ struct ClipboardView: View {
                     .lumenText(.caption)
                     .foregroundStyle(P.inkFaint)
             }
-            Spacer()
+        } trailing: {
             LumenIconButton(icon: "trash-2", label: "모두 삭제") {
                 showDeleteAllConfirm = true
             }
             .disabled(ClipboardManager.shared.history.isEmpty)
             LumenKbd(label: "⌘⇧V")
         }
-        .padding(.leading, LumenTokens.Space.pad)
-        .padding(.trailing, LumenTokens.Space.s4)
-        .draggableWindowHeader()
-        .frame(height: LumenTokens.Space.size(56))
     }
 
     private var countLabel: String {
         let total = ClipboardManager.shared.history.count
         if viewModel.query.isEmpty {
-            return "\(total) / \(totalCapacity)"
+            return "\(total) / \(ClipboardManager.shared.maxItems)"
         } else {
             return "\(viewModel.filteredItems.count) / \(total)"
         }
@@ -202,8 +185,7 @@ private struct ClipboardListRow: View {
                 .foregroundStyle(P.inkMuted)
 
             Text(item.displayText)
-                .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? P.brand : P.ink)
+                .lumenRowTitle(selected: isSelected)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
@@ -215,14 +197,14 @@ private struct ClipboardListRow: View {
 
             if isHovering {
                 LumenIconButton(icon: "x", label: "삭제", action: onDelete)
-                    .padding(.vertical, -LumenIconButton.inlineOverhang)
+                    .inRow()
             } else {
                 Text(item.kind.label)
                     .lumenText(.label, weight: .regular)
                     .foregroundStyle(P.inkFaint)
             }
         }
-        .padding(.vertical, LumenTokens.Space.scaled(14))
+        .padding(.vertical, LumenTokens.Space.rowY)
         .padding(.horizontal, LumenTokens.Space.s4)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }

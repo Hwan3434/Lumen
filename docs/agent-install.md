@@ -1,6 +1,6 @@
 # AI 에이전트용 자동 설치 절차
 
-> Antigravity/AI 에이전트가 새 macOS에 Lumen을 자율 설치할 수 있도록 명령어와 검증 단계를 명시합니다. **[USER ACTION]** 마커가 있는 단계는 GUI/Touch ID가 필요하므로 사용자에게 위임하세요.
+> AI 에이전트가 새 macOS에 Lumen을 자율 설치할 수 있도록 명령어와 검증 단계를 명시합니다. **[USER ACTION]** 마커가 있는 단계는 GUI/Touch ID가 필요하므로 사용자에게 위임하세요.
 
 ## 0. 사전 요건
 
@@ -51,9 +51,6 @@ open -a /Applications/Lumen.app
 ```bash
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
 # 손쉬운 사용 → + → /Applications/Lumen.app → ON
-
-open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
-# 입력 모니터링 → + → /Applications/Lumen.app → ON
 ```
 
 권한 부여 후:
@@ -83,6 +80,7 @@ pgrep -lf "/Applications/Lumen.app/Contents/MacOS/Lumen" >/dev/null \
 | 증상 | 조치 |
 |---|---|
 | Gatekeeper "확인되지 않은 개발자" | self-signed 빌드라 정상. Finder 우클릭 → "열기" 1회. |
-| 권한 ON인데 핫키 무반응 | TCC DB 잔재. `tccutil reset All com.jh.Lumen` 후 권한 재부여. |
+| 핫키 무반응 | 단축키는 권한과 상관없어요. 시작할 때 "단축키를 등록하지 못했어요" 토스트가 떴다면 다른 앱과 겹친 거예요(⌘Space는 Spotlight 기본값). |
+| 윈도우 마그넷 무반응 | 손쉬운 사용 권한이 꺼져 있거나 TCC 잔재. `tccutil reset All com.jh.Lumen` 후 권한 재부여. |
 | 핫키가 다른 앱에 가로채짐 | 시스템 설정 → 키보드 → 단축키에서 충돌 항목 비활성화. |
 | 메뉴바 아이콘 안 보임 | Bartender 등 메뉴바 정리 도구 가능성. 화살표 클릭으로 확장. |

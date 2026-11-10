@@ -82,24 +82,25 @@ enum LumenTime {
         case calendar
     }
 
-    static func relative(_ date: Date, granularity: Granularity = .minutesAndHours) -> String {
+    /// `now`는 "지금"으로 삼을 시각. 상대 시간(`minutesAndHours`, `shortNoSuffix`)에만 쓰인다.
+    static func relative(_ date: Date, granularity: Granularity = .minutesAndHours, now: Date = Date()) -> String {
         switch granularity {
-        case .minutesAndHours:   return minutesAndHours(date)
-        case .shortNoSuffix:     return shortNoSuffix(date)
+        case .minutesAndHours:   return minutesAndHours(date, now: now)
+        case .shortNoSuffix:     return shortNoSuffix(date, now: now)
         case .calendar:          return calendar(date)
         }
     }
 
-    private static func minutesAndHours(_ date: Date) -> String {
-        let mins = Int(Date().timeIntervalSince(date) / 60)
+    private static func minutesAndHours(_ date: Date, now: Date) -> String {
+        let mins = Int(now.timeIntervalSince(date) / 60)
         if mins < 1 { return "방금" }
         if mins < 60 { return "\(mins)분 전" }
         if mins < 60 * 24 { return "\(mins / 60)시간 전" }
         return "\(mins / (60 * 24))일 전"
     }
 
-    private static func shortNoSuffix(_ date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
+    private static func shortNoSuffix(_ date: Date, now: Date) -> String {
+        let interval = now.timeIntervalSince(date)
         if interval < 60 { return "방금" }
         if interval < 3600 { return "\(Int(interval / 60))분" }
         if interval < 86400 { return "\(Int(interval / 3600))시간" }

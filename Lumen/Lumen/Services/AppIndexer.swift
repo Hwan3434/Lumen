@@ -56,13 +56,21 @@ final class AppIndexer {
     }
 
     private func appendApp(at url: URL, into apps: inout [AppItem], seen: inout Set<String>) {
-        let bundle = Bundle(url: url)
-        let bundleID = bundle?.bundleIdentifier ?? url.path
-        guard !seen.contains(bundleID) else { return }
-        seen.insert(bundleID)
+        let item = Self.makeItem(at: url)
+        guard seen.insert(item.id).inserted else { return }
+        apps.append(item)
+    }
 
-        let displayName = bundle?.infoDictionary?["CFBundleDisplayName"] as? String
-            ?? bundle?.infoDictionary?["CFBundleName"] as? String
+    /// 앱 번들 하나를 `AppItem`으로 만든다. id는 번들 ID(없으면 경로)이고, 실행 횟수와 숨긴 앱 목록이 이 값으로 저장된다.
+    static func makeItem(at url: URL) -> AppItem {
+        // Bundle(url:)은 번들을 프로세스 끝까지 붙잡아 두므로 Info.plist만 읽는다.
+        // iOS 앱을 감싼 번들처럼 Contents/Info.plist가 없는 경우에만 Bundle에 맡긴다.
+        let info = NSDictionary(contentsOf: url.appendingPathComponent("Contents/Info.plist")) as? [String: Any]
+            ?? Bundle(url: url)?.infoDictionary
+        let bundleID = info?["CFBundleIdentifier"] as? String ?? url.path
+
+        let displayName = info?["CFBundleDisplayName"] as? String
+            ?? info?["CFBundleName"] as? String
             ?? url.deletingPathExtension().lastPathComponent
 
         // Finder에 보이는 현지화 이름("System Settings" → "시스템 설정")도 검색되게 별명에 더한다.
@@ -76,12 +84,17 @@ final class AppIndexer {
             aliases.append(localizedName)
         }
 
-        apps.append(AppItem(
-            id: bundleID,
-            name: displayName,
-            path: url,
-            aliases: aliases
-        ))
+        return AppItem(id: bundleID, name: displayName, path: url, aliases: aliases)
+    }
+
+    /// 저장해 둔 id(번들 ID 또는 경로)로 앱 하나만 찾는다. 지워진 앱이면 nil.
+    /// 숨긴 앱 탭처럼 몇 개만 필요할 때 앱 폴더 전체를 훑지 않으려고 쓴다.
+    static func item(forID id: String) -> AppItem? {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            return makeItem(at: url)
+        }
+        guard id.hasPrefix("/"), FileManager.default.fileExists(atPath: id) else { return nil }
+        return makeItem(at: URL(fileURLWithPath: id))
     }
 
     /// 앱 폴더 바로 아래 항목이 추가·삭제·이름변경되면 캐시를 비우고 `onChange`를 부른다.

@@ -37,7 +37,7 @@ struct SearchView: View {
                 resultsList
                     .frame(width: LumenTokens.Space.size(340))
                 LumenHairline(.vertical)
-                SearchDetailView(item: viewModel.selectedItem, viewModel: viewModel)
+                SearchDetailView(item: viewModel.selectedItem, appDetail: viewModel.selectedAppDetail)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
@@ -56,7 +56,7 @@ struct SearchView: View {
                 LumenIcon("search", size: .large)
                     .foregroundStyle(LumenTokens.Palette.inkMuted)
             },
-            trailing: { LumenKbd(label: "⌘K") }
+            trailing: { EmptyView() }
         )
         .padding(.horizontal, LumenTokens.Space.pad)
         .frame(height: LumenTokens.Space.size(64))
@@ -76,17 +76,17 @@ struct SearchView: View {
                                 .padding(.top, LumenTokens.Space.s3)
                                 .padding(.bottom, LumenTokens.Space.s1)
                         }
-                        resultRow(item: item, index: index)
+                        resultRow(item: item)
                     }
                 }
                 .padding(.horizontal, LumenTokens.Space.inline)
                 .padding(.bottom, LumenTokens.Space.inline)
             }
             .scrollIndicators(.hidden)
-            .onChange(of: viewModel.selectedIndex) { _, newValue in
+            .onChange(of: viewModel.selectedID) { _, newValue in
                 withAnimation(LumenTokens.Motion.easeMove()) {
-                    if let item = viewModel.results[safe: newValue] {
-                        proxy.scrollTo(item.id, anchor: .center)
+                    if let newValue {
+                        proxy.scrollTo(newValue, anchor: .center)
                     }
                 }
             }
@@ -94,10 +94,10 @@ struct SearchView: View {
     }
 
     @ViewBuilder
-    private func resultRow(item: SearchResultItem, index: Int) -> some View {
-        let isSelected = index == viewModel.selectedIndex
+    private func resultRow(item: SearchResultItem) -> some View {
+        let isSelected = item.id == viewModel.selectedID
         Button {
-            viewModel.selectedIndex = index
+            viewModel.select(item)
         } label: {
             rowContent(item: item, isSelected: isSelected)
                 .padding(.vertical, LumenTokens.Space.scaled(12))
@@ -119,7 +119,7 @@ struct SearchView: View {
         case .calculation(let expr, let result):
             ConversionRow(icon: "equal", input: expr, result: result, isSelected: isSelected)
 
-        case .currency(let input, let result, _):
+        case .currency(let input, let result, _, _):
             ConversionRow(icon: "circle-dollar-sign", input: input, result: result, isSelected: isSelected)
 
         case .feature(let feature):
@@ -132,8 +132,6 @@ struct SearchView: View {
     private var footer: some View {
         LumenFooterBar(actions: [
             .init(label: footerActionLabel, kbd: "⏎", primary: true),
-            .init(label: "명령", kbd: "⌘K"),
-            .init(label: "실행", kbd: "⌥⏎"),
         ])
     }
 

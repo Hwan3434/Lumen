@@ -88,11 +88,20 @@ final class ResourceAnomalyStore {
 /// baseline은 앱 시작 60초 후 값으로 고정.
 final class ResourceAnomalyDetector {
     static let shared = ResourceAnomalyDetector()
-    private init() {}
+
+    private let startTime: Date
+    private let onAnomaly: (ResourceAnomaly) -> Void
+
+    /// 기본값은 지금 시작해서 저장소에 기록한다. 테스트는 시작 시각과 기록할 곳을 넣어
+    /// 실제 `resource_anomalies.json`을 건드리지 않는다.
+    init(startTime: Date = Date(),
+         onAnomaly: @escaping (ResourceAnomaly) -> Void = { ResourceAnomalyStore.shared.append($0) }) {
+        self.startTime = startTime
+        self.onAnomaly = onAnomaly
+    }
 
     /// CPU가 "높다"고 보는 기준(코어당 30%). 리소스 모니터의 위험 배지도 이 값을 쓴다.
     static let cpuHighThreshold = Double(ProcessInfo.processInfo.activeProcessorCount) * 30
-    private let startTime = Date()
 
     private var baselineMemory: Double = 0
     private var baselineThreads: Int = 0
@@ -122,7 +131,7 @@ final class ResourceAnomalyDetector {
     }
 
     private func establishBaselineIfNeeded(_ s: ResourceSnapshot) {
-        guard !baselineEstablished, Date().timeIntervalSince(startTime) >= 60 else { return }
+        guard !baselineEstablished, s.timestamp.timeIntervalSince(startTime) >= 60 else { return }
         baselineMemory = s.memoryMB
         baselineThreads = s.threadCount
         baselineEstablished = true
@@ -184,7 +193,7 @@ final class ResourceAnomalyDetector {
     }
 
     private func record(_ kind: ResourceAnomaly.Kind, _ s: ResourceSnapshot, _ message: String) {
-        let a = ResourceAnomaly(
+        onAnomaly(ResourceAnomaly(
             id: UUID(),
             timestamp: s.timestamp,
             kind: kind,
@@ -192,7 +201,6 @@ final class ResourceAnomalyDetector {
             memoryMB: s.memoryMB,
             cpuPercent: s.cpuPercent,
             threadCount: s.threadCount
-        )
-        ResourceAnomalyStore.shared.append(a)
+        ))
     }
 }

@@ -212,6 +212,14 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-50 * 3600 - 5)), "2일 전")
     }
 
+    /// 기준 시각을 넘기면 그 시각에서 본 상대 시간이다. 번역 기록이 패널을 연 시각을 기준으로 다시 계산된다.
+    func testRelativeTimeUsesGivenNow() {
+        let date = dateTime("2026-01-07 09:00")
+        XCTAssertEqual(LumenTime.relative(date, granularity: .shortNoSuffix, now: date.addingTimeInterval(20)), "방금")
+        XCTAssertEqual(LumenTime.relative(date, granularity: .shortNoSuffix, now: date.addingTimeInterval(3 * 3600)), "3시간")
+        XCTAssertEqual(LumenTime.relative(date, granularity: .shortNoSuffix, now: date.addingTimeInterval(30 * 3600)), "어제")
+    }
+
     /// 절대 시각은 Still 표기("오후 2:30", "11. 7")를 쓴다. 24시간제나 "11월 7일"이 아니다.
     func testCalendarTimeUsesStillFormat() {
         let cal = Calendar.current
@@ -234,6 +242,22 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(options.map(\.ratio), Constants.magnetSteps + Constants.magnetSteps)
         XCTAssertEqual(options.first?.label, "← 왼쪽 20%")
         XCTAssertEqual(options.last?.label, "→ 오른쪽 100%")
+    }
+
+    /// AX 좌표는 주 모니터 왼쪽 위가 원점이고 아래로 자란다.
+    func testMagnetFrameOnPrimaryScreen() {
+        let visible = CGRect(x: 0, y: 0, width: 1440, height: 875)   // 위쪽 25pt는 메뉴 막대
+        let left = WindowMagnetManager.snapFrame(direction: .left, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
+        XCTAssertEqual(left, CGRect(x: 0, y: 25, width: 720, height: 875))
+        let right = WindowMagnetManager.snapFrame(direction: .right, ratio: 0.25, visibleFrame: visible, primaryScreenHeight: 900)
+        XCTAssertEqual(right, CGRect(x: 1080, y: 25, width: 360, height: 875))
+    }
+
+    /// 주 모니터와 높이·세로 위치가 다른 두 번째 모니터에서도 주 모니터 높이로 뒤집는다.
+    func testMagnetFrameOnSecondaryScreenUsesPrimaryHeight() {
+        let visible = CGRect(x: 1440, y: 200, width: 1920, height: 1080)
+        let frame = WindowMagnetManager.snapFrame(direction: .right, ratio: 0.5, visibleFrame: visible, primaryScreenHeight: 900)
+        XCTAssertEqual(frame, CGRect(x: 2400, y: -380, width: 960, height: 1080))
     }
 
     // MARK: - Helpers

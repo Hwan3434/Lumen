@@ -9,7 +9,8 @@ struct HiddenAppsSettingsTab: View {
     let action: SettingsActionViewModel
 
     @State private var manager = HiddenAppsManager.shared
-    @State private var allApps: [AppItem] = []
+    /// 숨긴 앱 중 지금 설치돼 있는 것, 이름순. 지워진 앱은 빠진다(id는 저장소에 남는다).
+    @State private var hiddenApps: [AppItem] = []
 
     var body: some View {
         SettingsTabContent {
@@ -29,23 +30,13 @@ struct HiddenAppsSettingsTab: View {
         .onAppear {
             // 토글이 곧 저장이라 ActionBar 숨김.
             action.hideActionBar()
-            // 인덱싱은 디스크 스캔이라 메인 스레드 블록을 피해 백그라운드로.
-            if allApps.isEmpty {
-                Task.detached(priority: .userInitiated) {
-                    let apps = AppIndexer().loadApps()
-                    await MainActor.run { self.allApps = apps }
-                }
-            }
         }
-    }
-
-    /// HiddenAppsManager에 저장된 ID 중 현재 시스템에 설치돼 있는 앱만 표시.
-    /// 삭제된 앱이라면 매니저에 ID는 남아있지만 UI에선 자동으로 사라진다.
-    /// 정렬은 이름순.
-    private var hiddenApps: [AppItem] {
-        allApps
-            .filter { manager.isHidden($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        // 숨긴 앱 몇 개만 찾으면 되므로 앱 폴더 전체를 훑지 않는다. 검색창에서 숨기거나 여기서 되돌리면 다시 만든다.
+        .onChange(of: manager.hiddenIDs, initial: true) { _, ids in
+            hiddenApps = ids
+                .compactMap { AppIndexer.item(forID: $0) }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
     }
 }
 

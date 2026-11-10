@@ -5,9 +5,8 @@ import Observation
 final class HiddenAppsManager {
     @MainActor static let shared = HiddenAppsManager()
 
-    /// 외부에는 표현(Set)을 직접 노출하지 않고 함수로만 접근. SwiftUI 뷰가 변경을
-    /// 감지할 수 있도록 @Observable 추적 대상으로 두되 set은 private.
-    private var hiddenIDs: Set<String>
+    /// 바꾸는 건 `hide`/`unhide`로만 한다. 읽기는 설정의 숨긴 앱 탭이 목록을 만들 때 쓴다.
+    private(set) var hiddenIDs: Set<String>
 
     private init() {
         hiddenIDs = LumenStorage.read(Set<String>.self, from: .hiddenApps) ?? []

@@ -21,19 +21,7 @@ struct TranslatorView: View {
         }
         .lumenPanel()
         .translationTask(viewModel.translationConfig) { session in
-            do {
-                let text = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { return }
-                
-                let response = try await session.translate(text)
-                await MainActor.run {
-                    viewModel.handleTranslationResult(response.targetText)
-                }
-            } catch {
-                await MainActor.run {
-                    viewModel.handleTranslationError(error)
-                }
-            }
+            await viewModel.runTranslation(using: session)
         }
     }
 
@@ -160,7 +148,8 @@ struct TranslatorView: View {
                                 } label: {
                                     HistoryItemRow(
                                         item: item,
-                                        isSelected: index == viewModel.selectedHistoryIndex
+                                        isSelected: index == viewModel.selectedHistoryIndex,
+                                        now: viewModel.shownAt
                                     )
                                 }
                                 .buttonStyle(LumenListRowStyle(isSelected: index == viewModel.selectedHistoryIndex))
@@ -216,6 +205,8 @@ struct TranslatorView: View {
 private struct HistoryItemRow: View {
     let item: TranslationHistoryItem
     let isSelected: Bool
+    /// 상대 시간의 기준. 패널을 열 때마다 바뀌어 "방금"이 몇 시간씩 남지 않는다.
+    let now: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
@@ -228,7 +219,7 @@ private struct HistoryItemRow: View {
                 .foregroundStyle(P.inkMuted)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Text(LumenTime.relative(item.date, granularity: .shortNoSuffix))
+            Text(LumenTime.relative(item.date, granularity: .shortNoSuffix, now: now))
                 .lumenText(.caption)
                 .foregroundStyle(P.inkFaint)
         }

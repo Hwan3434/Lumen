@@ -25,7 +25,7 @@ final class WindowMagnetManager {
             nextIndex = 0
         }
 
-        let frame = snapFrame(direction: direction, ratio: steps[nextIndex], on: screen)
+        let frame = Self.snapFrame(direction: direction, ratio: steps[nextIndex], on: screen)
         setWindowPosition(window, point: frame.origin)
         setWindowSize(window, size: frame.size)
 
@@ -55,25 +55,30 @@ final class WindowMagnetManager {
         }
         guard let window = window else { return }
 
-        let frame = snapFrame(direction: direction, ratio: ratio, on: screen)
+        let frame = Self.snapFrame(direction: direction, ratio: ratio, on: screen)
         let offscreen = CGPoint(x: -10000, y: -10000)
         setWindowPosition(window, point: offscreen)
         setWindowSize(window, size: frame.size)
         setWindowPosition(window, point: frame.origin)
     }
 
+    private static func snapFrame(direction: Direction, ratio: CGFloat, on screen: NSScreen) -> CGRect {
+        snapFrame(direction: direction, ratio: ratio, visibleFrame: screen.visibleFrame,
+                  primaryScreenHeight: NSScreen.screens.first?.frame.height ?? screen.frame.height)
+    }
+
     /// 화면 왼쪽이나 오른쪽에 붙인, 너비가 화면의 `ratio`인 창 틀. AX 좌표계(좌상단 원점)다.
-    private func snapFrame(direction: Direction, ratio: CGFloat, on screen: NSScreen) -> CGRect {
-        let screenFrame = screen.visibleFrame
-        let width = screenFrame.width * ratio
+    /// AX 좌표의 원점은 주 모니터의 왼쪽 위라서, 세로 뒤집기는 창이 있는 화면이 아니라 주 모니터 높이로 한다.
+    static func snapFrame(direction: Direction, ratio: CGFloat, visibleFrame: CGRect, primaryScreenHeight: CGFloat) -> CGRect {
+        let width = visibleFrame.width * ratio
         let x: CGFloat
         switch direction {
         case .left:
-            x = screenFrame.origin.x
+            x = visibleFrame.origin.x
         case .right:
-            x = screenFrame.origin.x + screenFrame.width - width
+            x = visibleFrame.origin.x + visibleFrame.width - width
         }
-        return CGRect(x: x, y: screen.frame.height - screenFrame.maxY, width: width, height: screenFrame.height)
+        return CGRect(x: x, y: primaryScreenHeight - visibleFrame.maxY, width: width, height: visibleFrame.height)
     }
 
     // MARK: - AXUIElement

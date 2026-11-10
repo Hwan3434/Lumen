@@ -305,13 +305,19 @@ private struct SaveStatusView: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s1) {
-            if case .saved = state {
+            switch state {
+            case .saved:
                 LumenIcon("circle-check", size: .small)
                     .foregroundStyle(P.success)
+            case .failed:
+                LumenIcon("triangle-alert", size: .small)
+                    .foregroundStyle(P.danger)
+            case .resting, .editing:
+                EmptyView()
             }
             Text(label)
                 .lumenText(.caption)
-                .foregroundStyle(P.inkFaint)
+                .foregroundStyle(state == .failed ? P.danger : P.inkFaint)
         }
     }
 
@@ -320,6 +326,7 @@ private struct SaveStatusView: View {
         case .resting: return "자동 저장"
         case .editing: return "편집 중"
         case .saved:   return "저장했어요"
+        case .failed:  return "저장하지 못했어요"
         }
     }
 }

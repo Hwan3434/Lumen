@@ -38,7 +38,7 @@ struct NoteUIState {
 
 @Observable
 final class NotesViewModel {
-    enum SaveStatus { case resting, editing, saved }
+    enum SaveStatus { case resting, editing, saved, failed }
 
     private(set) var notes: [NoteItem] = []
     var selectedID: String?
@@ -67,25 +67,41 @@ final class NotesViewModel {
     private var saveWorkItem: DispatchWorkItem?
     private var savedFlashWorkItem: DispatchWorkItem?
 
-    // 드래그 중 dropEntered가 row 간 hover마다 호출돼 reorder가 100ms 단위로 쏟아진다.
-    // 매번 동기 write를 메인에서 돌리면 drop 시점에 UI가 멈칫. 디바운스 + 백그라운드 큐로 흘려보낸다.
-    private let diskQueue = DispatchQueue(label: "com.lumen.note.disk", qos: .utility)
-    private var orderSaveWorkItem: DispatchWorkItem?
-
-    private let notesDir: URL
+    private let store: NoteStore
+    /// 이번 실행에서 본문 쓰기가 한 번이라도 실패했는지. 그 뒤로는 메모리가 디스크보다 새로울 수 있어
+    /// `reloadFromDisk()`가 디스크 내용으로 덮지 않는다.
+    private var hadWriteFailure = false
 
     /// 기본값은 실제 저장 위치. 테스트가 사용자의 진짜 노트를 건드리지 않도록 주입 가능하게 열어둔다.
     init(notesDir: URL = LumenStorage.url(for: .notesDir)) {
-        self.notesDir = notesDir
-        // 0.x 단일 노트 마이그레이션은 실제 저장 위치를 쓸 때만 의미가 있다.
-        if notesDir == LumenStorage.url(for: .notesDir) {
-            migrateLegacyIfNeeded()
+        store = NoteStore(directory: notesDir)
+        store.onWriteFailure = { [weak self] in
+            self?.hadWriteFailure = true
+            self?.saveStatus = .failed
         }
-        loadFromDisk()
+        notes = store.loadAll()
         if notes.isEmpty {
             createNewNote(activate: true)
-        } else if selectedID == nil {
-            selectNote(id: notes.first!.id)
+        } else {
+            selectNote(id: notes[0].id)
+        }
+    }
+
+    /// 패널을 열 때마다 부른다. 노트 폴더는 Lumen 밖에서도 바뀔 수 있다(`lumen-note` 스킬이 노트를 만들고 지운다).
+    /// 디스크가 메모리와 같으면 아무것도 건드리지 않는다 — 커서, 실행 취소 기록, 쓰던 글이 그대로 남는다.
+    func reloadFromDisk() {
+        // 메모리에만 있는 편집을 먼저 내려야, 아래에서 읽은 디스크 내용과 다르면 밖에서 바뀐 것이라고 볼 수 있다.
+        flushPendingWrites()
+        guard !hadWriteFailure else { return }
+        let loaded = store.loadAll()
+        guard loaded != notes else { return }
+        notes = loaded
+        if notes.isEmpty {
+            createNewNote(activate: true)
+        } else if let current = notes.first(where: { $0.id == selectedID }) {
+            activeText = current.text
+        } else {
+            selectNote(id: notes[0].id)
         }
     }
 
@@ -141,11 +157,11 @@ final class NotesViewModel {
 
     func createNewNote(activate: Bool) {
         if activate { commitDraftNow() }
-        let id = Self.makeNoteID()
+        let id = NoteStore.makeNoteID()
         let item = NoteItem(id: id, text: "")
         notes.append(item)
-        writeToDisk(item, async: false)
-        writeOrder()
+        store.write(item, synchronously: true)
+        store.writeOrder(notes.map(\.id))
         if activate {
             selectedID = id
             activeText = ""
@@ -172,9 +188,9 @@ final class NotesViewModel {
             commitDraftNow()
         }
         notes.remove(at: idx)
-        try? FileManager.default.removeItem(at: fileURL(for: id))
+        store.delete(id: id)
         stateByNoteID.removeValue(forKey: id)
-        writeOrder()
+        store.writeOrder(notes.map(\.id))
         if wasSelected {
             let nextIdx = min(idx, notes.count - 1)
             selectNote(id: notes[nextIdx].id)
@@ -191,7 +207,7 @@ final class NotesViewModel {
         let clamped = min(max(adjusted, 0), reordered.count)
         reordered.insert(item, at: clamped)
         notes = reordered
-        writeOrder()
+        store.writeOrder(notes.map(\.id))
     }
 
     // MARK: - Editing
@@ -206,26 +222,19 @@ final class NotesViewModel {
         if !isPreview { editFocusToken &+= 1 }
     }
 
-    /// 종료 직전 호출 — 디바운스 대기 중인 편집과 순서 변경을 **동기로** 디스크에 내린다.
+    /// 패널을 내릴 때와 종료 직전 호출 — 디바운스 대기 중인 편집과 순서 변경을 **동기로** 디스크에 내린다.
     ///
     /// 평소 저장 경로는 1초 디바운스 + 백그라운드 큐라, 타이핑 직후 앱이 종료되면
     /// 대기 중인 work item도 큐에 떠 있던 쓰기도 프로세스와 함께 사라진다.
-    /// 여기서만은 큐를 거치지 않고 바로 쓴다.
     func flushPendingWrites() {
         commitDraftNow(synchronously: true)
-
-        orderSaveWorkItem?.cancel()
-        orderSaveWorkItem = nil
-        LumenStorage.write(notes.map { $0.id }, to: orderFileURL)
-
-        // 앞서 비동기로 큐에 넣어둔 본문 쓰기가 아직 남아 있을 수 있다.
-        // 직렬 큐라 빈 블록을 sync로 밀어 넣으면 그 앞의 작업이 모두 끝난 뒤에 돌아온다.
-        diskQueue.sync {}
+        store.flush()
     }
 
     /// keystroke 디바운스: 1초 후 draft를 notes 배열에 반영하고 디스크에 쓴다.
     private func scheduleCommitAndSave() {
-        saveStatus = .editing
+        // 같은 값이어도 대입하면 관찰하는 뷰가 다시 그려진다. 머리줄이 키 입력마다 제목을 다시 계산하지 않게 막는다.
+        if saveStatus != .editing { saveStatus = .editing }
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
             self?.commitDraftNow()
@@ -235,15 +244,16 @@ final class NotesViewModel {
     }
 
     /// draft → notes 배열 커밋 + 디스크 저장 + saved flash. 이미 동일하면 무시.
-    /// `synchronously`면 백그라운드 큐를 거치지 않고 바로 쓴다 (종료 직전 경로).
+    /// `synchronously`면 쓰기가 끝난 뒤에 돌아온다 (패널 닫기, 종료 직전 경로).
     private func commitDraftNow(synchronously: Bool = false) {
         saveWorkItem?.cancel()
         guard let id = selectedID,
               let idx = notes.firstIndex(where: { $0.id == id }),
               notes[idx].text != activeText else { return }
         notes[idx].text = activeText
-        writeToDisk(notes[idx], async: !synchronously)
+        // 쓰기에 실패하면 store.onWriteFailure가 뒤이어 `.failed`로 바꾼다.
         saveStatus = .saved
+        store.write(notes[idx], synchronously: synchronously)
         flashSavedReset()
     }
 
@@ -255,90 +265,5 @@ final class NotesViewModel {
         }
         savedFlashWorkItem = flash
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: flash)
-    }
-
-    // MARK: - Disk
-
-    private func fileURL(for id: String) -> URL {
-        notesDir.appendingPathComponent("\(id).md")
-    }
-
-    private static func makeNoteID() -> String {
-        "\(Int(Date().timeIntervalSince1970 * 1000))-\(UUID().uuidString)"
-    }
-
-    private func writeToDisk(_ note: NoteItem, async: Bool = true) {
-        let url = fileURL(for: note.id)
-        let text = note.text
-        let write: () -> Void = {
-            try? text.write(to: url, atomically: true, encoding: .utf8)
-        }
-        if async {
-            diskQueue.async(execute: write)
-        } else {
-            write()
-        }
-    }
-
-    /// 노트 순서는 .order.json에 id 배열로 저장. 새 노트(메타에 없는 파일)는 timestamp 순으로 끝에 추가.
-    private var orderFileURL: URL { notesDir.appendingPathComponent(".order.json") }
-
-    private func writeOrder() {
-        let ids = notes.map { $0.id }
-        let url = orderFileURL
-        orderSaveWorkItem?.cancel()
-        let work = DispatchWorkItem {
-            LumenStorage.write(ids, to: url)
-        }
-        orderSaveWorkItem = work
-        diskQueue.asyncAfter(deadline: .now() + 0.3, execute: work)
-    }
-
-    private func loadFromDisk() {
-        let fm = FileManager.default
-        guard let urls = try? fm.contentsOfDirectory(at: notesDir, includingPropertiesForKeys: nil) else { return }
-        let mdFiles = urls.filter { $0.pathExtension == "md" }
-        var byID: [String: NoteItem] = [:]
-        for url in mdFiles {
-            let id = url.deletingPathExtension().lastPathComponent
-            let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-            byID[id] = NoteItem(id: id, text: text)
-        }
-        let savedOrder = LumenStorage.read([String].self, from: orderFileURL) ?? []
-        var ordered: [NoteItem] = []
-        var seen = Set<String>()
-        for id in savedOrder {
-            if let n = byID[id] { ordered.append(n); seen.insert(id) }
-        }
-        // 메타에 없는 새 파일은 timestamp 순(파일명 사전순)으로 끝에.
-        let leftovers = mdFiles
-            .map { $0.deletingPathExtension().lastPathComponent }
-            .filter { !seen.contains($0) }
-            .sorted()
-        for id in leftovers {
-            if let n = byID[id] { ordered.append(n) }
-        }
-        notes = ordered
-    }
-
-    /// 0.x의 단일 note.md가 있고 notes/ 디렉터리가 비어 있으면 첫 노트로 옮기고 원본 삭제.
-    private func migrateLegacyIfNeeded() {
-        let fm = FileManager.default
-        let legacyURL = LumenStorage.url(for: .legacyNote)
-        guard fm.fileExists(atPath: legacyURL.path) else { return }
-
-        let existing = (try? fm.contentsOfDirectory(at: notesDir, includingPropertiesForKeys: nil)) ?? []
-        guard existing.filter({ $0.pathExtension == "md" }).isEmpty else { return }
-
-        let id = Self.makeNoteID()
-        let dest = fileURL(for: id)
-        do {
-            try fm.moveItem(at: legacyURL, to: dest)
-        } catch {
-            // 이동 실패 시 복사 후 원본 삭제 시도.
-            if (try? fm.copyItem(at: legacyURL, to: dest)) != nil {
-                try? fm.removeItem(at: legacyURL)
-            }
-        }
     }
 }

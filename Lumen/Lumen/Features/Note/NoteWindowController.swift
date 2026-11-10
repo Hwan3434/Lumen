@@ -104,4 +104,7 @@ final class NoteWindowController: PanelWindowController {
         centerUnderMouse(panel, size: Self.panelSize)
     }
 
+    override func configureBeforeShow(_ panel: KeyablePanel) {
+        viewModel?.reloadFromDisk()
+    }
 }

@@ -23,8 +23,7 @@ final class TranslationPersistenceTests: XCTestCase {
 
     func testSavedHistorySurvivesReload() throws {
         let first = TranslatorViewModel(savePath: file)
-        first.inputText = "안녕하세요"
-        first.handleTranslationResult("Hello")
+        first.handleTranslationResult(original: "안녕하세요", translated: "Hello")
         let saved = try XCTUnwrap(first.history.first)
 
         let reloaded = TranslatorViewModel(savePath: file)

@@ -4,9 +4,15 @@ import Observation
 @Observable
 final class ClipboardViewModel {
     var query = "" {
-        didSet { selectedIndex = 0 }
+        didSet { selectedID = filteredItems.first?.id }
     }
-    var selectedIndex = 0
+
+    /// 선택은 위치가 아니라 항목 id로 기억한다 — 패널이 열려 있는 동안 새 복사가 맨 위에 끼어들어도
+    /// 보고 있던 항목이 그대로 선택돼 있도록.
+    private var selectedID: UUID?
+    /// 패널이 내려가 있는 동안에는 미리보기를 만들지 않는다. 숨은 패널이 맨 위 항목의 이미지를 붙잡고 있지 않도록.
+    private var isPanelVisible = true
+    @ObservationIgnored private var cachedPreview: ClipboardPreviewModel?
 
     private var manager = ClipboardManager.shared
 
@@ -20,36 +26,82 @@ final class ClipboardViewModel {
         return items.filter { $0.searchKey.contains(q) }
     }
 
-    func moveUp() {
-        if selectedIndex > 0 { selectedIndex -= 1 }
+    /// 기억한 항목이 목록에서 사라졌으면(삭제, 검색어 변경, 같은 글을 다시 복사) 맨 위 항목.
+    var selectedItem: ClipboardItem? {
+        let items = filteredItems
+        return items.first { $0.id == selectedID } ?? items.first
     }
 
-    func moveDown() {
-        if selectedIndex < filteredItems.count - 1 { selectedIndex += 1 }
+    /// 선택한 항목의 미리보기. 항목마다 한 번만 만든다(파일 정보 읽기, 이미지 열기).
+    var preview: ClipboardPreviewModel? {
+        guard isPanelVisible, let item = selectedItem else { return nil }
+        if let cached = cachedPreview, cached.id == item.id { return cached }
+        let built = ClipboardPreviewModel(item: item)
+        cachedPreview = built
+        return built
     }
 
-    func selectCurrent() {
-        guard let item = filteredItems[safe: selectedIndex] else { return }
-        item.copyToPasteboard()
+    var isHistoryEmpty: Bool { manager.history.isEmpty }
+
+    /// 머리줄 숫자. 평소에는 "기록 수 / 최대", 검색 중에는 "찾은 수 / 기록 수".
+    var countLabel: String {
+        let total = manager.history.count
+        return query.isEmpty ? "\(total) / \(manager.maxItems)" : "\(filteredItems.count) / \(total)"
     }
 
-    /// 현재 선택된 항목 삭제. 삭제 후 같은 인덱스 유지 — 다음 항목이 자연스럽게 선택된다.
-    func deleteCurrent() {
-        guard let item = filteredItems[safe: selectedIndex] else { return }
+    // MARK: - 패널 열고 닫기
+
+    func panelWillShow() {
+        isPanelVisible = true
+        selectedID = filteredItems.first?.id
+    }
+
+    func panelDidHide() {
+        isPanelVisible = false
+        cachedPreview = nil
+        query = ""
+    }
+
+    // MARK: - 선택
+
+    func select(_ item: ClipboardItem) {
+        selectedID = item.id
+    }
+
+    func moveUp() { moveSelection(by: -1) }
+    func moveDown() { moveSelection(by: 1) }
+
+    private func moveSelection(by offset: Int) {
+        let items = filteredItems
+        guard let current = selectedItem, let index = items.firstIndex(of: current),
+              let next = items[safe: index + offset] else { return }
+        selectedID = next.id
+    }
+
+    func copySelected() {
+        guard let item = selectedItem else { return }
+        manager.copyToPasteboard(item)
+    }
+
+    // MARK: - 삭제
+
+    func deleteSelected() {
+        guard let item = selectedItem else { return }
         delete(item: item)
     }
 
+    /// 선택한 항목을 지웠으면 같은 자리의 다음 항목을 고른다. 다른 항목을 지웠으면 선택은 그대로다.
     func delete(item: ClipboardItem) {
+        let index = item == selectedItem ? filteredItems.firstIndex(of: item) : nil
         manager.delete(id: item.id)
-        // filteredItems가 줄었으니 인덱스 clamp
-        let newCount = filteredItems.count
-        if selectedIndex >= newCount {
-            selectedIndex = max(0, newCount - 1)
+        if let index {
+            let rest = filteredItems
+            selectedID = (rest[safe: index] ?? rest.last)?.id
         }
     }
 
     func deleteAll() {
         manager.deleteAll()
-        selectedIndex = 0
+        selectedID = nil
     }
 }

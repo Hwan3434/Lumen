@@ -31,8 +31,8 @@ final class SearchWindowController: PanelWindowController {
         // Search 고유 키 처리: ↑↓ 이동, ⏎ 실행, esc 닫기.
         // 다른 panel과 동일하게 onKeyEvent로 일관 처리 — KeyablePanel base는
         // Search를 모름.
-        panel.onKeyEvent = { [weak self, weak panel] keyCode in
-            guard let vm = self?.viewModel, let panel else { return false }
+        panel.onKeyEvent = { [weak self] keyCode in
+            guard let vm = self?.viewModel else { return false }
             switch keyCode {
             case KeyCode.downArrow: vm.moveDown(); return true
             case KeyCode.upArrow:   vm.moveUp();   return true
@@ -42,7 +42,7 @@ final class SearchWindowController: PanelWindowController {
                 }
                 return true
             case KeyCode.escape:
-                panel.orderOut(nil)
+                self?.hide()
                 return true
             default:
                 return false

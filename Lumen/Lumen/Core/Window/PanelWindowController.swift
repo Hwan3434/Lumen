@@ -80,6 +80,7 @@ class PanelWindowController: NSObject {
         let isFirstShow = panel == nil
         if isFirstShow {
             let p = createPanel()
+            p.onOrderOut = { [weak self] in self?.willHide() }
             self.panel = p
             didCreatePanel(p)
         }
@@ -107,7 +108,6 @@ class PanelWindowController: NSObject {
     }
 
     func hide(activatePreviousApp: Bool = true) {
-        willHide()
         let shouldActivate = activatePreviousApp && !spaceChangedSinceShow
         panel?.activatePreviousAppOnClose = shouldActivate
         panel?.orderOut(nil)
@@ -161,7 +161,8 @@ class PanelWindowController: NSObject {
     /// 매 show마다 activate 직후에 호출 — event monitor 등록 등.
     func didShow(_ panel: KeyablePanel) {}
 
-    /// 매 hide마다 orderOut 직전에 호출 — event monitor 해제 등.
+    /// 보이던 패널이 내려갈 때마다 호출 — event monitor 해제 등.
+    /// `hide()`뿐 아니라 패널에 `orderOut`을 직접 부르는 경로에서도 불린다(`KeyablePanel.onOrderOut`).
     func willHide() {}
 
     /// 화면 밀도에 따른 패널 크기. nil이면 밀도가 바뀌어도 크기를 건드리지 않는다.

@@ -62,9 +62,12 @@ final class AppResourceMonitor {
     private func scheduleTimer() {
         timer?.invalidate()
         let interval = isForeground ? foregroundInterval : backgroundInterval
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.sampleAndStore()
         }
+        // 정확한 시각이 필요 없는 측정이라, 시스템이 다른 깨어남과 묶을 수 있게 여유를 준다.
+        timer.tolerance = interval / 5
+        self.timer = timer
     }
 
     private func sampleAndStore() {

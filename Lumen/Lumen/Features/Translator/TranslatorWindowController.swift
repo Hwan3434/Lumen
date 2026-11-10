@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 final class TranslatorWindowController: PanelWindowController {
@@ -18,17 +19,30 @@ final class TranslatorWindowController: PanelWindowController {
         panel.onKeyEvent = { [weak self] keyCode in
             guard let vm = self?.translatorViewModel else { return false }
             switch keyCode {
-            case KeyCode.downArrow: vm.moveDown(); return true
-            case KeyCode.upArrow:   vm.moveUp();   return true
+            case KeyCode.downArrow: return vm.moveDown()
+            case KeyCode.upArrow:   return vm.moveUp()
             case KeyCode.escape:    self?.hide();  return true
             default: return false
             }
+        }
+
+        // ⌘C: 입력 칸에서 고른 글이 없을 때만 번역 결과를 복사한다. 고른 글이 있으면 평소처럼 그 글을 복사한다.
+        panel.onCommandKey = { [weak self, weak panel] event in
+            guard let vm = self?.translatorViewModel, !vm.translatedText.isEmpty,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  Int(event.keyCode) == kVK_ANSI_C,
+                  let input = panel?.firstResponder as? NSTextView, input.selectedRange().length == 0
+            else { return false }
+            vm.copyToClipboard()
+            LumenToast.show(text: "번역 결과를 복사했어요")
+            return true
         }
 
         return panel
     }
 
     override func configureBeforeShow(_ panel: KeyablePanel) {
+        translatorViewModel?.shownAt = Date()
         centerUnderMouse(panel, size: Constants.translatorWindowSize)
     }
 

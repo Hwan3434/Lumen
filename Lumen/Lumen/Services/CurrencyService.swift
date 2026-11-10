@@ -12,6 +12,8 @@ final class CurrencyService {
 
     private(set) var rates: [String: Double] = [:]
     private(set) var lastUpdated: Date?
+    /// 환율을 새로 받았을 때 부른다. 열려 있는 검색창이 환산 결과를 다시 만들 수 있게.
+    var onUpdate: (() -> Void)?
 
     private struct Cache: Codable {
         let rates: [String: Double]
@@ -46,6 +48,7 @@ final class CurrencyService {
             self.rates = resp.rates
             self.lastUpdated = Date()
             LumenStorage.write(Cache(rates: resp.rates, updated: Date()), to: .currencyRates)
+            onUpdate?()
         } catch {
             // 캐시가 있으면 그걸 쓰고, 없으면 다음 refresh까지 변환은 비활성.
         }
@@ -53,6 +56,10 @@ final class CurrencyService {
 
     /// USD를 base로 한 환율 테이블에서 from→to 변환.
     func convert(amount: Double, from: String, to: String) -> Double? {
+        Self.convert(amount: amount, from: from, to: to, rates: rates)
+    }
+
+    static func convert(amount: Double, from: String, to: String, rates: [String: Double]) -> Double? {
         let f = from.uppercased()
         let t = to.uppercased()
         if f == t { return amount }
@@ -63,16 +70,19 @@ final class CurrencyService {
 
     /// 통화별 자릿수 규칙 + 천단위 콤마. KRW/JPY는 정수, 그 외는 소수점 2자리.
     static func format(_ value: Double, code: String) -> String {
+        let formatter = (code == "KRW" || code == "JPY") ? wholeFormatter : fractionFormatter
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    private static let wholeFormatter = decimalFormatter(maxFractionDigits: 0)
+    private static let fractionFormatter = decimalFormatter(maxFractionDigits: 2)
+
+    private static func decimalFormatter(maxFractionDigits: Int) -> NumberFormatter {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.usesGroupingSeparator = true
-        if code == "KRW" || code == "JPY" {
-            formatter.maximumFractionDigits = 0
-        } else {
-            formatter.maximumFractionDigits = 2
-            formatter.minimumFractionDigits = 0
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+        formatter.maximumFractionDigits = maxFractionDigits
+        return formatter
     }
 }
 

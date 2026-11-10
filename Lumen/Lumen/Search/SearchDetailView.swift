@@ -5,22 +5,23 @@ private typealias P = LumenTokens.Palette
 /// 검색창 오른쪽 상세 칸. 선택한 항목 종류에 따라 내용이 바뀐다.
 struct SearchDetailView: View {
     let item: SearchResultItem?
-    let viewModel: SearchViewModel
+    /// `item`이 앱일 때의 버전·마지막 실행 시각. 뷰모델이 선택이 바뀔 때 읽어 둔다.
+    let appDetail: AppDetail?
 
     var body: some View {
         Group {
             switch item {
             case .app(let app):
-                AppDetailContent(app: app, detail: viewModel.detail(for: app))
+                AppDetailContent(app: app, detail: appDetail)
             case .feature(let feature as ToggleableFeature):
                 ToggleFeatureDetail(feature: feature)
             case .feature(let feature):
                 LaunchFeatureDetail(feature: feature)
             case .calculation(let expr, let result):
                 ResultDetail(title: "계산", input: expr, result: result, note: nil)
-            case .currency(let input, let result, _):
+            case .currency(let input, let result, _, let ratesUpdated):
                 ResultDetail(title: "환율", input: input, result: result,
-                             note: CurrencyService.shared.lastUpdated.map { "기준 시각 \(LumenTime.relative($0, granularity: .calendar))" })
+                             note: ratesUpdated.map { "기준 시각 \(LumenTime.relative($0, granularity: .calendar))" })
             case nil:
                 LumenEmptyState(icon: "search", text: "검색 결과가 없어요")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -81,7 +82,7 @@ private struct EnterHint: View {
 
 private struct AppDetailContent: View {
     let app: AppItem
-    let detail: AppDetail
+    let detail: AppDetail?
 
     var body: some View {
         VStack(alignment: .leading, spacing: LumenTokens.Space.group) {
@@ -92,7 +93,7 @@ private struct AppDetailContent: View {
                     .frame(width: LumenTokens.Space.size(64), height: LumenTokens.Space.size(64))
             }
             Grid(alignment: .leading, horizontalSpacing: LumenTokens.Space.s3, verticalSpacing: LumenTokens.Space.s3) {
-                row("버전", detail.version ?? "알 수 없음")
+                row("버전", detail?.version ?? "알 수 없음")
                 GridRow {
                     label("위치")
                     Text((app.path.path as NSString).abbreviatingWithTildeInPath)
@@ -102,7 +103,7 @@ private struct AppDetailContent: View {
                         .truncationMode(.middle)
                         .textSelection(.enabled)
                 }
-                row("마지막 실행", detail.lastUsed.map { LumenTime.relative($0, granularity: .calendar) } ?? "기록 없음")
+                row("마지막 실행", detail?.lastUsed.map { LumenTime.relative($0, granularity: .calendar) } ?? "기록 없음")
                 if !app.aliases.isEmpty {
                     row("다른 이름", app.aliases.joined(separator: ", "))
                 }

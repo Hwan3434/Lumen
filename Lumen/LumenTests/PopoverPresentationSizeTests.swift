@@ -20,7 +20,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
             key: "ABC-2001", summary: "긴 설명 렌더링 확인", status: "진행중",
             description: (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
                 .joined(separator: "\n"),
-            total: 3, comments: [])
+            total: 3)
 
         let size = try present(name: "popover-long.png") {
             IssuePreviewPopover(detail: detail, accent: LumenTokens.Palette.chart1)
@@ -37,7 +37,7 @@ final class PopoverPresentationSizeTests: XCTestCase {
         let detail = IssueDetail.mock(key: "PPAI-77", summary: "온보딩 화면 카피 최종 검토",
                                       status: "할 일",
                                       description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
-                                      total: 0, comments: [])
+                                      total: 0)
         let size = try present(name: "popover-short.png") {
             IssuePreviewPopover(detail: detail, accent: LumenTokens.Palette.chart1)
         }
@@ -75,7 +75,8 @@ final class PopoverPresentationSizeTests: XCTestCase {
             notes: "지난 스프린트 회고 안건 정리", location: "회의실 A", urlString: nil))
 
         let size = try present(name: "popover-ekevent.png") {
-            EKEventPreviewPopover(event: event, accent: LumenTokens.Palette.chart1)
+            EKEventPreviewPopover(event: event, timeLabel: ScheduleItemFormat.timeLabel(CalendarPlugin.makeItem(event)),
+                                  accent: LumenTokens.Palette.chart1)
         }
         XCTAssertLessThan(size.height, 300)
     }
@@ -133,10 +134,9 @@ private struct PopoverHost<Content: View>: View {
 // MARK: - Mocks
 
 private extension IssueDetail {
-    static func mock(key: String, summary: String, status: String, description: String,
-                     total: Int, comments: [IssueComment]) -> IssueDetail {
+    static func mock(key: String, summary: String, status: String, description: String, total: Int) -> IssueDetail {
         IssueDetail(key: key, summary: summary, status: status,
-                    descriptionText: description, commentCount: total, recentComments: comments)
+                    descriptionText: description, commentCount: total)
     }
 }
 

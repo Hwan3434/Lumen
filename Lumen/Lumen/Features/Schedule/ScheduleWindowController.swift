@@ -68,15 +68,17 @@ final class ScheduleWindowController: PanelWindowController {
     }
 
     override func didCreatePanel(_ panel: KeyablePanel) {
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
     /// 열 때마다 ⌘T와 같이 오늘로 되돌린다. 지난번에 보던 달이나 주는 기억하지 않는다.
     override func configureBeforeShow(_ panel: KeyablePanel) {
         NotificationCenter.default.post(name: .scheduleCommand, object: ScheduleCommand.today)
+    }
+
+    /// 패널과 SwiftUI 뷰는 한 번 만들어 계속 쓰므로 뷰의 onAppear는 처음 한 번만 불린다.
+    /// 열 때마다 TTL이 지난 플러그인을 다시 받으려면 여기서 불러야 한다.
+    override func didShow(_ panel: KeyablePanel) {
+        Task { await ScheduleStore.shared.refreshStale() }
     }
 }

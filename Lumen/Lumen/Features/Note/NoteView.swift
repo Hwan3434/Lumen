@@ -8,17 +8,13 @@ struct NoteView: View {
     @State var viewModel = NotesViewModel()
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            HStack(spacing: 0) {
-                NotesSidebar(viewModel: viewModel)
-                    .frame(width: LumenTokens.Space.size(240))
-                Rectangle().fill(P.borderSubtle).frame(width: 1)
-                mainPane
-            }
+        HStack(spacing: 0) {
+            NotesSidebar(viewModel: viewModel)
+                .frame(width: LumenTokens.Space.size(240))
+            LumenHairline(.vertical)
+            mainPane
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
+        .lumenPanel()
     }
 
     // MARK: - Main pane
@@ -26,7 +22,6 @@ struct NoteView: View {
     private var mainPane: some View {
         VStack(spacing: 0) {
             header
-            LumenHairline()
             bodyContent
             footer
         }
@@ -34,28 +29,13 @@ struct NoteView: View {
     }
 
     private var header: some View {
-        ZStack {
-            // 평상시 헤더 빈 공간 드래그로 윈도우 이동. 콘텐츠는 위에 겹쳐 hit-test 우선권 잡게.
-            WindowDragArea()
-            HStack {
-                HStack(spacing: LumenTokens.Space.s3) {
-                    LumenIcon("sticky-note")
-                        .foregroundStyle(P.inkMuted)
-                    Text(activeTitle)
-                        .lumenText(.body, weight: .semibold)
-                        .foregroundStyle(P.ink)
-                        .lineLimit(1)
-                    SaveStatusView(state: viewModel.saveStatus)
-                }
-                .allowsHitTesting(false)
-                Spacer()
-                ModeToggle(isPreview: viewModel.isPreview) {
-                    viewModel.togglePreview()
-                }
+        LumenPanelHeader(icon: "sticky-note", title: activeTitle) {
+            SaveStatusView(state: viewModel.saveStatus)
+        } trailing: {
+            ModeToggle(isPreview: viewModel.isPreview) {
+                viewModel.togglePreview()
             }
-            .padding(.horizontal, LumenTokens.Space.pad)
         }
-        .frame(height: LumenTokens.Space.size(56))
     }
 
     private var activeTitle: String {
@@ -166,7 +146,7 @@ private struct NotesSidebar: View {
             .padding(.leading, LumenTokens.Space.s4)
             .padding(.trailing, LumenTokens.Space.inline)
         }
-        .frame(height: LumenTokens.Space.size(56))
+        .frame(height: LumenTokens.Space.panelHeader)
     }
 }
 
@@ -187,7 +167,7 @@ private struct DraggableSidebarRow: View {
             onSelect: { viewModel.selectNote(id: note.id) },
             onDelete: { viewModel.delete(id: note.id) }
         )
-        .opacity(draggingID == note.id ? 0.4 : 1)
+        .opacity(draggingID == note.id ? LumenTokens.State.disabledOpacity : 1)
         .onDrag {
             draggingID = note.id
             return NSItemProvider(object: note.id as NSString)
@@ -289,8 +269,7 @@ private struct SidebarRow: View {
             VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
                 HStack(spacing: LumenTokens.Space.inline) {
                     Text(note.displayTitle)
-                        .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                        .foregroundStyle(isSelected ? P.brand : P.ink)
+                        .lumenRowTitle(selected: isSelected)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     // hover 시 같은 자리에 삭제 버튼이 덮어 그려진다.
@@ -299,7 +278,7 @@ private struct SidebarRow: View {
                     }
                     if isHovering, canDelete {
                         LumenIconButton(icon: "trash-2", label: "노트 삭제", action: onDelete)
-                            .padding(.vertical, -LumenIconButton.inlineOverhang)
+                            .inRow()
                     }
                 }
                 if !note.preview.isEmpty {
@@ -326,13 +305,19 @@ private struct SaveStatusView: View {
 
     var body: some View {
         HStack(spacing: LumenTokens.Space.s1) {
-            if case .saved = state {
+            switch state {
+            case .saved:
                 LumenIcon("circle-check", size: .small)
                     .foregroundStyle(P.success)
+            case .failed:
+                LumenIcon("triangle-alert", size: .small)
+                    .foregroundStyle(P.danger)
+            case .resting, .editing:
+                EmptyView()
             }
             Text(label)
                 .lumenText(.caption)
-                .foregroundStyle(P.inkFaint)
+                .foregroundStyle(state == .failed ? P.danger : P.inkFaint)
         }
     }
 
@@ -341,6 +326,7 @@ private struct SaveStatusView: View {
         case .resting: return "자동 저장"
         case .editing: return "편집 중"
         case .saved:   return "저장했어요"
+        case .failed:  return "저장하지 못했어요"
         }
     }
 }

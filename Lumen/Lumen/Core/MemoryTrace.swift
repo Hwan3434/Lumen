@@ -3,11 +3,13 @@ import Darwin
 
 /// 진단용 메모리 추적 로그 (구간별 RSS 델타 로깅).
 /// 리소스 모니터 화면에서 켜고 끈다. 어느 층에서든 부를 수 있도록 Core 에 둔다.
-enum MemoryTrace {
+/// 앱 실행 완료 콜백처럼 메인이 아닌 곳에서도 부르므로 `nonisolated`다.
+nonisolated enum MemoryTrace {
     private static let enabledKey = "memory_trace_enabled"
     private static let queue = DispatchQueue(label: "com.lumen.memory.trace", qos: .utility)
-    private static var lastMB: Double = 0
-    private static var start: Date = Date()
+    // 둘 다 `queue` 안에서만 읽고 쓴다.
+    nonisolated(unsafe) private static var lastMB: Double = 0
+    nonisolated(unsafe) private static var start: Date = Date()
 
     /// 로그 파일 경로 (UI에서 보여주고 싶을 때).
     static let logURL: URL = LumenStorage.logsURL.appendingPathComponent("memory_trace.log")
@@ -15,7 +17,8 @@ enum MemoryTrace {
     // record() hot path에서 UserDefaults를 매번 읽지 않기 위한 in-memory mirror.
     // 관측된 이슈: 외부 프로세스가 plist를 업데이트한 뒤에도 내 프로세스 UserDefaults 캐시가
     // 값을 반영하지 않아 `defaults read`와 앱 내부 읽기가 어긋나는 상황이 있었음.
-    private static var _isEnabled: Bool = UserDefaults.standard.bool(forKey: enabledKey)
+    // 쓰기는 메인(리소스 모니터 스위치)에서만 한다. 다른 스레드가 바뀌는 순간 옛 값을 읽어도 로그 한 줄 차이라 잠그지 않는다.
+    nonisolated(unsafe) private static var _isEnabled: Bool = UserDefaults.standard.bool(forKey: enabledKey)
 
     static var isEnabled: Bool {
         get { _isEnabled }

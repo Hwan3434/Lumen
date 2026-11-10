@@ -26,7 +26,7 @@ final class AppResourceMonitor {
     /// 패널이 떠 있을 때의 샘플링 간격 — 실시간 그래프가 움직여야 하므로 촘촘하게.
     private let foregroundInterval: TimeInterval = 5
     /// 패널이 닫혀 있을 때의 간격. 메뉴바 상주 앱이라 이 타이머는 앱 수명 내내 돈다.
-    /// 백그라운드에서 5초마다 task_threads()를 두 번씩 부를 이유는 없다 —
+    /// 백그라운드에서 5초마다 task_threads()를 부를 이유는 없다 —
     /// 이때 필요한 건 실시간성이 아니라 누수 추세 감지뿐이라 1분이면 충분하다.
     private let backgroundInterval: TimeInterval = 60
 
@@ -62,9 +62,12 @@ final class AppResourceMonitor {
     private func scheduleTimer() {
         timer?.invalidate()
         let interval = isForeground ? foregroundInterval : backgroundInterval
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.sampleAndStore()
         }
+        // 정확한 시각이 필요 없는 측정이라, 시스템이 다른 깨어남과 묶을 수 있게 여유를 준다.
+        timer.tolerance = interval / 5
+        self.timer = timer
     }
 
     private func sampleAndStore() {
@@ -80,19 +83,21 @@ final class AppResourceMonitor {
     // MARK: - Mach API sampling
 
     static func snapshot() -> ResourceSnapshot {
-        ResourceSnapshot(
+        let usage = threadUsage()
+        return ResourceSnapshot(
             timestamp: Date(),
             memoryMB:    MemoryTrace.residentMemoryMB(),
-            cpuPercent:  taskCPUPercent(),
-            threadCount: threadCount()
+            cpuPercent:  usage.cpuPercent,
+            threadCount: usage.threadCount
         )
     }
 
-    private static func taskCPUPercent() -> Double {
+    /// 스레드 목록을 한 번만 받아 CPU 합계(쉬는 스레드 제외)와 스레드 수를 같이 낸다.
+    private static func threadUsage() -> (cpuPercent: Double, threadCount: Int) {
         var threadList: thread_act_array_t?
         var count = mach_msg_type_number_t(0)
         guard task_threads(mach_task_self_, &threadList, &count) == KERN_SUCCESS,
-              let threads = threadList else { return 0 }
+              let threads = threadList else { return (0, 0) }
 
         defer {
             for i in 0..<Int(count) {
@@ -117,22 +122,6 @@ final class AppResourceMonitor {
                 totalUsage += Double(thInfo.cpu_usage) / Double(TH_USAGE_SCALE) * 100.0
             }
         }
-        return totalUsage
-    }
-
-    private static func threadCount() -> Int {
-        var threadList: thread_act_array_t?
-        var count = mach_msg_type_number_t(0)
-        guard task_threads(mach_task_self_, &threadList, &count) == KERN_SUCCESS,
-              let threads = threadList else { return 0 }
-        defer {
-            for i in 0..<Int(count) {
-                mach_port_deallocate(mach_task_self_, threads[i])
-            }
-            vm_deallocate(mach_task_self_,
-                          vm_address_t(UInt(bitPattern: threads)),
-                          vm_size_t(Int(count) * MemoryLayout<thread_t>.size))
-        }
-        return Int(count)
+        return (totalUsage, Int(count))
     }
 }

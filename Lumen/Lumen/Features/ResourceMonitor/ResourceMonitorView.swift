@@ -21,7 +21,8 @@ struct ResourceMonitorView: View {
         }
         .scrollIndicators(.hidden)
         .frame(width: Constants.resourceWindowSize.width, height: Constants.resourceWindowSize.height)
-        .background(P.bg)
+        // 숫자와 차트를 읽는 창이라 글래스 설정과 상관없이 불투명하게 둔다.
+        .lumenPanel(glass: false)
     }
 
     // MARK: - Anomalies
@@ -44,22 +45,8 @@ struct ResourceMonitorView: View {
             }
             let recent = store.recent(6)
             if recent.isEmpty {
-                HStack(spacing: LumenTokens.Space.s3) {
-                    LumenIcon("circle-check")
-                        .foregroundStyle(P.success)
-                    VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
-                        Text("이상 없어요")
-                            .lumenText(.body, weight: .medium)
-                            .foregroundStyle(P.ink)
-                        Text("기준값을 잡은 뒤(약 60초) 감지를 시작해요.")
-                            .lumenText(.caption)
-                            .foregroundStyle(P.inkFaint)
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, LumenTokens.Space.scaled(14))
-                .padding(.horizontal, LumenTokens.Space.s4)
-                .lumenCard()
+                LumenEmptyCard(icon: "circle-check", text: "이상 없어요",
+                               detail: "기준값을 잡은 뒤(약 60초) 감지를 시작해요.", tone: .success)
             } else {
                 LumenList(recent) { anomalyRow($0) }
             }
@@ -74,7 +61,7 @@ struct ResourceMonitorView: View {
                 .foregroundStyle(P.ink)
                 .lineLimit(1)
             Spacer()
-            Text(relativeTime(a.timestamp))
+            Text(LumenTime.relative(a.timestamp))
                 .lumenText(.caption)
                 .foregroundStyle(P.inkFaint)
         }
@@ -92,16 +79,6 @@ struct ResourceMonitorView: View {
         }
     }
 
-    private func relativeTime(_ date: Date) -> String {
-        let s = Int(Date().timeIntervalSince(date))
-        if s < 60 { return "\(s)초 전" }
-        let m = s / 60
-        if m < 60 { return "\(m)분 전" }
-        let h = m / 60
-        if h < 24 { return "\(h)시간 전" }
-        return "\(h / 24)일 전"
-    }
-
     // MARK: - Header
 
     private var header: some View {
@@ -114,7 +91,7 @@ struct ResourceMonitorView: View {
                     .foregroundStyle(P.ink)
                 Spacer()
             }
-            Text("\(monitor.history.count)개 샘플 · 5초 간격")
+            Text("\(monitor.history.count)개 샘플 · 열려 있는 동안 5초 간격")
                 .lumenText(.caption)
                 .foregroundStyle(P.inkFaint)
             Toggle(isOn: Binding(
@@ -204,9 +181,8 @@ struct ResourceMonitorView: View {
 
     /// CPU가 높으면 상태 배지로 알린다(색만으로 구분하지 않음).
     private func cpuLevel(_ pct: Double) -> LumenTone? {
-        let cores = Double(monitor.coreCount)
-        if pct > cores * 30 { return .danger }
-        if pct > cores * 10 { return .warning }
+        if pct > ResourceAnomalyDetector.cpuHighThreshold { return .danger }
+        if pct > Double(monitor.coreCount) * 10 { return .warning }
         return nil
     }
 }

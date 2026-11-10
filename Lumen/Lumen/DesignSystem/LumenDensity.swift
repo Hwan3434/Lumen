@@ -73,7 +73,9 @@ enum LumenDensity: String, CaseIterable {
     }
 
     /// 넓게(Still) 기준 간격을 밀도에 맞게 줄인다. 8 미만은 2 단위, 그 이상은 4 단위로 맞춘다.
+    /// 넓게는 Still 값 그대로 돌려준다 — 단위에 맞추면 10이 12, 14가 16으로 커진다.
     func space(_ base: CGFloat) -> CGFloat {
+        if self == .spacious { return base }
         let scaled = base * pick(compact: 0.5, cozy: 0.67, regular: 0.75, spacious: 1)
         return scaled < 8 ? max(2, (scaled / 2).rounded() * 2) : (scaled / 4).rounded() * 4
     }

@@ -60,7 +60,7 @@ Apple 온디바이스 번역(`Translation` 프레임워크) 기반 한↔영 번
 |---|---|
 | 카페인 | 화면이 잠들지 않게 합니다. 앱을 켜면 자동으로 켜지고, 메뉴바 아이콘을 눌러 끕니다 |
 | 클램쉘 모드 | 덮개를 닫아도 맥이 잠들지 않게 합니다. 전원이 연결된 동안은 계속 켜져 있고, 전원을 뽑으면 정한 시간(1·2·4·8시간) 뒤 자동으로 꺼져요 (처음 한 번 관리자 암호) |
-| 윈도우 마그넷 | 앞에 있는 창을 화면 왼쪽·오른쪽 절반에 붙입니다. `⌃⌥←` / `⌃⌥→` |
+| 윈도우 마그넷 | 앞에 있는 창을 화면 왼쪽·오른쪽에 붙입니다. 같은 방향을 다시 누를 때마다 너비가 20 → 40 → 60 → 80 → 100%로 바뀝니다. `⌃⌥←` / `⌃⌥→` |
 | 컬러 피커 | 화면에서 색을 집어 HEX 값을 복사합니다 |
 | 리소스 모니터 | Lumen 자신의 메모리 · CPU · 스레드를 실시간으로 봅니다. 진단용 추적 로그도 여기서 켜요 |
 
@@ -77,7 +77,7 @@ Apple 온디바이스 번역(`Translation` 프레임워크) 기반 한↔영 번
 | `⌘⇧G` | 일정 대시보드 |
 | `⌘⇧A` | 오늘 일정 (메뉴바) |
 | `⌘⇧L` | 떠 있는 Lumen 패널로 키보드 포커스 되돌리기 |
-| `⌃⌥←` / `⌃⌥→` | 윈도우 마그넷 왼쪽 / 오른쪽 절반 |
+| `⌃⌥←` / `⌃⌥→` | 윈도우 마그넷 왼쪽 / 오른쪽 (누를 때마다 너비 20~100%) |
 | `⌘,` | 설정 |
 
 패널은 한 번에 하나만 떠 있습니다. 다른 패널을 열면 앞의 패널이 닫혀요. 노트만 예외로 다른 패널과 나란히 띄울 수 있어요.
@@ -87,9 +87,9 @@ Apple 온디바이스 번역(`Translation` 프레임워크) 기반 한↔영 번
 ## ⚡ 빠른 시작 (사람용)
 
 1. [최신 릴리즈](https://github.com/Hwan3434/Lumen/releases/latest)에서 `Lumen-x.y.z.zip` 다운로드
-2. 압축 풀고 `Lumen.app`을 `/Applications`로 이동
+2. 압축 풀고 `Lumen.app`을 홈 폴더의 `~/Applications`로 이동 (폴더가 없으면 만들기. 자동 업데이트가 관리자 암호 없이 앱을 바꿀 수 있는 위치예요)
 3. **첫 실행만** Finder에서 우클릭 → **열기** (self-signed 빌드라 Gatekeeper 통과 1회 필요)
-4. 시스템 설정 → **손쉬운 사용** / **입력 모니터링** 에서 Lumen 토글 ON
+4. 시스템 설정 → **손쉬운 사용**에서 Lumen 토글 ON (윈도우 마그넷이 다른 앱의 창을 옮길 때 필요)
 5. `⌘,` 로 설정을 열어 **일정** 섹션에서 캘린더 · Jira 연동 켜기 (일정 대시보드에 연동 일정을 보고 싶을 때만)
 
 이후 새 버전은 Sparkle이 1시간마다 확인해 자동으로 받습니다. 메뉴바 → "업데이트 확인…"으로 바로 확인할 수도 있어요.
@@ -124,16 +124,12 @@ AI 에이전트가 새 macOS에 Lumen을 자율 설치하기 위한 명령어 ·
 ./scripts/release.sh 1.2.3   # archive → zip → EdDSA 서명 → appcast → GitHub Release
 ```
 
-요구사항:
-- Xcode (Lumen.xcodeproj 1회 빌드해 SPM 캐시 채워두기)
-- `gh` CLI 인증
-- macOS Keychain에 코드사이닝 인증서 `Lumen Self-Signed`
-- macOS Keychain에 Sparkle EdDSA 비공개키 (`generate_keys` 1회)
+깨끗한 작업 트리에서, GitHub `main`과 같은 커밋으로만 돌아갑니다. 필요한 준비물과 단계는 [docs/release.md](docs/release.md)에 있어요.
 
 README 스크린샷은 예시 데이터로 다시 그립니다 (실제 앱 화면을 찍으면 클립보드 · 노트 · 설정 값이 그대로 찍힙니다):
 
 ```sh
-TEST_RUNNER_LUMEN_SNAPSHOT_DIR=/tmp/lumen-shots xcodebuild test -project Lumen/Lumen.xcodeproj -scheme Lumen \
+TEST_RUNNER_LUMEN_SNAPSHOT_DIR=/tmp/lumen-shots TEST_RUNNER_LUMEN_SNAPSHOT_DENSITY=cozy xcodebuild test -project Lumen/Lumen.xcodeproj -scheme Lumen \
   -destination 'platform=macOS' -only-testing:LumenTests/ReadmeScreenshotTests \
   -only-testing:LumenTests/ScheduleSnapshotTests/testRenderDashboardMonthAndWeek
 ```

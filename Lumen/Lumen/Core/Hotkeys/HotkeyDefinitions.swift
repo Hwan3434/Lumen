@@ -1,29 +1,21 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// 키보드 키 식별자. Carbon kVK_*에 매핑되지 않은 일부 SwiftUI 호환 코드.
+/// 패널 키 처리에서 자주 쓰는 키의 짧은 이름. 값은 Carbon `kVK_*` 그대로다.
 enum KeyCode {
-    static let downArrow = 125
-    static let upArrow = 126
-    static let enter = 36
-    static let escape = 53
-    static let delete = 51        // backspace
-    static let forwardDelete = 117
+    static let downArrow = kVK_DownArrow
+    static let upArrow = kVK_UpArrow
+    static let enter = kVK_Return
+    static let escape = kVK_Escape
+    static let delete = kVK_Delete        // backspace
+    static let forwardDelete = kVK_ForwardDelete
 }
 
+/// 특정 기능에 속하지 않는 앱 전역 단축키. 기능 단축키는 각 기능의 `hotkeys`가 갖는다.
 extension Constants {
     static let searchHotKeyCode: UInt16 = UInt16(kVK_Space)
     static let searchHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue)
 
-    static let translateHotKeyCode: UInt16 = UInt16(kVK_ANSI_C)
-    static let translateHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue)
-
     static let focusHotKeyCode: UInt16 = UInt16(kVK_ANSI_L)
     static let focusHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue)
-
-    static let magnetLeftHotKeyCode: UInt16 = UInt16(kVK_LeftArrow)
-    static let magnetLeftHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
-
-    static let magnetRightHotKeyCode: UInt16 = UInt16(kVK_RightArrow)
-    static let magnetRightHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
 }

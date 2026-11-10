@@ -1,31 +1,24 @@
-import AppKit
+import Foundation
 import Observation
 
 @Observable
 final class ClipboardViewModel {
     var query = "" {
-        didSet { selectedIndex = 0 }
+        didSet { selectedID = filteredItems.first?.id }
     }
-    var selectedIndex = 0 {
-        didSet { loadPreview() }
-    }
-    var isLoadingPreview = false
-    var previewText: String?
-    var previewImage: NSImage?
-    var previewMeta: String?
-    var previewAppIcon: NSImage?
 
-    private var manager = ClipboardManager.shared
-    private var previewWorkItem: DispatchWorkItem?
-    private static let dateFormatter: DateFormatter = {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return fmt
-    }()
+    /// 선택은 위치가 아니라 항목 id로 기억한다 — 패널이 열려 있는 동안 새 복사가 맨 위에 끼어들어도
+    /// 보고 있던 항목이 그대로 선택돼 있도록.
+    private var selectedID: UUID?
+    /// 패널이 내려가 있는 동안에는 미리보기를 만들지 않는다. 숨은 패널이 맨 위 항목의 이미지를 붙잡고 있지 않도록.
+    private var isPanelVisible = true
+    @ObservationIgnored private var cachedPreview: ClipboardPreviewModel?
 
-    /// manager.history를 직접 derive — @Observable이 history 변경을 추적해 패널이 자동 갱신된다.
+    private var store = ClipboardStore.shared
+
+    /// store.history를 직접 derive — @Observable이 history 변경을 추적해 패널이 자동 갱신된다.
     var filteredItems: [ClipboardItem] {
-        let items = manager.history
+        let items = store.history
         guard !query.isEmpty else { return items }
         let q = query.lowercased()
         // searchKey는 item 생성 시 1회만 계산된 lowercased prefix.
@@ -33,114 +26,82 @@ final class ClipboardViewModel {
         return items.filter { $0.searchKey.contains(q) }
     }
 
-    init() {}
-
-    var hasPreviewContent: Bool {
-        previewText != nil || previewImage != nil || previewMeta != nil
+    /// 기억한 항목이 목록에서 사라졌으면(삭제, 검색어 변경, 같은 글을 다시 복사) 맨 위 항목.
+    var selectedItem: ClipboardItem? {
+        let items = filteredItems
+        return items.first { $0.id == selectedID } ?? items.first
     }
 
-    func moveUp() {
-        if selectedIndex > 0 { selectedIndex -= 1 }
+    /// 선택한 항목의 미리보기. 항목마다 한 번만 만든다(파일 정보 읽기, 이미지 열기).
+    var preview: ClipboardPreviewModel? {
+        guard isPanelVisible, let item = selectedItem else { return nil }
+        if let cached = cachedPreview, cached.id == item.id { return cached }
+        let built = ClipboardPreviewModel(item: item)
+        cachedPreview = built
+        return built
     }
 
-    func moveDown() {
-        if selectedIndex < filteredItems.count - 1 { selectedIndex += 1 }
+    var isHistoryEmpty: Bool { store.history.isEmpty }
+
+    /// 머리줄 숫자. 평소에는 "기록 수 / 최대", 검색 중에는 "찾은 수 / 기록 수".
+    var countLabel: String {
+        let total = store.history.count
+        return query.isEmpty ? "\(total) / \(store.maxItems)" : "\(filteredItems.count) / \(total)"
     }
 
-    func selectCurrent() {
-        guard let item = filteredItems[safe: selectedIndex] else { return }
-        item.copyToPasteboard()
+    // MARK: - 패널 열고 닫기
+
+    func panelWillShow() {
+        isPanelVisible = true
+        selectedID = filteredItems.first?.id
     }
 
-    /// 현재 선택된 항목 삭제. 삭제 후 같은 인덱스 유지 — 다음 항목이 자연스럽게 선택된다.
-    func deleteCurrent() {
-        guard let item = filteredItems[safe: selectedIndex] else { return }
+    func panelDidHide() {
+        isPanelVisible = false
+        cachedPreview = nil
+        query = ""
+    }
+
+    // MARK: - 선택
+
+    func select(_ item: ClipboardItem) {
+        selectedID = item.id
+    }
+
+    func moveUp() { moveSelection(by: -1) }
+    func moveDown() { moveSelection(by: 1) }
+
+    private func moveSelection(by offset: Int) {
+        let items = filteredItems
+        guard let current = selectedItem, let index = items.firstIndex(of: current),
+              let next = items[safe: index + offset] else { return }
+        selectedID = next.id
+    }
+
+    func copySelected() {
+        guard let item = selectedItem else { return }
+        store.copyToPasteboard(item)
+    }
+
+    // MARK: - 삭제
+
+    func deleteSelected() {
+        guard let item = selectedItem else { return }
         delete(item: item)
     }
 
+    /// 선택한 항목을 지웠으면 같은 자리의 다음 항목을 고른다. 다른 항목을 지웠으면 선택은 그대로다.
     func delete(item: ClipboardItem) {
-        manager.delete(id: item.id)
-        // filteredItems가 줄었으니 인덱스 clamp
-        let newCount = filteredItems.count
-        if selectedIndex >= newCount {
-            selectedIndex = max(0, newCount - 1)
-        } else {
-            // 같은 인덱스를 유지해도 preview는 새 항목 기준으로 갱신돼야 함
-            loadPreview()
+        let index = item == selectedItem ? filteredItems.firstIndex(of: item) : nil
+        store.delete(id: item.id)
+        if let index {
+            let rest = filteredItems
+            selectedID = (rest[safe: index] ?? rest.last)?.id
         }
     }
 
     func deleteAll() {
-        manager.deleteAll()
-        selectedIndex = 0
-    }
-
-    private func loadPreview() {
-        previewWorkItem?.cancel()
-        previewText = nil
-        previewImage = nil
-        previewMeta = nil
-        previewAppIcon = nil
-        isLoadingPreview = true
-
-        guard let item = filteredItems[safe: selectedIndex] else {
-            isLoadingPreview = false
-            return
-        }
-
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self = self else { return }
-
-            // 메타 정보 (앱 이름 + 복사 시간)
-            var meta = "복사 시간: \(Self.dateFormatter.string(from: item.date))"
-            if let app = item.sourceApp {
-                meta = "복사한 앱: \(app)\n" + meta
-            }
-            self.previewMeta = meta
-            self.previewAppIcon = item.sourceAppIcon
-
-            if let text = item.text {
-                meta += "\n글자 수: \(text.count)자"
-                if text.count > 500 {
-                    self.previewText = String(text.prefix(500)) + "..."
-                    meta += " (500자만 표시)"
-                } else {
-                    self.previewText = text
-                }
-                self.previewMeta = meta
-            }
-
-            if let urls = item.fileURLs, let url = urls.first {
-                meta += "\n경로: \(url.path)"
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) {
-                    if let size = attrs[.size] as? Int64 {
-                        meta += "\n파일 크기: \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))"
-                    }
-                    if let date = attrs[.modificationDate] as? Date {
-                        meta += "\n수정: \(Self.dateFormatter.string(from: date))"
-                    }
-                }
-
-                let imageExts = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"]
-                if imageExts.contains(url.pathExtension.lowercased()) {
-                    if let img = NSImage(contentsOf: url) {
-                        self.previewImage = img
-                        meta += "\n이미지 크기: \(Int(img.size.width))×\(Int(img.size.height))"
-                    }
-                }
-            }
-
-            if let img = item.resolvedImage {
-                self.previewImage = img
-                meta += "\n이미지 크기: \(Int(img.size.width))×\(Int(img.size.height))"
-            }
-
-            self.previewMeta = meta
-
-            self.isLoadingPreview = false
-        }
-
-        previewWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: workItem)
+        store.deleteAll()
+        selectedID = nil
     }
 }

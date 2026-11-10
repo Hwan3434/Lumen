@@ -14,7 +14,7 @@ final class FeatureRegistry {
     var enabledFeatures: [BuiltInFeature] { features }
 
     func search(query: String) -> [BuiltInFeature] {
-        guard !query.isEmpty else { return enabledFeatures.filter { $0.showInDefaultList } }
+        guard !query.isEmpty else { return enabledFeatures }
         let q = query.lowercased()
         return enabledFeatures.filter { feature in
             feature.name.lowercased().contains(q) ||

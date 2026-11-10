@@ -6,10 +6,10 @@ final class WindowMagnetWindowController: PanelWindowController {
     override var densityContentSize: NSSize? { Self.panelSize }
     private var viewModel: WindowMagnetViewModel?
     private var targetApp: NSRunningApplication?
-    private let manager: WindowMagnetManager
+    private let service: WindowMagnetService
 
-    init(manager: WindowMagnetManager) {
-        self.manager = manager
+    init(service: WindowMagnetService) {
+        self.service = service
         super.init()
     }
 
@@ -21,7 +21,7 @@ final class WindowMagnetWindowController: PanelWindowController {
 
         let view = WindowMagnetView(viewModel: vm) { [weak self] direction, ratio in
             guard let self else { return }
-            self.manager.snapWindowTo(direction: direction, ratio: ratio, targetApp: self.targetApp)
+            self.service.snapWindowTo(direction: direction, ratio: ratio, targetApp: self.targetApp)
             self.hide()
         }
         panel.contentView = NSHostingView(rootView: view)
@@ -44,17 +44,13 @@ final class WindowMagnetWindowController: PanelWindowController {
         targetApp = NSWorkspace.shared.frontmostApplication
         panel.previousApp = targetApp
 
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
     private func selectCurrent() {
         guard let vm = viewModel else { return }
         let opt = vm.selectedOption
-        manager.snapWindowTo(direction: opt.direction, ratio: opt.ratio, targetApp: targetApp)
+        service.snapWindowTo(direction: opt.direction, ratio: opt.ratio, targetApp: targetApp)
         hide()
     }
 }

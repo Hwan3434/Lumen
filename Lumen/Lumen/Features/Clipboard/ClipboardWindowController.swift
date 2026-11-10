@@ -20,7 +20,7 @@ final class ClipboardWindowController: PanelWindowController {
             case KeyCode.downArrow: vm.moveDown(); return true
             case KeyCode.upArrow:   vm.moveUp();   return true
             case KeyCode.enter:
-                vm.selectCurrent()
+                vm.copySelected()
                 self?.hide()
                 return true
             case KeyCode.escape: self?.hide(); return true
@@ -30,24 +30,30 @@ final class ClipboardWindowController: PanelWindowController {
                    responder is NSText || responder is NSTextView {
                     return false
                 }
-                vm.deleteCurrent()
+                vm.deleteSelected()
                 return true
             default: return false
             }
+        }
+
+        // 검색창에 포커스가 있어도 선택한 항목을 지울 수 있는 키. 노트의 ⌘⌫(노트 삭제)와 같은 조합이다.
+        panel.onCommandKey = { [weak self] event in
+            guard let vm = self?.clipboardViewModel,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  Int(event.keyCode) == KeyCode.delete else { return false }
+            vm.deleteSelected()
+            return true
         }
 
         return panel
     }
 
     override func configureBeforeShow(_ panel: KeyablePanel) {
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        clipboardViewModel?.panelWillShow()
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
     override func willHide() {
-        clipboardViewModel?.query = ""
+        clipboardViewModel?.panelDidHide()
     }
 }

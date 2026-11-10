@@ -6,7 +6,8 @@ import AppKit
 // `.nonactivatingPanel` 스타일의 NSPanel은 `isMovableByWindowBackground = true`로도 안 움직여
 // (`kCGSPreventsActivationTagBit` 이슈), `mouseDown(with:)`이 자기에게 직접 와서 `performDrag`를
 // 불러야 AppKit drag tracking이 시작된다. 헤더 같은 특정 영역에만 깔아 그 영역에서만 윈도우 이동.
-// SwiftUI `.overlay`로 깔고, 자식 hit-test가 우선해야 하는 인터랙티브 요소(버튼 등)는 ZStack 위에 둔다.
+// 패널 머리 줄은 `LumenPanelHeader`가 이 영역을 깔아 준다. 직접 쓸 때는 ZStack 맨 아래에 깔고,
+// 그 위 내용 가운데 누를 수 없는 것에는 `.allowsHitTesting(false)`를 붙여 mouseDown이 여기까지 내려오게 한다.
 
 struct WindowDragArea: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { DragView() }
@@ -21,112 +22,69 @@ struct WindowDragArea: NSViewRepresentable {
     }
 }
 
-/// 헤더 빈 공간으로 윈도우 이동을 가능케 하는 표준 래퍼.
-/// 콘텐츠는 hit-test에서 빠지고, 그 아래 깔린 `WindowDragArea`가 mouseDown을 받는다.
-/// 헤더 안에 인터랙티브 요소(버튼 등)가 있어야 하면 이 모디파이어를 쓰지 말고
-/// `ZStack { WindowDragArea(); HStack { ... non-interactive .allowsHitTesting(false); interactive } }`
-/// 형태로 직접 구성한다 (Note 헤더가 그 예).
-extension View {
-    func draggableWindowHeader() -> some View {
-        ZStack {
-            WindowDragArea()
-            self.allowsHitTesting(false)
+// MARK: - Panel header
+
+/// 떠 있는 패널의 머리 줄: 아이콘 + 제목 + 보조 표시(`accessory`), 오른쪽 끝에 버튼·단축키(`trailing`), 아래 구분선.
+/// 빈 곳을 끌면 창이 움직인다. 왼쪽 내용은 hit-test에서 빠져 끌기를 막지 않고, `trailing`만 누를 수 있다 —
+/// 그래서 눌러야 하는 것은 반드시 `trailing`에 둔다.
+struct LumenPanelHeader<Accessory: View, Trailing: View>: View {
+    let icon: String
+    let title: String
+    @ViewBuilder let accessory: () -> Accessory
+    @ViewBuilder let trailing: () -> Trailing
+
+    init(icon: String, title: String,
+         @ViewBuilder accessory: @escaping () -> Accessory = { EmptyView() },
+         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }) {
+        self.icon = icon
+        self.title = title
+        self.accessory = accessory
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                WindowDragArea()
+                HStack(spacing: LumenTokens.Space.s3) {
+                    HStack(spacing: LumenTokens.Space.s3) {
+                        HStack(spacing: LumenTokens.Space.inline) {
+                            LumenIcon(icon)
+                                .foregroundStyle(LumenTokens.Palette.inkMuted)
+                            Text(title)
+                                .lumenText(.body, weight: .semibold)
+                                .foregroundStyle(LumenTokens.Palette.ink)
+                                .lineLimit(1)
+                        }
+                        accessory()
+                    }
+                    .allowsHitTesting(false)
+                    Spacer(minLength: 0)
+                    trailing()
+                }
+                .padding(.horizontal, LumenTokens.Space.pad)
+            }
+            .frame(height: LumenTokens.Space.panelHeader)
+            LumenHairline()
         }
     }
 }
 
-// MARK: - Relative time formatting (한국어 단축 표기)
+// MARK: - Kbd
 
-enum LumenTime {
-    enum Granularity {
-        /// "방금" / "N분 전" / "N시간 전" — 시간 단위에서 멈춤. Jira 헤더 톤.
-        case minutesAndHours
-        /// "방금" / "N분" / "N시간" / "어제" / "N일" — 접미사 "전" 없음. 클립보드/번역 히스토리 톤.
-        case shortNoSuffix
-        /// "오늘 HH:mm" / "어제 HH:mm" / "M월 d일 HH:mm" — 절대 시간을 한국어 prefix로 감쌈. 클립보드 메타 톤.
-        case calendar
+/// 단축키 표시. Still Code 부품(Geist Mono, `surface-raised`, `border-subtle`, `radius-xs`).
+struct LumenKbd: View {
+    let label: String
+    var primary: Bool = false
+    var body: some View {
+        Text(label)
+            .font(LumenFont.mono(LumenTextStyle.caption.size))
+            .foregroundStyle(primary ? LumenTokens.Palette.ink : LumenTokens.Palette.inkMuted)
+            .padding(.horizontal, LumenTokens.Space.scaled(6))
+            .padding(.vertical, LumenTokens.Space.scaled(2))
+            .background(LumenTokens.Palette.surfaceRaised, in: LumenShape.rect(LumenTokens.Radius.xs))
+            .overlay(LumenShape.rect(LumenTokens.Radius.xs).strokeBorder(LumenTokens.Palette.borderSubtle, lineWidth: 1))
     }
-
-    static func relative(_ date: Date, granularity: Granularity = .minutesAndHours) -> String {
-        switch granularity {
-        case .minutesAndHours:   return minutesAndHours(date)
-        case .shortNoSuffix:     return shortNoSuffix(date)
-        case .calendar:          return calendar(date)
-        }
-    }
-
-    private static func minutesAndHours(_ date: Date) -> String {
-        let mins = Int(Date().timeIntervalSince(date) / 60)
-        if mins < 1 { return "방금" }
-        if mins < 60 { return "\(mins)분 전" }
-        return "\(mins / 60)시간 전"
-    }
-
-    private static func shortNoSuffix(_ date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-        if interval < 60 { return "방금" }
-        if interval < 3600 { return "\(Int(interval / 60))분" }
-        if interval < 86400 { return "\(Int(interval / 3600))시간" }
-        let days = Int(interval / 86400)
-        if days == 1 { return "어제" }
-        return "\(days)일"
-    }
-
-    private static let calendarFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        return f
-    }()
-
-    private static func calendar(_ date: Date) -> String {
-        let cal = Calendar.current
-        let f = calendarFormatter
-        if cal.isDateInToday(date)         { f.dateFormat = "오늘 HH:mm" }
-        else if cal.isDateInYesterday(date){ f.dateFormat = "어제 HH:mm" }
-        else                               { f.dateFormat = "M월 d일 HH:mm" }
-        return f.string(from: date)
-    }
-}
-
-// MARK: - Shared date formatters (per-render allocation 회피)
-
-enum LumenDateFormat {
-    /// "MM/dd" — 짧은 날짜. due-date / sprint range / chart x-tick.
-    static let monthDay: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "MM/dd"; return f
-    }()
-    /// "dd" — 같은 달 내 끝일만 표기.
-    static let dayOnly: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "dd"; return f
-    }()
-    /// "2026. 11. 7 (토)" — Still 날짜 표기.
-    static let dayWithWeekday: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy. M. d (E)"; return f
-    }()
-    /// "11. 7" — 연도 없는 짧은 날짜.
-    static let shortDay: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M. d"; return f
-    }()
-    /// "오후 2:30" — Still 시간 표기.
-    static let time: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "a h:mm"; return f
-    }()
-    /// "2026년 11월" — 달력 헤더.
-    static let yearMonthKo: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy년 M월"; return f
-    }()
-    /// "11월 7일" — 월간 달력 날짜 표기.
-    static let monthDayKo: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월 d일"; return f
-    }()
-    /// "7일" — 타임라인 날짜 칸.
-    static let dayKo: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "d일"; return f
-    }()
-    /// "11월" — 타임라인 월 경계 표기.
-    static let monthKo: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M월"; return f
-    }()
 }
 
 // MARK: - LumenFooterBar

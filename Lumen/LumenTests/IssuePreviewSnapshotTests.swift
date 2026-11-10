@@ -21,15 +21,13 @@ final class IssuePreviewSnapshotTests: XCTestCase {
             재현 조건은 동시 요청 50건 이상이며, PG사 응답 지연과 겹칠 때 발생합니다.
             우선 커넥션 풀 설정부터 확인이 필요합니다.
             """,
-            total: 5,
-            comments: [])
+            total: 5)
         let noComments = IssueDetail.mock(
             key: "PPAI-77",
             summary: "온보딩 화면 카피 최종 검토",
             status: "할 일",
             description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
-            total: 0,
-            comments: [])
+            total: 0)
 
         let commentList = [
             IssueComment.mock(id: "1", author: "김철수", minutesAgo: 60 * 26,
@@ -86,7 +84,7 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         let long = (1...60).map { "설명 \($0)번째 줄 — 재현 절차와 로그를 길게 적어둔 본문입니다." }
             .joined(separator: "\n")
         let detail = IssueDetail.mock(key: "ABC-2001", summary: "긴 설명 렌더링 확인",
-                                      status: "진행중", description: long, total: 0, comments: [])
+                                      status: "진행중", description: long, total: 0)
 
         let bare = NSHostingView(rootView: IssuePreviewPopover(detail: detail, accent: accent))
         let size = bare.fittingSize
@@ -108,7 +106,7 @@ final class IssuePreviewSnapshotTests: XCTestCase {
         let detail = IssueDetail.mock(key: "PPAI-77", summary: "온보딩 화면 카피 최종 검토",
                                       status: "할 일",
                                       description: "디자인 시안 3차 반영본 기준으로 카피만 확정하면 됩니다.",
-                                      total: 0, comments: [])
+                                      total: 0)
         let bare = NSHostingView(rootView: IssuePreviewPopover(detail: detail, accent: accent))
         let size = bare.fittingSize
         print("[metrics] 짧은 설명 팝오버 = \(Int(size.width))x\(Int(size.height))")
@@ -142,10 +140,9 @@ final class IssuePreviewSnapshotTests: XCTestCase {
 // MARK: - Mock builders
 
 private extension IssueDetail {
-    static func mock(key: String, summary: String, status: String, description: String,
-                     total: Int, comments: [IssueComment]) -> IssueDetail {
+    static func mock(key: String, summary: String, status: String, description: String, total: Int) -> IssueDetail {
         IssueDetail(key: key, summary: summary, status: status,
-                    descriptionText: description, commentCount: total, recentComments: comments)
+                    descriptionText: description, commentCount: total)
     }
 }
 

@@ -5,7 +5,7 @@ import Observation
 /// 일정 대시보드. 연동이 하나도 없어도 열리고, 일정 출처는 플러그인(`SchedulePlugins.all`)으로 붙는다.
 final class ScheduleFeature: BuiltInFeature {
     let name = "일정"
-    let featureDescription = "캘린더와 Jira 일정을 한 화면에"
+    let featureDescription = "캘린더와 Jira 일정을 한 화면에서 봐요"
     let iconName = "calendar"
     let searchKeywords = ["일정", "schedule", "캘린더", "calendar", "jira", "지라", "대시보드", "dashboard", "이슈", "issue"]
 
@@ -17,13 +17,11 @@ final class ScheduleFeature: BuiltInFeature {
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_G),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+G",
                 action: { [weak self] in self?.activate() }
             ),
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_A),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+A",
                 action: { [weak self] in self?.statusItem?.togglePopover() }
             )
         ]

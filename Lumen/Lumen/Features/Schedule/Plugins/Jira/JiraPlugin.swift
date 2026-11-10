@@ -1,6 +1,10 @@
 import Foundation
 import SwiftUI
 
+nonisolated extension SchedulePluginID {
+    static let jira = SchedulePluginID("jira")
+}
+
 /// Jira Cloud의 내 담당 이슈, 활성 스프린트, 에픽 마감. 묶음은 프로젝트 하나다.
 /// 자격증명은 `PluginSecrets(.jira)`에, 프로젝트와 가져올 항목은 `JiraSettings`에 둔다.
 @Observable
@@ -94,8 +98,15 @@ final class JiraPlugin: SchedulePlugin {
         onChange?()
     }
 
+    /// 표시 여부는 넘어온 값이 아니라 지금 값을 지킨다. 설정 탭에서 편집하는 사이 대시보드 칩으로 바꾼 것을
+    /// 저장이 덮어쓰지 않도록. 새 프로젝트는 보이는 채로 들어간다.
     func setProjects(_ projects: [JiraProjectSetting]) {
-        settings.projects = JiraSettings.normalizedProjects(projects)
+        let visible = Dictionary(settings.projects.map { ($0.key, $0.isVisible) }, uniquingKeysWith: { first, _ in first })
+        settings.projects = JiraSettings.normalizedProjects(projects).map { project in
+            var project = project
+            project.isVisible = visible[project.key] ?? true
+            return project
+        }
         onChange?()
     }
 
@@ -130,9 +141,9 @@ final class JiraPlugin: SchedulePlugin {
         let browse = browseURL
 
         async let issues = repo.fetchIssues(projectKeys: keys, window: window)
-        async let sprints: [SprintInfo] = settings.showSprints ? await repo.fetchActiveSprints(projectKeys: keys) : []
-        async let epics: [JiraIssue] = settings.showEpics ? await repo.fetchEpics(projectKeys: keys) : []
-        let items = Self.makeItems(issues: try await issues, sprints: await sprints, epics: await epics,
+        async let sprints: [SprintInfo] = settings.showSprints ? try await repo.fetchActiveSprints(projectKeys: keys) : []
+        async let epics: [JiraIssue] = settings.showEpics ? try await repo.fetchEpics(projectKeys: keys, window: window) : []
+        let items = Self.makeItems(issues: try await issues, sprints: try await sprints, epics: try await epics,
                                    settings: settings, browseURL: browse)
         // 이슈를 새로 받으면 내용도 바뀌었을 수 있으니 상세 캐시를 함께 버린다.
         invalidateIssueCaches()
@@ -144,10 +155,8 @@ final class JiraPlugin: SchedulePlugin {
     }
 
     func detailView(for item: ScheduleItem, accent: Color, variant: ScheduleDetailVariant,
-                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView {
-        guard item.kind != .span, let key = Self.issueKey(of: item) else {
-            return AnyView(ScheduleItemPreview(item: item, accent: accent))
-        }
+                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView? {
+        guard item.kind != .span, let key = Self.issueKey(of: item) else { return nil }
         switch variant {
         case .primary:
             let detail = try await issueDetail(key: key)
@@ -179,7 +188,7 @@ final class JiraPlugin: SchedulePlugin {
         if let hit = commentsCache[key], Date().timeIntervalSince(hit.at) < Self.detailCacheTTL {
             return hit.value
         }
-        let page = try await makeRepository().fetchAllComments(key: key)
+        let page = try await makeRepository().fetchComments(key: key)
         commentsCache[key] = (page, Date())
         return page
     }
@@ -191,7 +200,7 @@ final class JiraPlugin: SchedulePlugin {
 
     // MARK: - 항목 변환 (순수 함수)
 
-    /// 항목 id "jira.<이슈 키>"에서 키를 꺼낸다. 스프린트는 "jira.sprint.<id>"라 호출자가 kind로 먼저 거른다.
+    /// 항목 id "jira.<이슈 키>"에서 키를 꺼낸다. 스프린트는 "jira.sprint.<프로젝트 키>.<id>"라 호출자가 kind로 먼저 거른다.
     nonisolated static func issueKey(of item: ScheduleItem) -> String? {
         guard item.plugin == .jira, item.id.hasPrefix("jira.") else { return nil }
         return String(item.id.dropFirst("jira.".count))
@@ -206,7 +215,8 @@ final class JiraPlugin: SchedulePlugin {
         for sprint in sprints {
             guard let start = sprint.startDate, let end = sprint.endDate else { continue }
             items.append(ScheduleItem(
-                id: "jira.sprint.\(sprint.id)",
+                // 두 프로젝트가 보드를 같이 쓰면 같은 스프린트가 프로젝트마다 한 번씩 온다. 프로젝트 키를 넣어 id가 겹치지 않게 한다.
+                id: "jira.sprint.\(sprint.projectKey).\(sprint.id)",
                 plugin: .jira,
                 group: sprint.projectKey,
                 title: sprint.name,

@@ -10,6 +10,9 @@ final class ReadmeScreenshotTests: XCTestCase {
 
     private var outDir: URL!
 
+    override func setUp() async throws { SnapshotEnvironment.applyUIOverrides() }
+    override func tearDown() async throws { SnapshotEnvironment.restoreUI() }
+
     override func setUpWithError() throws {
         let dir = ProcessInfo.processInfo.environment["LUMEN_SNAPSHOT_DIR"]
         try XCTSkipUnless(dir != nil, "README 스크린샷은 LUMEN_SNAPSHOT_DIR 를 줄 때만 만든다")
@@ -19,7 +22,7 @@ final class ReadmeScreenshotTests: XCTestCase {
     func testSearch() throws {
         let vm = SearchViewModel()
         vm.query = "100 usd"
-        try render(SearchView(viewModel: vm, onDismiss: {}), size: Constants.searchWindowSize, named: "Lumen.png")
+        try render(SearchView(viewModel: vm), size: Constants.searchWindowSize, named: "Lumen.png")
     }
 
     func testTranslator() throws {
@@ -34,7 +37,7 @@ final class ReadmeScreenshotTests: XCTestCase {
              "빠르게 리뷰해 주셔서 고마워요. 오늘 문서를 고칠게요."),
         ] {
             vm.inputText = original
-            vm.handleTranslationResult(translated)
+            vm.handleTranslationResult(original: original, translated: translated)
         }
         try render(TranslatorView(viewModel: vm), size: Constants.translatorWindowSize, named: "Translator.png")
     }
@@ -56,26 +59,33 @@ final class ReadmeScreenshotTests: XCTestCase {
         try render(NoteView(viewModel: NotesViewModel(notesDir: dir)), size: Constants.noteWindowSize, named: "Note.png")
     }
 
-    /// 공용 `ClipboardManager.shared` 의 메모리 속 기록만 잠깐 바꿔 그리고 되돌린다. 디스크 저장은 부르지 않는다.
+    /// 공용 `ClipboardStore.shared` 의 메모리 속 기록만 잠깐 바꿔 그리고 되돌린다. 디스크 저장은 부르지 않는다.
     func testClipboard() throws {
-        let manager = ClipboardManager.shared
-        manager.stopMonitoring()
-        let saved = manager.history
-        defer { manager.history = saved }
+        let store = ClipboardStore.shared
+        store.stopMonitoring()
+        let saved = store.history
+        defer { store.history = saved }
+
+        // 이미지 항목은 파일 경로만 들고 있으므로 예시 그림을 임시 파일로 둔다.
+        let imageFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("readme-clipboard-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: imageFile) }
+        let tiff = try XCTUnwrap(Self.sampleImage().tiffRepresentation)
+        try XCTUnwrap(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])).write(to: imageFile)
 
         let now = Date()
         func text(_ s: String, _ app: String, _ bundle: String, _ minutesAgo: Double) -> ClipboardItem {
-            ClipboardItem(date: now.addingTimeInterval(-minutesAgo * 60), text: s, fileURLs: nil, image: nil,
+            ClipboardItem(date: now.addingTimeInterval(-minutesAgo * 60), text: s, fileURLs: nil,
                           sourceApp: app, sourceAppBundleID: bundle)
         }
-        manager.history = [
+        store.history = [
             text("회의는 목요일 오후 3시로 옮겼어요. 장소는 3층 회의실입니다.", "메모", "com.apple.Notes", 1),
             text("https://developer.apple.com/documentation/swiftui", "Safari", "com.apple.Safari", 4),
             text("git switch -c feat/new_panel", "터미널", "com.apple.Terminal", 9),
-            ClipboardItem(date: now.addingTimeInterval(-15 * 60), text: nil, fileURLs: nil, image: Self.sampleImage(),
+            ClipboardItem(date: now.addingTimeInterval(-15 * 60), text: nil, fileURLs: nil, imagePath: imageFile.path,
                           sourceApp: "미리보기", sourceAppBundleID: "com.apple.Preview"),
             ClipboardItem(date: now.addingTimeInterval(-30 * 60), text: nil,
-                          fileURLs: [URL(fileURLWithPath: "/Users/Shared/기획안.pdf")], image: nil,
+                          fileURLs: [URL(fileURLWithPath: "/Users/Shared/기획안.pdf")],
                           sourceApp: "Finder", sourceAppBundleID: "com.apple.finder"),
             text("let total = items.reduce(0) { $0 + $1.price }", "Xcode", "com.apple.dt.Xcode", 42),
             text("서울특별시 중구 세종대로 110", "지도", "com.apple.Maps", 75),
@@ -102,12 +112,12 @@ final class ReadmeScreenshotTests: XCTestCase {
     private func render(_ view: some View, size: NSSize, named name: String) throws {
         // 토큰 색은 앱 전체 appearance 를 따른다. 창에만 dark 를 주면 설정 화면처럼 배경이 밝게 섞인다.
         let previousAppearance = NSApp.appearance
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        NSApp.appearance = SnapshotEnvironment.appearance
         defer { NSApp.appearance = previousAppearance }
-        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
+        let hosting = NSHostingView(rootView: view.environment(\.colorScheme, SnapshotEnvironment.colorScheme))
         hosting.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.appearance = SnapshotEnvironment.appearance
         window.contentView = hosting
         window.setIsVisible(true)
         hosting.layoutSubtreeIfNeeded()

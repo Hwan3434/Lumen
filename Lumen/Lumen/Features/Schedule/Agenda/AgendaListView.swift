@@ -75,7 +75,7 @@ struct AgendaListView: View {
         VStack(spacing: LumenTokens.Space.stack) {
             LumenIcon("calendar-plus", size: .large)
                 .foregroundStyle(P.inkFaint)
-            Text("연동한 일정이 아직 없어요.\n캘린더나 Jira를 켜면 여기에 함께 보여요.")
+            Text("연동한 일정이 아직 없어요.\n설정에서 일정 출처를 켜면 여기에 함께 보여요.")
                 .lumenText(.label, weight: .regular)
                 .foregroundStyle(P.inkMuted)
                 .multilineTextAlignment(.center)
@@ -156,19 +156,12 @@ private struct AgendaSectionView: View {
         let cal = Calendar.current
         switch section.bucket {
         case .today:
-            return "\(Self.dayFormatter.string(from: today)) · \(count)"
+            return "\(LumenDateFormat.shortDayWithWeekday.string(from: today)) · \(count)"
         case .tomorrow:
             let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
-            return "\(Self.dayFormatter.string(from: tomorrow)) · \(count)"
+            return "\(LumenDateFormat.shortDayWithWeekday.string(from: tomorrow)) · \(count)"
         default:
             return count
         }
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M. d (E)"
-        return f
-    }()
 }

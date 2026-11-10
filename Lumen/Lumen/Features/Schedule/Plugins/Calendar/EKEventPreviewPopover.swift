@@ -4,6 +4,8 @@ import SwiftUI
 /// 캘린더에서 가져온 이벤트라 편집은 캘린더 앱에서 한다.
 struct EKEventPreviewPopover: View {
     let event: ExternalCalendarEvent
+    /// 항목의 시각 표기(`ScheduleItemFormat.timeLabel`). 종일 끝 날짜 규칙을 여기서 다시 계산하지 않는다.
+    let timeLabel: String
     let accent: Color
 
     var body: some View {
@@ -19,7 +21,7 @@ struct EKEventPreviewPopover: View {
 
     private var metaRows: [PreviewMetaRow] {
         var rows: [PreviewMetaRow] = []
-        rows.append(.init(icon: "clock", text: timeText))
+        rows.append(.init(icon: "clock", text: timeLabel))
         if let location = event.location, !location.isEmpty {
             rows.append(.init(icon: "map-pin", text: location))
         }
@@ -27,25 +29,5 @@ struct EKEventPreviewPopover: View {
             rows.append(.init(icon: "link", text: url))
         }
         return rows
-    }
-
-    private var timeText: String {
-        let start = event.startDate
-        let cal = Calendar.current
-        if event.isAllDay {
-            // EKEvent.endDate는 종일 이벤트의 다음날 00:00이라 -1일.
-            let endInclusive = cal.date(byAdding: .day, value: -1, to: event.endDate) ?? start
-            if cal.isDate(start, inSameDayAs: endInclusive) {
-                return "\(LumenDateFormat.dayWithWeekday.string(from: start)) · 종일"
-            }
-            return "\(LumenDateFormat.dayWithWeekday.string(from: start)) – \(LumenDateFormat.dayWithWeekday.string(from: endInclusive)) · 종일"
-        }
-        let end = event.endDate
-        let dayF = LumenDateFormat.dayWithWeekday
-        let timeF = LumenDateFormat.time
-        if cal.isDate(start, inSameDayAs: end) {
-            return "\(dayF.string(from: start)) \(timeF.string(from: start)) – \(timeF.string(from: end))"
-        }
-        return "\(dayF.string(from: start)) \(timeF.string(from: start)) – \(dayF.string(from: end)) \(timeF.string(from: end))"
     }
 }

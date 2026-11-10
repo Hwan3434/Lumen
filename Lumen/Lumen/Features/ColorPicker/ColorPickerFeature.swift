@@ -1,9 +1,8 @@
 import AppKit
-import Carbon.HIToolbox
 
 final class ColorPickerFeature: BuiltInFeature {
     let name = "컬러 피커"
-    let featureDescription = "화면 색상 추출 → HEX 복사"
+    let featureDescription = "화면에서 색을 골라 HEX 값을 복사해요"
     let iconName = "pipette"
     let searchKeywords = ["컬러", "색상", "color", "picker", "스포이드", "hex", "rgb"]
 
@@ -27,8 +26,7 @@ final class ColorPickerFeature: BuiltInFeature {
         let b = Int(rgb.blueComponent * 255)
         let hex = String(format: "#%02X%02X%02X", r, g, b)
 
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(hex, forType: .string)
+        NSPasteboard.general.copy(hex)
 
         LumenToast.show(text: "\(hex)를 복사했어요", swatch: rgb)
     }

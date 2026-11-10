@@ -2,6 +2,10 @@ import EventKit
 import Foundation
 import SwiftUI
 
+nonisolated extension SchedulePluginID {
+    static let calendar = SchedulePluginID("calendar")
+}
+
 nonisolated struct CalendarSettings: Codable, Equatable {
     var enabled = false
     var hiddenCalendarIDs: Set<String> = []
@@ -161,11 +165,9 @@ final class CalendarPlugin: SchedulePlugin {
     }
 
     func detailView(for item: ScheduleItem, accent: Color, variant: ScheduleDetailVariant,
-                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView {
-        guard let event = eventsByItemID[item.id] else {
-            return AnyView(ScheduleItemPreview(item: item, accent: accent))
-        }
-        return AnyView(EKEventPreviewPopover(event: event, accent: accent))
+                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView? {
+        guard let event = eventsByItemID[item.id] else { return nil }
+        return AnyView(EKEventPreviewPopover(event: event, timeLabel: ScheduleItemFormat.timeLabel(item), accent: accent))
     }
 
     /// 아직 묻지 않았으면 가져올 때 시스템이 묻는다. 거부·제한된 경우만 안내한다.
@@ -185,19 +187,21 @@ final class CalendarPlugin: SchedulePlugin {
         AnyView(CalendarSettingsTab(plugin: self, action: action))
     }
 
-    /// 종일 이벤트의 끝은 EventKit이 다음날 0시로 주므로 하루 당겨 포함 범위로 만든다.
+    /// 종일 이벤트의 끝을 포함 범위(마지막 날 0시)로 바꾼다. EventKit은 끝을 다음날 0시로 주기도 하고
+    /// 마지막 날 23:59:59로 주기도 해서, 하루를 빼지 않고 끝 1초 전이 속한 날을 마지막 날로 본다.
     nonisolated static func makeItem(_ event: ExternalCalendarEvent) -> ScheduleItem {
         let cal = Calendar.current
         let end: Date?
         if event.isAllDay {
-            let inclusive = cal.date(byAdding: .day, value: -1, to: event.endDate) ?? event.endDate
-            end = cal.isDate(event.startDate, inSameDayAs: inclusive) ? nil : inclusive
+            let lastDay = cal.startOfDay(for: event.endDate.addingTimeInterval(-1))
+            end = lastDay > cal.startOfDay(for: event.startDate) ? lastDay : nil
         } else {
             end = event.endDate
         }
         // 반복 이벤트는 모든 회차가 같은 eventIdentifier를 가지므로 시작 시각을 붙여야 id가 겹치지 않는다.
+        // 캘린더 id도 넣는다 — 중복 제거 키(`EventOccurrenceKey`)가 캘린더까지 보므로 id가 그보다 성기면 안 된다.
         return ScheduleItem(
-            id: "calendar.\(event.id).\(Int(event.startDate.timeIntervalSince1970))",
+            id: "calendar.\(event.calendarIdentifier).\(event.id).\(Int(event.startDate.timeIntervalSince1970))",
             plugin: .calendar,
             group: event.calendarIdentifier,
             title: event.title,

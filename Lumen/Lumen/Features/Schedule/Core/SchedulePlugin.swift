@@ -22,16 +22,18 @@ protocol SchedulePlugin: AnyObject, Observable {
     /// 메뉴바의 다음 일정 라벨에 이 플러그인 항목을 올릴지.
     var contributesToMenuBarLabel: Bool { get }
 
+    /// 숨긴 묶음의 항목도 함께 돌려준다. 칩을 켜고 끌 때 다시 조회하지 않기 위해서다.
     func fetch(window: DateInterval) async throws -> [ScheduleItem]
     /// 데이터가 바뀌었을 때(설정, 시스템 변경 알림, 직접 편집) 부를 콜백을 받아 둔다. 스토어가 한 번 등록한다.
     func startObserving(_ onChange: @escaping @MainActor () -> Void)
-    /// 캘린더 위 칩과 설정 탭 스위치가 같이 부른다.
+    /// 캘린더 위 칩과 설정 탭 스위치가 같이 부른다. 표시 여부만 저장하고 `onChange`는 부르지 않는다.
     func setGroupVisible(_ groupID: String, _ visible: Bool)
     /// 항목 상세. 네트워크가 필요하면 받은 뒤에 돌려준다 — macOS 팝오버는 뜬 뒤 크기가 안 바뀌기 때문이다.
+    /// nil을 돌려주면 스토어가 기본 미리보기(`ScheduleItemPreview`)를 띄운다.
     func detailView(for item: ScheduleItem,
                     accent: Color,
                     variant: ScheduleDetailVariant,
-                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView
+                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView?
     /// 빈 날짜를 더블클릭했을 때 새 항목을 만드는 뷰. 지원하지 않으면 nil.
     func newItemView(on day: Date, dismiss: @escaping @MainActor () -> Void) -> AnyView?
     /// 켜져 있지만 사용자가 무언가 해야 가져올 수 있을 때(권한 거부 등) 목록 위에 띄울 안내. 없으면 nil.
@@ -46,6 +48,8 @@ extension SchedulePlugin {
     var cacheTTL: TimeInterval? { nil }
     var contributesToMenuBarLabel: Bool { false }
     func startObserving(_ onChange: @escaping @MainActor () -> Void) {}
+    func detailView(for item: ScheduleItem, accent: Color, variant: ScheduleDetailVariant,
+                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView? { nil }
     func newItemView(on day: Date, dismiss: @escaping @MainActor () -> Void) -> AnyView? { nil }
     var setupHint: String? { nil }
     var hasSettingsTab: Bool { false }

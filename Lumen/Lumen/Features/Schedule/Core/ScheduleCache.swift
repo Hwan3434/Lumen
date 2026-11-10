@@ -9,13 +9,11 @@ enum ScheduleCache {
     }
 
     static func load(_ id: SchedulePluginID) -> Payload? {
-        guard let data = try? Data(contentsOf: url(for: id)) else { return nil }
-        return try? decoder.decode(Payload.self, from: data)
+        LumenStorage.read(Payload.self, from: url(for: id), decoder: decoder)
     }
 
     static func save(_ items: [ScheduleItem], for id: SchedulePluginID) {
-        guard let data = try? encoder.encode(Payload(items: items, savedAt: Date())) else { return }
-        try? data.write(to: url(for: id), options: .atomic)
+        LumenStorage.write(Payload(items: items, savedAt: Date()), to: url(for: id), encoder: encoder)
     }
 
     static func remove(_ id: SchedulePluginID) {

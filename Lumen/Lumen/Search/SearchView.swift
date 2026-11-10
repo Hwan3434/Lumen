@@ -2,37 +2,32 @@ import SwiftUI
 
 struct SearchView: View {
     @State var viewModel = SearchViewModel()
-    var onDismiss: () -> Void
 
     /// X 버튼 클릭 시 즉시 숨기지 않고 확인 alert를 띄우기 위한 pending state.
     /// (app id, 표시용 이름)을 동시에 들고 있어 alert 메시지에 이름을 넣을 수 있다.
     @State private var pendingHide: (id: String, name: String)?
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            mainPanel
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
-        .alert(
-            "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
-            isPresented: Binding(
-                get: { pendingHide != nil },
-                set: { if !$0 { pendingHide = nil } }
-            ),
-            presenting: pendingHide
-        ) { item in
-            Button("숨기기", role: .destructive) {
-                viewModel.hideApp(item.id)
-                pendingHide = nil
+        mainPanel
+            .lumenPanel()
+            .alert(
+                "‘\(pendingHide?.name ?? "")’을(를) 숨길까요?",
+                isPresented: Binding(
+                    get: { pendingHide != nil },
+                    set: { if !$0 { pendingHide = nil } }
+                ),
+                presenting: pendingHide
+            ) { item in
+                Button("숨기기", role: .destructive) {
+                    viewModel.hideApp(item.id)
+                    pendingHide = nil
+                }
+                Button("취소", role: .cancel) {
+                    pendingHide = nil
+                }
+            } message: { _ in
+                Text("검색 결과에 더 이상 보이지 않아요. 설정의 [숨긴 앱]에서 언제든 되돌릴 수 있어요.")
             }
-            Button("취소", role: .cancel) {
-                pendingHide = nil
-            }
-        } message: { _ in
-            Text("검색 결과에 더 이상 보이지 않아요. 설정의 [숨긴 앱]에서 언제든 되돌릴 수 있어요.")
-        }
     }
 
     private var mainPanel: some View {
@@ -41,10 +36,8 @@ struct SearchView: View {
             HStack(spacing: 0) {
                 resultsList
                     .frame(width: LumenTokens.Space.size(340))
-                Rectangle()
-                    .fill(LumenTokens.Palette.borderSubtle)
-                    .frame(width: 1)
-                SearchDetailView(item: viewModel.selectedItem, viewModel: viewModel)
+                LumenHairline(.vertical)
+                SearchDetailView(item: viewModel.selectedItem, appDetail: viewModel.selectedAppDetail)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
@@ -63,7 +56,7 @@ struct SearchView: View {
                 LumenIcon("search", size: .large)
                     .foregroundStyle(LumenTokens.Palette.inkMuted)
             },
-            trailing: { LumenKbd(label: "⌘K") }
+            trailing: { EmptyView() }
         )
         .padding(.horizontal, LumenTokens.Space.pad)
         .frame(height: LumenTokens.Space.size(64))
@@ -83,17 +76,17 @@ struct SearchView: View {
                                 .padding(.top, LumenTokens.Space.s3)
                                 .padding(.bottom, LumenTokens.Space.s1)
                         }
-                        resultRow(item: item, index: index)
+                        resultRow(item: item)
                     }
                 }
                 .padding(.horizontal, LumenTokens.Space.inline)
                 .padding(.bottom, LumenTokens.Space.inline)
             }
             .scrollIndicators(.hidden)
-            .onChange(of: viewModel.selectedIndex) { _, newValue in
+            .onChange(of: viewModel.selectedID) { _, newValue in
                 withAnimation(LumenTokens.Motion.easeMove()) {
-                    if let item = viewModel.results[safe: newValue] {
-                        proxy.scrollTo(item.id, anchor: .center)
+                    if let newValue {
+                        proxy.scrollTo(newValue, anchor: .center)
                     }
                 }
             }
@@ -101,10 +94,10 @@ struct SearchView: View {
     }
 
     @ViewBuilder
-    private func resultRow(item: SearchResultItem, index: Int) -> some View {
-        let isSelected = index == viewModel.selectedIndex
+    private func resultRow(item: SearchResultItem) -> some View {
+        let isSelected = item.id == viewModel.selectedID
         Button {
-            viewModel.selectedIndex = index
+            viewModel.select(item)
         } label: {
             rowContent(item: item, isSelected: isSelected)
                 .padding(.vertical, LumenTokens.Space.scaled(12))
@@ -126,7 +119,7 @@ struct SearchView: View {
         case .calculation(let expr, let result):
             ConversionRow(icon: "equal", input: expr, result: result, isSelected: isSelected)
 
-        case .currency(let input, let result, _):
+        case .currency(let input, let result, _, _):
             ConversionRow(icon: "circle-dollar-sign", input: input, result: result, isSelected: isSelected)
 
         case .feature(let feature):
@@ -139,8 +132,6 @@ struct SearchView: View {
     private var footer: some View {
         LumenFooterBar(actions: [
             .init(label: footerActionLabel, kbd: "⏎", primary: true),
-            .init(label: "명령", kbd: "⌘K"),
-            .init(label: "실행", kbd: "⌥⏎"),
         ])
     }
 
@@ -202,14 +193,13 @@ private struct AppRowContent: View {
                 .interpolation(.high)
                 .frame(width: LumenIcon.Size.large.points, height: LumenIcon.Size.large.points)
             Text(appItem.name)
-                .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+                .lumenRowTitle(selected: isSelected)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: LumenTokens.Space.inline)
             if hovered {
                 LumenIconButton(icon: "eye-off", label: "검색 결과에서 숨기기", action: onHide)
-                    .padding(.vertical, -LumenIconButton.inlineOverhang)
+                    .inRow()
                     .transition(.opacity)
             }
         }
@@ -229,8 +219,7 @@ private struct FeatureRowContent: View {
             LumenIcon(feature.iconName, size: .large)
                 .foregroundStyle(LumenTokens.Palette.inkMuted)
             Text(feature.name)
-                .lumenText(.body, weight: isSelected ? .semibold : .medium)
-                .foregroundStyle(isSelected ? LumenTokens.Palette.brand : LumenTokens.Palette.ink)
+                .lumenRowTitle(selected: isSelected)
                 .lineLimit(1)
             Spacer(minLength: LumenTokens.Space.inline)
             if let toggle = feature as? ToggleableFeature, toggle.isOn {

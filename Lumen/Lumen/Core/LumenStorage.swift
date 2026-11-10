@@ -3,7 +3,8 @@ import Foundation
 /// Application Support/Lumen 디렉터리에 대한 단일 진입점.
 /// Feature가 직접 경로를 만들지 않고 이 namespace를 통과하게 해서
 /// 마이그레이션·purge·로깅이 한 곳에 모이도록 한다.
-enum LumenStorage {
+/// 클립보드·리소스 기록 저장이 백그라운드 큐에서 부르므로 `nonisolated`다 — 상태를 두지 말 것.
+nonisolated enum LumenStorage {
     /// `~/Library/Application Support/Lumen` — 첫 접근 시 디렉터리가 없으면 생성.
     static let baseURL: URL = {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -38,7 +39,6 @@ enum LumenStorage {
         case clipboardHistory
         case clipboardImagesDir
         case hiddenApps
-        case usageHistory
         case resourceAnomalies
         case currencyRates
         case localEvents
@@ -52,7 +52,6 @@ enum LumenStorage {
             case .clipboardHistory:    return "clipboard_history.json"
             case .clipboardImagesDir:  return "images"
             case .hiddenApps:          return "hidden_apps.json"
-            case .usageHistory:        return "usage_history.json"
             case .resourceAnomalies:   return "resource_anomalies.json"
             case .currencyRates:       return "currency_rates.json"
             case .localEvents:         return "local_events.json"
@@ -79,7 +78,7 @@ enum LumenStorage {
         read(type, from: url(for: slot), decoder: decoder)
     }
 
-    /// 경로를 직접 받는 판 — 테스트가 임시 디렉터리를 주입할 때 쓴다.
+    /// 경로를 직접 받는 판 — 슬롯 디렉터리 안의 파일(노트 순서, 일정 캐시)과 테스트가 주입한 임시 경로에 쓴다.
     static func read<T: Decodable>(_ type: T.Type, from fileURL: URL,
                                    decoder: JSONDecoder = JSONDecoder()) -> T? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

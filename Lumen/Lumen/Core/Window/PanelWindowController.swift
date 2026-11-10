@@ -80,6 +80,7 @@ class PanelWindowController: NSObject {
         let isFirstShow = panel == nil
         if isFirstShow {
             let p = createPanel()
+            p.onOrderOut = { [weak self] in self?.willHide() }
             self.panel = p
             didCreatePanel(p)
         }
@@ -107,7 +108,6 @@ class PanelWindowController: NSObject {
     }
 
     func hide(activatePreviousApp: Bool = true) {
-        willHide()
         let shouldActivate = activatePreviousApp && !spaceChangedSinceShow
         panel?.activatePreviousAppOnClose = shouldActivate
         panel?.orderOut(nil)
@@ -141,6 +141,17 @@ class PanelWindowController: NSObject {
         return panel
     }
 
+    /// 마우스가 있는 화면 한가운데에 패널을 놓는다. 매번 가운데로 되돌릴 패널은 `configureBeforeShow`에서,
+    /// 사용자가 옮긴 자리를 기억할 패널(노트, 일정)은 `didCreatePanel`에서 부른다.
+    func centerUnderMouse(_ panel: KeyablePanel, size: NSSize) {
+        let frame = NSScreen.underMouse.visibleFrame
+        panel.setFrame(
+            NSRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2,
+                   width: size.width, height: size.height),
+            display: true
+        )
+    }
+
     /// panel 생성 직후 1회 호출 — 초기 위치 지정 등 1회성 설정.
     func didCreatePanel(_ panel: KeyablePanel) {}
 
@@ -150,7 +161,8 @@ class PanelWindowController: NSObject {
     /// 매 show마다 activate 직후에 호출 — event monitor 등록 등.
     func didShow(_ panel: KeyablePanel) {}
 
-    /// 매 hide마다 orderOut 직전에 호출 — event monitor 해제 등.
+    /// 보이던 패널이 내려갈 때마다 호출 — event monitor 해제 등.
+    /// `hide()`뿐 아니라 패널에 `orderOut`을 직접 부르는 경로에서도 불린다(`KeyablePanel.onOrderOut`).
     func willHide() {}
 
     /// 화면 밀도에 따른 패널 크기. nil이면 밀도가 바뀌어도 크기를 건드리지 않는다.

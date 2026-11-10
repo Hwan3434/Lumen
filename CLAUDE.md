@@ -1,3 +1,5 @@
+@AGENTS.md
+
 ## graphify
 
 `graphify-out/` 의 지식 그래프는 필요할 때만 쓴다. 평소 코드 질문은 grep·Read 로 바로 찾는다.

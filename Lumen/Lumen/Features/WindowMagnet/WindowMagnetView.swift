@@ -4,34 +4,21 @@ private typealias P = LumenTokens.Palette
 
 struct WindowMagnetView: View {
     @State var viewModel = WindowMagnetViewModel()
-    let onSelect: (WindowMagnetManager.Direction, CGFloat) -> Void
+    let onSelect: (WindowMagnetService.Direction, CGFloat) -> Void
 
     var body: some View {
-        ZStack {
-            LumenPanelBackground()
-            VStack(spacing: 0) {
-                HStack(spacing: LumenTokens.Space.inline) {
-                    LumenIcon("columns-2")
-                        .foregroundStyle(P.inkMuted)
-                    Text("창 크기 선택")
-                        .lumenText(.body, weight: .semibold)
-                        .foregroundStyle(P.ink)
-                    Spacer()
-                }
-                .padding(.horizontal, LumenTokens.Space.pad)
-                .frame(height: LumenTokens.Space.size(56))
+        VStack(spacing: 0) {
+            LumenPanelHeader(icon: "columns-2", title: "창 크기 선택")
 
-                LumenHairline()
-
+            ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(viewModel.options.enumerated()), id: \.offset) { index, option in
                             let selected = index == viewModel.selectedIndex
                             Text(option.label)
-                                .lumenText(.body, weight: selected ? .semibold : .medium)
-                                .foregroundStyle(selected ? P.brand : P.ink)
+                                .lumenRowTitle(selected: selected)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, LumenTokens.Space.scaled(14))
+                                .padding(.vertical, LumenTokens.Space.rowY)
                                 .padding(.horizontal, LumenTokens.Space.s4)
                                 .background(selected ? P.brandSoft : .clear, in: LumenShape.rect(LumenTokens.Radius.md))
                                 .contentShape(Rectangle())
@@ -42,14 +29,20 @@ struct WindowMagnetView: View {
                                 .onTapGesture {
                                     viewModel.selectedIndex = index
                                 }
+                                .id(index)
                         }
                     }
                     .padding(LumenTokens.Space.inline)
                 }
                 .scrollIndicators(.hidden)
+                // 화살표로 고른 줄이 보이는 영역 밖으로 나가지 않게 따라간다.
+                .onChange(of: viewModel.selectedIndex) { _, newValue in
+                    withAnimation(LumenTokens.Motion.easeMove()) {
+                        proxy.scrollTo(newValue, anchor: .center)
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(LumenShape.rect(LumenTokens.Radius.xl))
+        .lumenPanel()
     }
 }

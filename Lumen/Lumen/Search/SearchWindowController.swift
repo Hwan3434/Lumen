@@ -22,7 +22,7 @@ final class SearchWindowController: PanelWindowController {
     }
 
     override func createPanel() -> KeyablePanel {
-        let panel = makePanel(size: NSSize(width: Constants.searchWindowWidth, height: Constants.searchWindowHeight))
+        let panel = makePanel(size: Constants.searchWindowSize)
         panel.isMovableByWindowBackground = false
 
         let vm = SearchViewModel()
@@ -31,8 +31,8 @@ final class SearchWindowController: PanelWindowController {
         // Search 고유 키 처리: ↑↓ 이동, ⏎ 실행, esc 닫기.
         // 다른 panel과 동일하게 onKeyEvent로 일관 처리 — KeyablePanel base는
         // Search를 모름.
-        panel.onKeyEvent = { [weak self, weak panel] keyCode in
-            guard let vm = self?.viewModel, let panel else { return false }
+        panel.onKeyEvent = { [weak self] keyCode in
+            guard let vm = self?.viewModel else { return false }
             switch keyCode {
             case KeyCode.downArrow: vm.moveDown(); return true
             case KeyCode.upArrow:   vm.moveUp();   return true
@@ -42,16 +42,14 @@ final class SearchWindowController: PanelWindowController {
                 }
                 return true
             case KeyCode.escape:
-                panel.orderOut(nil)
+                self?.hide()
                 return true
             default:
                 return false
             }
         }
 
-        let searchView = SearchView(viewModel: vm) { [weak self] in
-            self?.hide()
-        }
+        let searchView = SearchView(viewModel: vm)
 
         panel.contentView = NSHostingView(rootView: searchView)
         return panel
@@ -60,13 +58,7 @@ final class SearchWindowController: PanelWindowController {
     override func configureBeforeShow(_ panel: KeyablePanel) {
         MemoryTrace.record("search:configureBeforeShow:enter")
         viewModel?.reset()
-        let frame = NSScreen.underMouse.visibleFrame
-        let x = frame.midX - Constants.searchWindowWidth / 2
-        let y = frame.midY - Constants.searchWindowHeight / 2
-        panel.setFrame(
-            NSRect(x: x, y: y, width: Constants.searchWindowWidth, height: Constants.searchWindowHeight),
-            display: true
-        )
+        centerUnderMouse(panel, size: Constants.searchWindowSize)
     }
 
     override func didShow(_ panel: KeyablePanel) {

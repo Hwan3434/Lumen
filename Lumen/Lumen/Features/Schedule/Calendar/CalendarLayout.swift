@@ -82,7 +82,7 @@ nonisolated func layoutWeek(weekStart: Date, items: [ScheduleItem], maxLanes: In
     var candidates: [Candidate] = []
     for item in items {
         let s = cal.startOfDay(for: item.start)
-        let e = cal.startOfDay(for: item.end ?? item.start)
+        let e = item.lastDay
         if e < weekStartDay || s > weekEndDay { continue }
         let clampedStart = max(s, weekStartDay)
         let clampedEnd = min(e, weekEndDay)
@@ -161,6 +161,13 @@ enum CalendarDateUtils {
     /// 날짜 숫자를 빨갛게 칠할 날 — 토·일요일과 공휴일.
     static func isRedDay(_ date: Date) -> Bool {
         Calendar.current.isDateInWeekend(date) || KoreanHolidays.name(for: date) != nil
+    }
+
+    /// 날짜 숫자의 색 우선순위: 오늘 > 토·일·공휴일 > 기본.
+    static func dayNumberColor(isToday: Bool, day: Date) -> Color {
+        if isToday { return LumenTokens.Palette.brand }
+        if isRedDay(day) { return LumenTokens.Palette.danger }
+        return LumenTokens.Palette.ink
     }
 
     /// 한국 음력(단기력). 중국 음력(`.chinese`)은 2028년 설날처럼 가끔 하루씩 어긋나 쓰지 않는다.

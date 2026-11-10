@@ -52,9 +52,8 @@ nonisolated struct IssueDetail {
     let summary: String
     let status: String
     let descriptionText: String
+    /// 댓글 내용은 ⌘클릭 댓글 팝오버가 따로 받는다. 미리보기는 개수만 보여 준다.
     let commentCount: Int
-    /// 최신 댓글 일부만 — 팝오버는 미리보기이므로 전체 스레드는 ⌘클릭 댓글 팝오버가 받는다.
-    let recentComments: [IssueComment]
 }
 
 // MARK: - 설정

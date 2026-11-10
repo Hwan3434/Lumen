@@ -101,11 +101,10 @@ final class NoteWindowController: PanelWindowController {
     }
 
     override func didCreatePanel(_ panel: KeyablePanel) {
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
+    override func configureBeforeShow(_ panel: KeyablePanel) {
+        viewModel?.reloadFromDisk()
+    }
 }

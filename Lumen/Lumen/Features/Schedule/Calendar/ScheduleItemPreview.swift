@@ -12,7 +12,7 @@ struct ScheduleItemPreview: View {
             accentLabel: item.subtitle ?? item.title,
             title: item.title,
             metaRows: metaRows,
-            footer: { footer }
+            footer: { PreviewOpenFooter(label: "열기", url: item.url) }
         )
     }
 
@@ -23,24 +23,6 @@ struct ScheduleItemPreview: View {
             rows.append(.init(icon: "map-pin", text: location))
         }
         return rows
-    }
-
-    @ViewBuilder
-    private var footer: some View {
-        if let url = item.url {
-            HStack(spacing: LumenTokens.Space.inline) {
-                Spacer()
-                Button {
-                    openScheduleURL(url)
-                } label: {
-                    Label { Text("열기") } icon: { LumenIcon("external-link", size: .small) }
-                }
-                .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
-            }
-            .padding(.horizontal, LumenTokens.Space.pad)
-            .padding(.bottom, LumenTokens.Space.s4)
-            .background(LumenTokens.Palette.surfaceRaised)
-        }
     }
 }
 

@@ -2,11 +2,15 @@ import AppKit
 import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let hotkeyManager = HotkeyManager()
+    let hotkeys = HotkeyRegistry()
     let searchWindowController = SearchWindowController()
     var appStatusBar: AppStatusBar!
+    /// 테스트는 실제 앱을 호스트로 띄운다(같은 번들 ID·설정·데이터 폴더). 그때 단축키 등록, 클립보드 기록,
+    /// 클램쉘 모드 복구(`restoreIfLeftOn`) 같은 시작 작업이 돌면 설치된 Lumen의 상태를 건드린다.
+    private static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
+        startingUpdater: !AppDelegate.isRunningTests,
         updaterDelegate: nil,
         userDriverDelegate: nil
     )
@@ -19,54 +23,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MemoryTrace.reset()
         MemoryTrace.record("applicationDidFinishLaunching:start")
 
-        LumenStorage.purgeRetiredFilesIfNeeded()
-        ScheduleMigration.runIfNeeded()
+        // 글꼴과 테마는 렌더 테스트도 쓰므로 가드보다 먼저 한다.
         LumenFont.register()
         LumenAppearance.saved.apply()
+        guard !Self.isRunningTests else { return }
 
-        let translator = TranslatorFeature()
-        FeatureRegistry.shared.register(translator)
-        MemoryTrace.record("feature_registered: Translator")
+        LumenStorage.purgeRetiredFilesIfNeeded()
 
-        let windowMagnet = WindowMagnetFeature()
-        FeatureRegistry.shared.register(windowMagnet)
-        MemoryTrace.record("feature_registered: WindowMagnet")
-
-        let clipboard = ClipboardFeature()
-        FeatureRegistry.shared.register(clipboard)
-        MemoryTrace.record("feature_registered: Clipboard")
-
-        let note = NoteFeature()
-        FeatureRegistry.shared.register(note)
-        MemoryTrace.record("feature_registered: Note")
-
-        let caffeine = CaffeineFeature()
-        FeatureRegistry.shared.register(caffeine)
-        MemoryTrace.record("feature_registered: Caffeine")
-
-        // 덮개 모드는 시스템 전역 설정을 바꾸므로 카페인과 달리 자동으로 켜지 않는다.
-        FeatureRegistry.shared.register(LidAwakeFeature.shared)
-        MemoryTrace.record("feature_registered: LidAwake")
-
-        let schedule = ScheduleFeature()
-        FeatureRegistry.shared.register(schedule)
-        MemoryTrace.record("feature_registered: Schedule")
-
-        let colorPicker = ColorPickerFeature()
-        FeatureRegistry.shared.register(colorPicker)
-        MemoryTrace.record("feature_registered: ColorPicker")
-
-        let resourceMonitor = ResourceMonitorFeature()
-        FeatureRegistry.shared.register(resourceMonitor)
-        MemoryTrace.record("feature_registered: ResourceMonitor")
-
-        // 윈도우 마그넷용 접근성 권한 (단축키와는 무관)
-        if windowMagnet.isEnabled {
-            AccessibilityHelper.requestAccessIfNeeded()
+        // 순서가 곧 검색 기본 목록과 메뉴바 메뉴의 순서다.
+        let features: [BuiltInFeature] = [
+            TranslatorFeature(), WindowMagnetFeature(), ClipboardFeature(), NoteFeature(), CaffeineFeature(),
+            LidAwakeFeature.shared, ScheduleFeature(), ColorPickerFeature(), ResourceMonitorFeature(),
+        ]
+        for feature in features {
+            FeatureRegistry.shared.register(feature)
+            MemoryTrace.record("feature_registered: \(feature.name)")
         }
 
         // 메인 검색창 단축키
-        hotkeyManager.register(
+        hotkeys.register(
             keyCode: Constants.searchHotKeyCode,
             modifiers: Constants.searchHotKeyModifiers
         ) { [weak self] in
@@ -74,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 떠있는 우리 패널로 키보드 포커스 복귀
-        hotkeyManager.register(
+        hotkeys.register(
             keyCode: Constants.focusHotKeyCode,
             modifiers: Constants.focusHotKeyModifiers
         ) {
@@ -83,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for feature in FeatureRegistry.shared.enabledFeatures {
             for hotkey in feature.hotkeys {
-                hotkeyManager.register(
+                hotkeys.register(
                     keyCode: hotkey.keyCode,
                     modifiers: hotkey.modifiers,
                     action: hotkey.action
@@ -91,8 +66,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        hotkeyManager.start()
+        hotkeys.start()
         MemoryTrace.record("hotkeys_registered")
+        // 다른 앱이 먼저 잡은 조합(⌘Space = Spotlight 기본값)은 등록이 실패해도 아무 반응이 없어 알려 준다.
+        if !hotkeys.failedRegistrations.isEmpty {
+            let labels = hotkeys.failedRegistrations.joined(separator: ", ")
+            LumenToast.show(text: "\(labels) 단축키를 등록하지 못했어요. 다른 앱과 겹치는지 확인해 주세요", duration: 5)
+        }
 
         // Search 입력에서 환율 변환에 쓰는 USD-기준 환율 캐시 — 24h마다 백그라운드 갱신.
         CurrencyService.shared.refreshIfStale()
@@ -162,6 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard !Self.isRunningTests else { return }
         if let observer = keyWindowObserver {
             NotificationCenter.default.removeObserver(observer)
             keyWindowObserver = nil
@@ -170,9 +151,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(observer)
             sparkleWindowObserver = nil
         }
-        hotkeyManager.stop()
+        hotkeys.stop()
         FeatureRegistry.shared.teardownAll()
         appStatusBar?.teardown()
-        ClipboardManager.shared.flushPendingSave()
     }
 }

@@ -23,8 +23,13 @@ class KeyablePanel: NSPanel {
     /// becomeKey 시 첫 editable text field에 자동으로 makeFirstResponder 할지 여부.
     var autoFocusTextField = true
 
+    /// 보이던 패널이 내려가기 직전에 불린다. `PanelWindowController`가 `willHide()`를 여기에 건다 —
+    /// 컨트롤러의 `hide()`를 거치지 않고 `orderOut`을 직접 부르는 경로(설정 창이 뜰 때 등)에서도 정리가 돌도록.
+    var onOrderOut: (() -> Void)?
+
     override func orderOut(_ sender: Any?) {
         let wasVisible = isVisible
+        if wasVisible { onOrderOut?() }
         super.orderOut(sender)
         if wasVisible && activatePreviousAppOnClose, let app = previousApp {
             app.activate()

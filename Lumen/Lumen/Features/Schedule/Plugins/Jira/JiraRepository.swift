@@ -12,8 +12,6 @@ actor JiraRepository {
     /// Jira "Start date" 커스텀 필드 ID와 JQL 표현.
     static let startDateFieldId = "customfield_10015"
     static let startDateJQL = "\"Start date\""
-    /// 미리보기 팝오버에 노출할 최신 댓글 수.
-    static let previewCommentLimit = 3
 
     private let workspaceSlug: String
     private let authHeader: String
@@ -33,101 +31,100 @@ actor JiraRepository {
     /// 담당 이슈 중 시작일이나 마감일이 범위 안에 있는 것. 둘 사이에 범위를 통째로 품는 것도 포함.
     func fetchIssues(projectKeys: [String], window: DateInterval) async throws -> [JiraIssue] {
         let cloudId = try await ensureCloudId()
-        let start = isoDateString(window.start)
-        let end = isoDateString(window.end)
-        let sd = Self.startDateJQL
-        let overlap = "(duedate >= \"\(start)\" AND duedate <= \"\(end)\") OR (\(sd) >= \"\(start)\" AND \(sd) <= \"\(end)\") OR (\(sd) < \"\(start)\" AND duedate > \"\(end)\")"
-        let jql = "project in (\(projectKeys.joined(separator: ", "))) AND assignee = currentUser() AND (\(overlap)) ORDER BY duedate ASC"
-        return try await searchIssues(cloudId: cloudId, jql: jql, maxResults: 1000)
+        return try await searchIssues(cloudId: cloudId, jql: Self.issuesJQL(projectKeys: projectKeys, window: window), cap: 1000)
     }
 
-    /// 프로젝트별 활성 스프린트. 보드가 없거나 실패한 프로젝트는 건너뛴다 — 부가 정보라 던지지 않는다.
-    func fetchActiveSprints(projectKeys: [String]) async -> [SprintInfo] {
-        guard let cloudId = try? await ensureCloudId() else { return [] }
-        return await withTaskGroup(of: SprintInfo?.self) { group in
+    /// 프로젝트별 활성 스프린트. 보드나 진행 중인 스프린트가 없는 프로젝트는 건너뛴다.
+    func fetchActiveSprints(projectKeys: [String]) async throws -> [SprintInfo] {
+        let cloudId = try await ensureCloudId()
+        return try await withThrowingTaskGroup(of: SprintInfo?.self) { group in
             for projectKey in projectKeys {
                 group.addTask {
-                    guard let boardId = try? await self.fetchBoardId(cloudId: cloudId, projectKey: projectKey) else { return nil }
-                    return try? await self.fetchActiveSprint(cloudId: cloudId, boardId: boardId, projectKey: projectKey)
+                    do {
+                        guard let boardId = try await self.fetchBoardId(cloudId: cloudId, projectKey: projectKey) else { return nil }
+                        return try await self.fetchActiveSprint(cloudId: cloudId, boardId: boardId, projectKey: projectKey)
+                    } catch where !Self.failsRefresh(error) {
+                        return nil
+                    }
                 }
             }
             var result: [SprintInfo] = []
-            for await sprint in group {
+            for try await sprint in group {
                 if let sprint { result.append(sprint) }
             }
             return result.sorted { $0.projectKey < $1.projectKey }
         }
     }
 
-    /// 마감일 있는 열린 에픽. 실패하면 빈 배열.
-    func fetchEpics(projectKeys: [String]) async -> [JiraIssue] {
-        guard let cloudId = try? await ensureCloudId() else { return [] }
-        let jql = "project in (\(projectKeys.joined(separator: ", "))) AND issuetype = Epic AND statusCategory != done AND duedate is not EMPTY ORDER BY project ASC, duedate ASC"
-        return (try? await searchIssues(cloudId: cloudId, jql: jql, maxResults: 20)) ?? []
+    /// 마감일이 범위 안에 있는 열린 에픽, 최대 20개.
+    func fetchEpics(projectKeys: [String], window: DateInterval) async throws -> [JiraIssue] {
+        let cloudId = try await ensureCloudId()
+        do {
+            return try await searchIssues(cloudId: cloudId, jql: Self.epicsJQL(projectKeys: projectKeys, window: window), cap: 20)
+        } catch where !Self.failsRefresh(error) {
+            return []
+        }
+    }
+
+    /// 스프린트·에픽은 부가 정보라 "이 프로젝트엔 없다"에 해당하는 실패(보드 없음, 권한 없음, 에픽 유형 없음)는
+    /// 로그만 남기고 넘어간다. 인증 실패, 요청 제한, 서버 오류, 네트워크 오류는 갱신 전체를 실패로 돌린다 —
+    /// 삼키면 스프린트·에픽이 빠진 결과가 성공으로 처리돼 30분 동안 캐시된다.
+    static func failsRefresh(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == errorDomain else { return true }
+        return nsError.code == 401 || nsError.code == 429 || (500...599).contains(nsError.code)
     }
 
     func fetchIssueDetail(key: String) async throws -> IssueDetail {
         let cloudId = try await ensureCloudId()
 
-        // 본문과 댓글은 서로 독립이라 동시에 받는다 — 댓글 때문에 미리보기가 느려지지 않도록.
+        // 본문과 댓글 수는 서로 독립이라 동시에 받는다 — 댓글 때문에 미리보기가 느려지지 않도록.
         async let fieldsTask = fetchIssueFields(cloudId: cloudId, key: key)
-        async let commentsTask = fetchRecentComments(cloudId: cloudId, key: key)
+        async let commentCount = fetchCommentCount(cloudId: cloudId, key: key)
 
         let (summary, statusName, descText) = try await fieldsTask
-        let (commentCount, recentComments) = await commentsTask
-
         return IssueDetail(key: key, summary: summary, status: statusName,
-                           descriptionText: descText, commentCount: commentCount,
-                           recentComments: recentComments)
+                           descriptionText: descText, commentCount: await commentCount)
     }
 
-    /// 댓글을 페이지를 넘겨가며 전부 모은다(오래된 것 → 최신 순).
-    func fetchAllComments(key: String, limit: Int = 500) async throws -> (total: Int, comments: [IssueComment]) {
+    /// 최신 댓글 `limit`개와 전체 개수. 긴 스레드를 처음부터 다 받으면 팝오버가 늦게 뜨고,
+    /// 오래된 순으로 받다 자르면 정작 최신 댓글이 빠지므로 최신순으로 한 페이지만 받는다.
+    func fetchComments(key: String, limit: Int = 100) async throws -> (total: Int, comments: [IssueComment]) {
         let cloudId = try await ensureCloudId()
-        let pageSize = 100
-        var collected: [IssueComment] = []
-        var total = 0
-        var startAt = 0
-
-        while collected.count < limit {
-            let url = try makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment", query: [
-                URLQueryItem(name: "orderBy", value: "created"),
-                URLQueryItem(name: "startAt", value: "\(startAt)"),
-                URLQueryItem(name: "maxResults", value: "\(pageSize)"),
-            ])
-
-            let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-            let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
-            guard (200...299).contains(status),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else {
-                throw Self.apiError(status: status, data: data, context: "댓글 전체 조회 \(key)")
-            }
-
-            total = (json["total"] as? Int) ?? total
-            let raw = (json["comments"] as? [[String: Any]]) ?? []
-            collected += raw.compactMap(Self.parseComment)
-
-            startAt += pageSize
-            if raw.count < pageSize || startAt >= total { break }
-        }
-
-        return (max(total, collected.count), collected)
+        let url = try makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment", query: [
+            URLQueryItem(name: "orderBy", value: "-created"),
+            URLQueryItem(name: "maxResults", value: "\(limit)"),
+        ])
+        return Self.parseCommentPage(try await getJSON(url, context: "댓글 \(key)"))
     }
 
     /// 연결 확인. 로그인한 사용자의 표시 이름을 돌려준다.
     func fetchMyself() async throws -> String {
         let cloudId = try await ensureCloudId()
-        let url = try makeURL("\(baseURL(cloudId))/myself")
-        let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw Self.apiError(status: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                                data: data, context: "연결 확인")
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw URLError(.cannotParseResponse)
-        }
+        let json = try await getJSON(makeURL("\(baseURL(cloudId))/myself"), context: "연결 확인")
         return (json["displayName"] as? String) ?? (json["emailAddress"] as? String) ?? ""
+    }
+
+    // MARK: - JQL (순수 함수)
+
+    static func issuesJQL(projectKeys: [String], window: DateInterval) -> String {
+        let start = DateParsers.ymd.string(from: window.start)
+        let end = DateParsers.ymd.string(from: window.end)
+        let sd = startDateJQL
+        let overlap = "(duedate >= \"\(start)\" AND duedate <= \"\(end)\") OR (\(sd) >= \"\(start)\" AND \(sd) <= \"\(end)\") OR (\(sd) < \"\(start)\" AND duedate > \"\(end)\")"
+        return "\(projectClause(projectKeys)) AND assignee = currentUser() AND (\(overlap)) ORDER BY duedate ASC"
+    }
+
+    /// 담당자를 가리지 않으므로 범위를 두지 않으면 오래전에 마감이 지난 열린 에픽이 "지난 기한"에 계속 남는다.
+    static func epicsJQL(projectKeys: [String], window: DateInterval) -> String {
+        let start = DateParsers.ymd.string(from: window.start)
+        let end = DateParsers.ymd.string(from: window.end)
+        return "\(projectClause(projectKeys)) AND issuetype = Epic AND statusCategory != done AND duedate >= \"\(start)\" AND duedate <= \"\(end)\" ORDER BY project ASC, duedate ASC"
+    }
+
+    /// 키를 따옴표로 감싼다. 감싸지 않으면 JQL 예약어와 같은 키에서 400이 난다.
+    private static func projectClause(_ keys: [String]) -> String {
+        "project in (\(keys.map { "\"\($0)\"" }.joined(separator: ", ")))"
     }
 
     // MARK: - 상세
@@ -135,16 +132,8 @@ actor JiraRepository {
     private func fetchIssueFields(cloudId: String, key: String) async throws -> (summary: String, status: String, description: String) {
         let url = try makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))",
                               query: [URLQueryItem(name: "fields", value: "summary,status,description")])
-
-        let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw Self.apiError(status: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                                data: data, context: "이슈 \(key)")
-        }
-        guard
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let fields = json["fields"] as? [String: Any]
-        else { throw URLError(.cannotParseResponse) }
+        let json = try await getJSON(url, context: "이슈 \(key)")
+        guard let fields = json["fields"] as? [String: Any] else { throw URLError(.cannotParseResponse) }
 
         let summary = (fields["summary"] as? String) ?? ""
         let statusName = ((fields["status"] as? [String: Any])?["name"] as? String) ?? ""
@@ -153,27 +142,12 @@ actor JiraRepository {
         return (summary, statusName, descText)
     }
 
-    /// 최신 댓글 몇 개와 전체 개수. 이슈 GET에 딸려오는 comment 필드는 오래된 것부터의 첫 페이지라
-    /// 정렬을 지정할 수 있는 전용 엔드포인트를 쓴다. 실패해도 던지지 않는다.
-    private func fetchRecentComments(cloudId: String, key: String) async -> (total: Int, comments: [IssueComment]) {
-        guard let url = try? makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment", query: [
-            URLQueryItem(name: "orderBy", value: "-created"),
-            URLQueryItem(name: "maxResults", value: "\(Self.previewCommentLimit)"),
-        ]) else { return (0, []) }
-
-        guard let (data, resp) = try? await URLSession.shared.data(for: makeRequest(url: url)) else {
-            NSLog("[Lumen] 댓글 조회 실패 (%@): 네트워크 오류", key)
-            return (0, [])
-        }
-        let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
-        guard (200...299).contains(status),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            NSLog("[Lumen] 댓글 조회 실패 (%@): http=%d body=%@", key, status,
-                  String(data: data.prefix(200), encoding: .utf8) ?? "")
-            return (0, [])
-        }
-        return Self.parseCommentPage(json)
+    /// 미리보기의 "댓글 N개"용. 개수만 필요해 한 개짜리 페이지를 받는다. 실패하면 0 — 미리보기를 막지 않는다.
+    private func fetchCommentCount(cloudId: String, key: String) async -> Int {
+        guard let url = try? makeURL("\(baseURL(cloudId))/issue/\(pathEscaped(key))/comment",
+                                     query: [URLQueryItem(name: "maxResults", value: "1")]),
+              let json = try? await getJSON(url, context: "댓글 수 \(key)") else { return 0 }
+        return Self.parseCommentPage(json).total
     }
 
     /// `/issue/{key}/comment?orderBy=-created` 응답 → (전체 개수, 표시용 댓글).
@@ -211,18 +185,20 @@ actor JiraRepository {
 
     // MARK: - 공통
 
+    private static let errorDomain = "JiraAPI"
+
     private func ensureCloudId() async throws -> String {
         if let cached = resolvedCloudId, !cached.isEmpty { return cached }
         guard !workspaceSlug.isEmpty,
               let url = URL(string: "https://\(workspaceSlug).atlassian.net/_edge/tenant_info") else {
-            throw NSError(domain: "JiraAPI", code: -1,
+            throw NSError(domain: Self.errorDomain, code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "워크스페이스 도메인이 비어 있어요."])
         }
         let (data, resp) = try await URLSession.shared.data(from: url)
         guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let cloudId = json["cloudId"] as? String, !cloudId.isEmpty else {
-            throw NSError(domain: "JiraAPI", code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
+            throw NSError(domain: Self.errorDomain, code: (resp as? HTTPURLResponse)?.statusCode ?? -1,
                           userInfo: [NSLocalizedDescriptionKey: "워크스페이스 정보를 불러올 수 없어요 (도메인: \(workspaceSlug))."])
         }
         resolvedCloudId = cloudId
@@ -243,6 +219,19 @@ actor JiraRepository {
         req.setValue(authHeader, forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         return req
+    }
+
+    /// GET 한 번: 2xx가 아니면 사람이 읽을 오류를, 본문이 JSON 객체가 아니면 파싱 오류를 던진다.
+    private func getJSON(_ url: URL, context: String) async throws -> [String: Any] {
+        let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
+        guard (200...299).contains(status) else {
+            throw Self.apiError(status: status, data: data, context: context)
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw URLError(.cannotParseResponse)
+        }
+        return json
     }
 
     /// cloudId는 API 응답에서, 이슈 키는 사용자 데이터에서 오므로 조합이 항상 유효하다는 보장이 없다 —
@@ -276,7 +265,7 @@ actor JiraRepository {
         // Atlassian이 주는 errorMessages는 대개 한 줄짜리 사람말이라 붙여주면 도움이 된다.
         let detail = errorMessages(from: data).first
         let message = detail.map { "\(base)\n\($0)" } ?? base
-        return NSError(domain: "JiraAPI", code: status,
+        return NSError(domain: errorDomain, code: status,
                        userInfo: [NSLocalizedDescriptionKey: message])
     }
 
@@ -291,46 +280,44 @@ actor JiraRepository {
         return []
     }
 
-    private func searchIssues(cloudId: String, jql: String, maxResults: Int) async throws -> [JiraIssue] {
-        let pageSize = 100
-        let totalCap = min(maxResults, 1000)
-        var collected: [JiraIssue] = []
-        var nextPageToken: String?
-
-        while collected.count < totalCap {
+    private func searchIssues(cloudId: String, jql: String, cap: Int) async throws -> [JiraIssue] {
+        try await Self.collectIssues(cap: cap) { token, limit in
             var items: [URLQueryItem] = [
                 URLQueryItem(name: "jql", value: jql),
-                URLQueryItem(name: "maxResults", value: "\(pageSize)"),
+                URLQueryItem(name: "maxResults", value: "\(limit)"),
                 URLQueryItem(name: "fields", value: "summary,status,priority,\(Self.startDateFieldId),duedate,issuetype,project"),
             ]
-            if let token = nextPageToken {
+            if let token {
                 items.append(URLQueryItem(name: "nextPageToken", value: token))
             }
-            let url = try makeURL("\(baseURL(cloudId))/search/jql", query: items)
-
-            let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-            guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                throw Self.apiError(status: (resp as? HTTPURLResponse)?.statusCode ?? -1,
-                                    data: data, context: "이슈 검색")
-            }
-
-            guard
-                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let issueList = json["issues"] as? [[String: Any]]
-            else { return collected }
-
-            collected.append(contentsOf: issueList.compactMap { parseIssue($0) })
-
-            let isLast = (json["isLast"] as? Bool) ?? false
-            if isLast { break }
-            guard let next = json["nextPageToken"] as? String, !next.isEmpty else { break }
-            nextPageToken = next
+            return try await self.getJSON(self.makeURL("\(self.baseURL(cloudId))/search/jql", query: items), context: "이슈 검색")
         }
-
-        return collected
     }
 
-    private func parseIssue(_ raw: [String: Any]) -> JiraIssue? {
+    /// `/search/jql` 결과를 `cap`개까지 페이지를 넘기며 모은다. 네트워크와 분리된 순수 함수 — 페이지 규칙을 테스트로 고정한다.
+    /// `page`는 (다음 페이지 토큰, 이번에 요청할 개수)를 받아 응답 JSON을 돌려준다.
+    static func collectIssues(cap: Int, pageSize: Int = 100,
+                              page: (_ token: String?, _ limit: Int) async throws -> [String: Any]) async throws -> [JiraIssue] {
+        var collected: [JiraIssue] = []
+        var token: String?
+        while collected.count < cap {
+            let json = try await page(token, min(pageSize, cap - collected.count))
+            // 중간 페이지가 깨졌을 때 모은 데까지만 돌려주면 잘린 목록이 성공으로 처리돼 캐시까지 덮는다.
+            guard let raw = json["issues"] as? [[String: Any]] else { throw URLError(.cannotParseResponse) }
+            collected += raw.compactMap(parseIssue)
+
+            if (json["isLast"] as? Bool) == true { return collected }
+            // 빈 페이지나 같은 토큰이 다시 오면 끝난 것으로 본다(무한 반복 방지).
+            guard !raw.isEmpty, let next = json["nextPageToken"] as? String, !next.isEmpty, next != token else {
+                return collected
+            }
+            token = next
+        }
+        NSLog("[Lumen] Jira 검색 결과가 상한 %d개를 넘어 뒤쪽을 잘랐어요", cap)
+        return Array(collected.prefix(cap))
+    }
+
+    private static func parseIssue(_ raw: [String: Any]) -> JiraIssue? {
         guard
             let key = raw["key"] as? String,
             let fields = raw["fields"] as? [String: Any],
@@ -344,7 +331,7 @@ actor JiraRepository {
         let issueTypeName = (fields["issuetype"] as? [String: Any])?["name"] as? String ?? ""
         let projectKey = (fields["project"] as? [String: Any])?["key"] as? String ?? ""
 
-        let startDate = (fields[Self.startDateFieldId] as? String).flatMap { DateParsers.ymd.date(from: $0) }
+        let startDate = (fields[startDateFieldId] as? String).flatMap { DateParsers.ymd.date(from: $0) }
         let dueDate = (fields["duedate"] as? String).flatMap { DateParsers.ymd.date(from: $0) }
 
         return JiraIssue(
@@ -366,24 +353,15 @@ actor JiraRepository {
             URLQueryItem(name: "projectKeyOrId", value: projectKey),
             URLQueryItem(name: "maxResults", value: "1"),
         ])
-        let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-        guard (resp as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let values = json["values"] as? [[String: Any]],
-              let boardId = values.first?["id"] as? Int
-        else { return nil }
-        return boardId
+        let json = try await getJSON(url, context: "보드 \(projectKey)")
+        return (json["values"] as? [[String: Any]])?.first?["id"] as? Int
     }
 
     private func fetchActiveSprint(cloudId: String, boardId: Int, projectKey: String) async throws -> SprintInfo? {
         let url = try makeURL("\(agileBaseURL(cloudId))/board/\(boardId)/sprint",
                               query: [URLQueryItem(name: "state", value: "active")])
-        let (data, resp) = try await URLSession.shared.data(for: makeRequest(url: url))
-        guard (resp as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let values = json["values"] as? [[String: Any]],
-              let sprint = values.first
-        else { return nil }
+        let json = try await getJSON(url, context: "스프린트 \(projectKey)")
+        guard let sprint = (json["values"] as? [[String: Any]])?.first else { return nil }
 
         return SprintInfo(
             id: sprint["id"] as? Int ?? 0,
@@ -392,10 +370,6 @@ actor JiraRepository {
             endDate: (sprint["endDate"] as? String).flatMap { DateParsers.parseISO8601($0) },
             projectKey: projectKey
         )
-    }
-
-    private func isoDateString(_ date: Date) -> String {
-        DateParsers.ymd.string(from: date)
     }
 
     private static func adfPlainText(node: Any) -> String {

@@ -75,7 +75,7 @@ struct AgendaListView: View {
         VStack(spacing: LumenTokens.Space.stack) {
             LumenIcon("calendar-plus", size: .large)
                 .foregroundStyle(P.inkFaint)
-            Text("연동한 일정이 아직 없어요.\n캘린더나 Jira를 켜면 여기에 함께 보여요.")
+            Text("연동한 일정이 아직 없어요.\n설정에서 일정 출처를 켜면 여기에 함께 보여요.")
                 .lumenText(.label, weight: .regular)
                 .foregroundStyle(P.inkMuted)
                 .multilineTextAlignment(.center)

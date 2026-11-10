@@ -60,7 +60,7 @@ final class ParserAndModelTests: XCTestCase {
             settings: JiraSettings(), browseURL: URL(string: "https://x.atlassian.net/browse")
         )
 
-        XCTAssertEqual(items.map(\.id), ["jira.sprint.1", "jira.ABC-2", "jira.ABC-1"],
+        XCTAssertEqual(items.map(\.id), ["jira.sprint.ABC.1", "jira.ABC-2", "jira.ABC-1"],
                        "완료 이슈는 기본 숨김, 날짜 없는 이슈는 뺀다")
         XCTAssertEqual(items.map(\.kind), [.span, .task, .task])
         XCTAssertEqual(items[1].status, .inProgress)
@@ -81,6 +81,107 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertTrue(withDone[1].isDone)
     }
 
+    /// 두 프로젝트가 보드를 같이 쓰면 같은 스프린트가 프로젝트마다 온다. id가 같으면 달력 막대의 id가 겹친다.
+    func testSharedSprintGetsOneIDPerProject() {
+        let sprints = ["ABC", "DEF"].map {
+            SprintInfo(id: 7, name: "Sprint", startDate: date("2026-06-22"), endDate: date("2026-06-26"), projectKey: $0)
+        }
+        let items = JiraPlugin.makeItems(issues: [], sprints: sprints, epics: [], settings: JiraSettings(), browseURL: nil)
+        XCTAssertEqual(items.map(\.id), ["jira.sprint.ABC.7", "jira.sprint.DEF.7"])
+    }
+
+    // MARK: - Jira 페이지 넘기기 (샘플 JSON, 네트워크 없음)
+
+    func testIssueSearchFollowsPageTokensUntilLast() async throws {
+        var requests: [(token: String?, limit: Int)] = []
+        let issues = try await JiraRepository.collectIssues(cap: 1000, pageSize: 2) { token, limit in
+            requests.append((token, limit))
+            switch token {
+            case nil:  return self.searchPage(keys: ["ABC-1", "ABC-2"], next: "t1")
+            case "t1": return self.searchPage(keys: ["ABC-3", "ABC-4"], next: "t2")
+            default:   return self.searchPage(keys: ["ABC-5"], isLast: true)
+            }
+        }
+        XCTAssertEqual(issues.map(\.key), ["ABC-1", "ABC-2", "ABC-3", "ABC-4", "ABC-5"])
+        XCTAssertEqual(requests.map(\.token), [nil, "t1", "t2"])
+        XCTAssertEqual(issues.first?.dueDate, date("2026-06-24"))
+        XCTAssertEqual(issues.first?.projectKey, "ABC")
+    }
+
+    func testIssueSearchStopsAtCapAndAsksOnlyForWhatIsLeft() async throws {
+        var limits: [Int] = []
+        let issues = try await JiraRepository.collectIssues(cap: 3, pageSize: 2) { token, limit in
+            limits.append(limit)
+            return token == nil
+                ? self.searchPage(keys: ["ABC-1", "ABC-2"], next: "t1")
+                : self.searchPage(keys: ["ABC-3"], next: "t2")
+        }
+        XCTAssertEqual(issues.map(\.key), ["ABC-1", "ABC-2", "ABC-3"])
+        XCTAssertEqual(limits, [2, 1], "상한까지 남은 개수만 요청한다")
+    }
+
+    func testIssueSearchNeverReturnsMoreThanCap() async throws {
+        // 서버가 요청한 개수보다 많이 줘도 상한을 넘기지 않는다.
+        let issues = try await JiraRepository.collectIssues(cap: 2) { _, _ in
+            self.searchPage(keys: ["ABC-1", "ABC-2", "ABC-3"], next: "t1")
+        }
+        XCTAssertEqual(issues.map(\.key), ["ABC-1", "ABC-2"])
+    }
+
+    func testIssueSearchFailsWhenAPageIsMalformed() async {
+        // 둘째 페이지가 깨지면 첫 페이지만 돌려주지 않고 실패한다 — 잘린 목록이 캐시를 덮지 않도록.
+        do {
+            _ = try await JiraRepository.collectIssues(cap: 1000) { token, _ in
+                token == nil ? self.searchPage(keys: ["ABC-1"], next: "t1") : ["errorMessages": ["boom"]]
+            }
+            XCTFail("깨진 페이지는 던져야 한다")
+        } catch {
+            XCTAssertEqual((error as? URLError)?.code, .cannotParseResponse)
+        }
+    }
+
+    func testIssueSearchStopsOnEmptyPageOrRepeatedToken() async throws {
+        var calls = 0
+        let repeated = try await JiraRepository.collectIssues(cap: 1000) { _, _ in
+            calls += 1
+            return self.searchPage(keys: ["ABC-\(calls)"], next: "same")
+        }
+        XCTAssertEqual(repeated.count, 2, "같은 토큰이 다시 오면 멈춘다")
+
+        calls = 0
+        let empty = try await JiraRepository.collectIssues(cap: 1000) { _, _ in
+            calls += 1
+            return self.searchPage(keys: [], next: "t\(calls)")
+        }
+        XCTAssertTrue(empty.isEmpty)
+        XCTAssertEqual(calls, 1, "빈 페이지에서 멈춘다")
+    }
+
+    /// 스프린트·에픽 조회의 실패 중 갱신 전체를 실패로 돌리는 것과 넘어가는 것.
+    func testOptionalJiraDataFailsRefreshOnlyForAuthRateLimitServerAndNetwork() {
+        func api(_ status: Int) -> Error { NSError(domain: "JiraAPI", code: status) }
+        for status in [401, 429, 500, 503] {
+            XCTAssertTrue(JiraRepository.failsRefresh(api(status)), "\(status)")
+        }
+        for status in [400, 403, 404] {
+            XCTAssertFalse(JiraRepository.failsRefresh(api(status)), "\(status)")
+        }
+        XCTAssertTrue(JiraRepository.failsRefresh(URLError(.notConnectedToInternet)))
+        XCTAssertTrue(JiraRepository.failsRefresh(URLError(.cannotParseResponse)))
+    }
+
+    func testJiraJQLQuotesProjectKeysAndBoundsEpicsByWindow() {
+        let window = DateInterval(start: date("2026-03-01"), end: date("2026-09-01"))
+        XCTAssertEqual(
+            JiraRepository.epicsJQL(projectKeys: ["ABC", "IN"], window: window),
+            #"project in ("ABC", "IN") AND issuetype = Epic AND statusCategory != done AND duedate >= "2026-03-01" AND duedate <= "2026-09-01" ORDER BY project ASC, duedate ASC"#
+        )
+        XCTAssertEqual(
+            JiraRepository.issuesJQL(projectKeys: ["ABC"], window: window),
+            #"project in ("ABC") AND assignee = currentUser() AND ((duedate >= "2026-03-01" AND duedate <= "2026-09-01") OR ("Start date" >= "2026-03-01" AND "Start date" <= "2026-09-01") OR ("Start date" < "2026-03-01" AND duedate > "2026-09-01")) ORDER BY duedate ASC"#
+        )
+    }
+
     func testCalendarPluginBuildsItemsWithUniqueIDs() throws {
         // 반복 이벤트는 회차마다 같은 식별자를 쓰므로 시작 시각으로 id를 가른다.
         let first = try XCTUnwrap(ExternalCalendarEvent(
@@ -91,7 +192,7 @@ final class ParserAndModelTests: XCTestCase {
             id: "rec", title: "요가", startDate: dateTime("2026-06-24 19:30"), endDate: dateTime("2026-06-24 20:30"),
             isAllDay: false, calendarIdentifier: "cal-1", calendarTitle: "개인", sourceTitle: "iCloud",
             notes: nil, location: nil, urlString: nil))
-        // EventKit의 종일 끝은 다음날 0시다.
+        // 종일 끝이 다음날 0시로 오는 경우.
         let trip = try XCTUnwrap(ExternalCalendarEvent(
             id: "trip", title: "여행", startDate: date("2026-06-26"), endDate: date("2026-06-28"),
             isAllDay: true, calendarIdentifier: "cal-2", calendarTitle: "가족", sourceTitle: nil,
@@ -106,6 +207,66 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(items[0].subtitle, "개인")
         XCTAssertTrue(items[2].isAllDay)
         XCTAssertEqual(items[2].end, date("2026-06-27"), "종일 범위는 끝 날짜를 하루 당겨 포함 범위로")
+    }
+
+    /// EventKit은 종일 이벤트의 끝을 다음날 0시로도, 마지막 날 23:59:59로도 준다. 어느 쪽이든 같은 날짜 범위가 나와야 한다.
+    func testAllDayCalendarEventCoversItsOwnDaysUnderBothEndConventions() throws {
+        func allDay(_ start: String, end: Date) throws -> ScheduleItem {
+            CalendarPlugin.makeItem(try XCTUnwrap(ExternalCalendarEvent(
+                id: "e", title: "종일", startDate: date(start), endDate: end, isAllDay: true,
+                calendarIdentifier: "cal", calendarTitle: "개인", sourceTitle: nil,
+                notes: nil, location: nil, urlString: nil)))
+        }
+        let oneDay = [
+            try allDay("2026-06-24", end: date("2026-06-25")),
+            try allDay("2026-06-24", end: date("2026-06-25").addingTimeInterval(-1)),
+            try allDay("2026-06-24", end: date("2026-06-24")),
+        ]
+        for item in oneDay {
+            XCTAssertNil(item.end, "하루짜리는 끝이 없다")
+            XCTAssertTrue(item.covers(date("2026-06-24")))
+            XCTAssertFalse(item.covers(date("2026-06-23")))
+            XCTAssertFalse(item.covers(date("2026-06-25")))
+        }
+        let threeDays = [
+            try allDay("2026-06-24", end: date("2026-06-27")),
+            try allDay("2026-06-24", end: date("2026-06-27").addingTimeInterval(-1)),
+        ]
+        for item in threeDays {
+            XCTAssertEqual(item.end, date("2026-06-26"))
+            XCTAssertTrue(item.covers(date("2026-06-26")))
+            XCTAssertFalse(item.covers(date("2026-06-27")))
+        }
+    }
+
+    func testCalendarItemIDIncludesCalendar() throws {
+        func event(calendar: String) throws -> ExternalCalendarEvent {
+            try XCTUnwrap(ExternalCalendarEvent(
+                id: "same", title: "회의", startDate: dateTime("2026-06-24 10:00"), endDate: dateTime("2026-06-24 11:00"),
+                isAllDay: false, calendarIdentifier: calendar, calendarTitle: calendar, sourceTitle: nil,
+                notes: nil, location: nil, urlString: nil))
+        }
+        XCTAssertNotEqual(CalendarPlugin.makeItem(try event(calendar: "a")).id,
+                          CalendarPlugin.makeItem(try event(calendar: "b")).id)
+    }
+
+    /// 밤 10시~자정 일정은 그날 것이다. 끝 시각(다음 날 0시)을 날짜로 보면 다음 날에도 걸친다.
+    func testTimedEventEndingAtMidnightStaysOnItsDay() {
+        let late = item("late", kind: .event, start: dateTime("2026-06-24 22:00"), end: dateTime("2026-06-25 00:00"), allDay: false)
+        XCTAssertTrue(late.covers(date("2026-06-24")))
+        XCTAssertFalse(late.covers(date("2026-06-25")))
+        let bars = layoutWeek(weekStart: date("2026-06-21"), items: [late], maxLanes: 4).bars
+        XCTAssertEqual(bars.map(\.span), [1])
+
+        let overnight = item("overnight", kind: .event, start: dateTime("2026-06-24 22:00"), end: dateTime("2026-06-25 01:00"), allDay: false)
+        XCTAssertTrue(overnight.covers(date("2026-06-25")), "자정을 넘긴 일정은 다음 날에도 걸친다")
+    }
+
+    func testLocalEventDropsEndThatIsNotAfterStart() {
+        let start = date("2026-06-24")
+        XCTAssertNil(LocalEvent(title: "a", start: start, end: date("2026-06-20")).end, "시작보다 앞선 끝은 버린다")
+        XCTAssertNil(LocalEvent(title: "a", start: start, end: start).end)
+        XCTAssertEqual(LocalEvent(title: "a", start: start, end: date("2026-06-26")).end, date("2026-06-26"))
     }
 
     func testWeekLayoutUsesSharedDisplayOrderAndReportsOverflow() {
@@ -281,6 +442,25 @@ final class ParserAndModelTests: XCTestCase {
         JiraIssue(id: key, key: key, summary: summary, status: "", statusCategory: category, priority: priority,
                   startDate: start, dueDate: due, issueType: type,
                   projectKey: key.split(separator: "-").first.map(String.init) ?? "")
+    }
+
+    /// `/search/jql` 응답 한 페이지. 마지막 페이지에는 토큰이 없다.
+    private func searchPage(keys: [String], next: String? = nil, isLast: Bool = false) -> [String: Any] {
+        var page: [String: Any] = [
+            "issues": keys.map { key -> [String: Any] in
+                ["key": key, "fields": [
+                    "summary": "요약 \(key)",
+                    "status": ["name": "진행 중", "statusCategory": ["key": "indeterminate"]],
+                    "priority": ["name": "High"],
+                    "issuetype": ["name": "Task"],
+                    "project": ["key": "ABC"],
+                    "duedate": "2026-06-24",
+                ]]
+            },
+            "isLast": isLast,
+        ]
+        if let next { page["nextPageToken"] = next }
+        return page
     }
 
     private func commentJSON(id: String, author: String, body: String, created: String) -> [String: Any] {

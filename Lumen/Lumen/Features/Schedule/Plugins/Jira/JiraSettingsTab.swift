@@ -23,7 +23,6 @@ struct JiraSettingsTab: View {
         let id = UUID()
         var key: String
         var alias: String
-        var isVisible: Bool
     }
 
     var body: some View {
@@ -65,13 +64,13 @@ struct JiraSettingsTab: View {
                             }
                         }
                         Button {
-                            projects.append(ProjectEntry(key: "", alias: "", isVisible: true))
+                            projects.append(ProjectEntry(key: "", alias: ""))
                         } label: {
                             Label { Text("프로젝트 추가") } icon: { LumenIcon("plus") }
                         }
                         .buttonStyle(LumenButtonStyle(variant: .secondary))
                     }
-                    LumenHint("키는 API 호출에 쓰는 대문자 식별자예요(예: PROJ). 별칭을 비워 두면 키가 그대로 보여요. 색은 캘린더 묶음 다음 순서로 자동으로 정해져요.")
+                    LumenHint("키는 API 호출에 쓰는 대문자 식별자예요(예: PROJ). 별칭을 비워 두면 키가 그대로 보여요. 색은 보이는 순서대로 자동으로 정해져요.")
                 }
 
                 SettingsSection(title: "가져올 항목") {
@@ -145,8 +144,9 @@ struct JiraSettingsTab: View {
     }
 
     /// 입력 중인 값을 먼저 저장한 뒤 확인한다 — 저장 안 한 토큰으로 확인되면 헷갈린다.
+    /// 바뀐 게 없으면 저장하지 않는다. 저장은 상세 캐시를 비우고 이슈를 처음부터 다시 받게 한다.
     private func checkConnection() async {
-        save()
+        if action.dirty { save() }
         connectionCheck = .checking
         do {
             let name = try await plugin.verifyConnection()
@@ -179,7 +179,7 @@ struct JiraSettingsTab: View {
         email = plugin.email
         token = plugin.apiToken
         projects = plugin.settings.projects.map {
-            ProjectEntry(key: $0.key, alias: $0.alias, isVisible: $0.isVisible)
+            ProjectEntry(key: $0.key, alias: $0.alias)
         }
         initialSnapshot = snapshot()
         action.dirty = false
@@ -197,7 +197,7 @@ struct JiraSettingsTab: View {
 
     private func save() {
         plugin.saveCredentials(workspaceSlug: workspaceSlug, email: email, apiToken: token)
-        plugin.setProjects(projects.map { JiraProjectSetting(key: $0.key, alias: $0.alias, isVisible: $0.isVisible) })
+        plugin.setProjects(projects.map { JiraProjectSetting(key: $0.key, alias: $0.alias) })
         loadFromPlugin()
         action.saved = true
     }

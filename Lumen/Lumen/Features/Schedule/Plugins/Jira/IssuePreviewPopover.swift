@@ -15,7 +15,7 @@ struct IssuePreviewPopover: View {
             title: detail.summary,
             bodyText: detail.descriptionText,
             extraContent: { commentHint },
-            footer: { footer }
+            footer: { PreviewOpenFooter(label: "Jira에서 열기", url: openURL) }
         )
     }
 
@@ -33,24 +33,6 @@ struct IssuePreviewPopover: View {
                     .foregroundStyle(LumenTokens.Palette.inkFaint)
             }
             .foregroundStyle(LumenTokens.Palette.inkMuted)
-        }
-    }
-
-    @ViewBuilder
-    private var footer: some View {
-        if let url = openURL {
-            HStack(spacing: LumenTokens.Space.inline) {
-                Spacer()
-                Button {
-                    openScheduleURL(url)
-                } label: {
-                    Label { Text("Jira에서 열기") } icon: { LumenIcon("external-link", size: .small) }
-                }
-                .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
-            }
-            .padding(.horizontal, LumenTokens.Space.pad)
-            .padding(.bottom, LumenTokens.Space.s4)
-            .background(LumenTokens.Palette.surfaceRaised)
         }
     }
 }

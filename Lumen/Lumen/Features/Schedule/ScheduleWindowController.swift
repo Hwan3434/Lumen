@@ -75,4 +75,10 @@ final class ScheduleWindowController: PanelWindowController {
     override func configureBeforeShow(_ panel: KeyablePanel) {
         NotificationCenter.default.post(name: .scheduleCommand, object: ScheduleCommand.today)
     }
+
+    /// 패널과 SwiftUI 뷰는 한 번 만들어 계속 쓰므로 뷰의 onAppear는 처음 한 번만 불린다.
+    /// 열 때마다 TTL이 지난 플러그인을 다시 받으려면 여기서 불러야 한다.
+    override func didShow(_ panel: KeyablePanel) {
+        Task { await ScheduleStore.shared.refreshStale() }
+    }
 }

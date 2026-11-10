@@ -45,9 +45,6 @@ struct ScheduleView: View {
         }
         .frame(width: Constants.scheduleWindowSize.width, height: Constants.scheduleWindowSize.height)
         .lumenPanel()
-        .onAppear {
-            Task { await store.refreshStale() }
-        }
         .onReceive(NotificationCenter.default.publisher(for: .scheduleSwitchView)) { note in
             guard let newMode = note.object as? CalendarMode else { return }
             mode = newMode

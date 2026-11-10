@@ -29,7 +29,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !Self.isRunningTests else { return }
 
         LumenStorage.purgeRetiredFilesIfNeeded()
-        ScheduleMigration.runIfNeeded()
 
         // 순서가 곧 검색 기본 목록과 메뉴바 메뉴의 순서다.
         let features: [BuiltInFeature] = [

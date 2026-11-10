@@ -2,7 +2,7 @@ import SwiftUI
 
 private typealias P = LumenTokens.Palette
 
-/// ⌘클릭 전용 — 댓글만 보는 팝오버. 스레드 전체를 받아 세로를 전부 댓글에 쓴다.
+/// ⌘클릭 전용 — 댓글만 보는 팝오버. 세로를 전부 댓글에 쓴다. 긴 스레드는 최근 것만 온다(`JiraRepository.fetchComments`).
 /// 데이터는 플러그인이 받아서 넘겨준다(팝오버는 첫 프레임 크기로 고정되므로).
 struct IssueCommentsPopover: View {
     let issueKey: String
@@ -45,7 +45,7 @@ struct IssueCommentsPopover: View {
             Text(issueKey)
                 .font(LumenFont.mono(LumenTextStyle.caption.size, .medium))
                 .foregroundStyle(P.inkMuted)
-            Text("댓글 \(total)개")
+            Text(comments.count < total ? "댓글 \(total)개 중 최근 \(comments.count)개" : "댓글 \(total)개")
                 .lumenText(.label, weight: .semibold)
                 .foregroundStyle(P.ink)
             Spacer()

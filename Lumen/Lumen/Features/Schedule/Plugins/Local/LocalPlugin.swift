@@ -1,6 +1,10 @@
 import Foundation
 import SwiftUI
 
+nonisolated extension SchedulePluginID {
+    static let local = SchedulePluginID("local")
+}
+
 nonisolated struct LocalSettings: Codable, Equatable {
     var isVisible = true
 }
@@ -85,15 +89,14 @@ final class LocalPlugin: SchedulePlugin {
     }
 
     func detailView(for item: ScheduleItem, accent: Color, variant: ScheduleDetailVariant,
-                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView {
-        guard let event = event(for: item) else {
-            return AnyView(ScheduleItemPreview(item: item, accent: accent))
-        }
-        return AnyView(LocalEventEditPopover(plugin: self, event: event, onDismiss: dismiss))
+                    dismiss: @escaping @MainActor () -> Void) async throws -> AnyView? {
+        guard let event = event(for: item) else { return nil }
+        return AnyView(LocalEventPopover(plugin: self, draft: event, isNew: false, onDismiss: dismiss))
     }
 
     func newItemView(on day: Date, dismiss: @escaping @MainActor () -> Void) -> AnyView? {
-        AnyView(NewEventPopover(plugin: self, initialDate: day, onDismiss: dismiss))
+        let draft = LocalEvent(title: "", start: Calendar.current.startOfDay(for: day))
+        return AnyView(LocalEventPopover(plugin: self, draft: draft, isNew: true, onDismiss: dismiss))
     }
 
     nonisolated static func makeItem(_ event: LocalEvent) -> ScheduleItem {

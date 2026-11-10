@@ -56,7 +56,7 @@ nonisolated enum AgendaBuckets {
             let bucket: AgendaBucket?
             switch item.kind {
             case .task:
-                let due = cal.startOfDay(for: item.end ?? item.start)
+                let due = item.lastDay
                 if due < today {
                     bucket = item.isDone ? nil : .overdue
                 } else if due > horizon {
@@ -68,7 +68,7 @@ nonisolated enum AgendaBuckets {
             case .event, .span:
                 let ended = item.hasTimeOfDay
                     ? (item.end ?? item.start) <= now
-                    : cal.startOfDay(for: item.end ?? item.start) < today
+                    : item.lastDay < today
                 let firstDay = max(cal.startOfDay(for: item.start), today)
                 if ended || firstDay > horizon {
                     bucket = nil
@@ -95,7 +95,7 @@ nonisolated enum AgendaBuckets {
         let cal = Calendar.current
         func listDay(_ item: ScheduleItem) -> Date {
             item.kind == .task
-                ? cal.startOfDay(for: item.end ?? item.start)
+                ? item.lastDay
                 : max(cal.startOfDay(for: item.start), today)
         }
         let lDay = listDay(lhs), rDay = listDay(rhs)

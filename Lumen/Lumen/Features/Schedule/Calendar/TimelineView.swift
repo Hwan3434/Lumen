@@ -19,14 +19,11 @@ struct TimelineView: View {
     var newItemToken: Int = 0
 
     private var today: Date { store.today }
-    @State private var selectedID: String? = nil
-    @State private var selectedVariant: ScheduleDetailVariant = .primary
     @State private var newItemDate: Date? = nil
     @AppStorage(ScheduleView.showLunarKey) private var showLunar = false
 
     private static let cal = Calendar.current
     private let halfRangeWeeks: Int = 13   // ±3개월
-    private let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     /// 요일(caption) + 날짜(label) + 공휴일 이름(caption) + 위아래 여백.
     private var dayHeaderHeight: CGFloat { LumenTextStyle.caption.lineHeight * 2 + LumenTextStyle.label.lineHeight + LumenTokens.Space.scaled(12) }
     private var laneHeight: CGFloat { LumenTextStyle.caption.lineHeight + LumenTokens.Space.scaled(10) }
@@ -127,7 +124,14 @@ struct TimelineView: View {
                     gridLines(days: days, dayWidth: dayWidth, height: gridHeight)
 
                     ForEach(layout.bars) { bar in
-                        barView(bar: bar, dayWidth: dayWidth, color: colors[bar.item.groupKey] ?? P.chartOther)
+                        CalendarBarButton(
+                            item: bar.item,
+                            color: colors[bar.item.groupKey] ?? P.chartOther,
+                            width: dayWidth * CGFloat(bar.span) - 4,
+                            height: laneHeight - 2
+                        )
+                        .padding(.leading, CGFloat(bar.startCol) * dayWidth + 2)
+                        .padding(.top, CGFloat(bar.lane) * (laneHeight + laneSpacing) + LumenTokens.Space.scaled(6))
                     }
                 }
                 .frame(width: weekW, height: gridHeight, alignment: .topLeading)
@@ -149,7 +153,7 @@ struct TimelineView: View {
                         .lumenText(.caption, weight: .semibold)
                         .foregroundStyle(P.inkMuted)
                 }
-                Text(weekdays[(weekday - 1) % 7])
+                Text(CalendarDateUtils.weekdaySymbols(firstWeekday: weekday)[0])
                     .lumenText(.caption, weight: .medium)
                     .foregroundStyle(holidayName != nil
                                      ? P.danger
@@ -158,7 +162,7 @@ struct TimelineView: View {
             Text(dayLabel(day))
                 .lumenText(.label, weight: isToday ? .bold : .regular)
                 .monospacedDigit()
-                .foregroundStyle(dayNumberColor(isToday: isToday, day: day))
+                .foregroundStyle(CalendarDateUtils.dayNumberColor(isToday: isToday, day: day))
             if showLunar, let lunar = CalendarDateUtils.lunarLabel(for: day) {
                 Text(lunar)
                     .lumenText(.caption)
@@ -179,21 +183,7 @@ struct TimelineView: View {
         .onTapGesture(count: 2) {
             newItemDate = day
         }
-        .popover(isPresented: Binding(
-            get: { newItemDate != nil && Self.cal.isDate(newItemDate!, inSameDayAs: day) },
-            set: { if !$0 { newItemDate = nil } }
-        ), arrowEdge: .bottom) {
-            if let view = store.newItemView(on: day, dismiss: { newItemDate = nil }) {
-                view
-            }
-        }
-    }
-
-    /// 날짜 숫자의 색 우선순위: today > 토·일·공휴일 > 기본. (MonthGridView와 같은 정책)
-    private func dayNumberColor(isToday: Bool, day: Date) -> Color {
-        if isToday { return P.brand }
-        if CalendarDateUtils.isRedDay(day) { return P.danger }
-        return P.ink
+        .newItemPopover(day: day, selection: $newItemDate, arrowEdge: .bottom)
     }
 
     private func gridLines(days: [Date], dayWidth: CGFloat, height: CGFloat) -> some View {
@@ -209,34 +199,6 @@ struct TimelineView: View {
                     .overlay(alignment: .leading) { LumenHairline(.vertical) }
             }
         }
-    }
-
-    // MARK: - Bar view
-
-    private func barView(bar: LaidOutBar, dayWidth: CGFloat, color: Color) -> some View {
-        let item = bar.item
-        let leading = CGFloat(bar.startCol) * dayWidth + 2
-        let width = dayWidth * CGFloat(bar.span) - 4
-        let topOffset = CGFloat(bar.lane) * (laneHeight + laneSpacing) + LumenTokens.Space.scaled(6)
-
-        return Button {
-            selectedVariant = isCommandClick ? .secondary : .primary
-            selectedID = item.id
-        } label: {
-            CalendarBarView(
-                spec: item.barSpec(color: color),
-                cornerRadius: LumenTokens.Radius.xs,
-                height: laneHeight - 2
-            )
-            .frame(width: width)
-        }
-        .buttonStyle(.plain)
-        .scheduleDetailPopover(item: item, variant: selectedVariant, isPresented: Binding(
-            get: { selectedID == item.id },
-            set: { if !$0 { selectedID = nil } }
-        ))
-        .padding(.leading, leading)
-        .padding(.top, topOffset)
     }
 
     // MARK: - Week list

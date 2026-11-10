@@ -27,6 +27,32 @@ extension View {
     }
 }
 
+extension View {
+    /// 빈 날짜 더블클릭·⌘N으로 뜨는 새 항목 팝오버. `selection`이 `day`와 같은 날이면 뜬다.
+    func newItemPopover(day: Date, selection: Binding<Date?>, arrowEdge: Edge) -> some View {
+        modifier(NewItemPopoverModifier(day: day, selection: selection, arrowEdge: arrowEdge))
+    }
+}
+
+private struct NewItemPopoverModifier: ViewModifier {
+    @Environment(ScheduleStore.self) private var store
+
+    let day: Date
+    @Binding var selection: Date?
+    let arrowEdge: Edge
+
+    func body(content: Content) -> some View {
+        content.popover(isPresented: Binding(
+            get: { selection.map { Calendar.current.isDate($0, inSameDayAs: day) } ?? false },
+            set: { if !$0 { selection = nil } }
+        ), arrowEdge: arrowEdge) {
+            if let view = store.newItemView(on: day, dismiss: { selection = nil }) {
+                view
+            }
+        }
+    }
+}
+
 private struct ScheduleDetailPopoverModifier: ViewModifier {
     @Environment(ScheduleStore.self) private var store
 

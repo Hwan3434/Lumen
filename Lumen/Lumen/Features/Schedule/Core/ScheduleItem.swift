@@ -6,10 +6,6 @@ nonisolated struct SchedulePluginID: RawRepresentable, Hashable, Codable, Sendab
 
     init(rawValue: String) { self.rawValue = rawValue }
     init(_ rawValue: String) { self.rawValue = rawValue }
-
-    static let calendar = SchedulePluginID("calendar")
-    static let jira = SchedulePluginID("jira")
-    static let local = SchedulePluginID("local")
 }
 
 /// 플러그인 안에서 색 하나를 받는 단위. 캘린더 하나, Jira 프로젝트 하나, 내 일정 전체가 각각 묶음이다.
@@ -67,12 +63,18 @@ nonisolated struct ScheduleItem: Identifiable, Hashable, Codable, Sendable {
     var hasTimeOfDay: Bool { !isAllDay }
     var groupKey: ScheduleGroupKey { ScheduleGroupKey(plugin: plugin, group: group) }
 
-    /// 이 항목이 주어진 날짜에 걸쳐 있는가. end가 없으면 그 날짜만, 있으면 [start, end]를 날짜 단위로 본다.
+    /// 이 항목이 걸친 마지막 날(자정). 시간 일정의 끝은 포함하지 않는 시각이라 1초 당겨서 본다 —
+    /// 그러지 않으면 밤 10시~자정 일정이 다음 날에도 걸친 것으로 나온다.
+    var lastDay: Date {
+        let cal = Calendar.current
+        guard let end else { return cal.startOfDay(for: start) }
+        return cal.startOfDay(for: hasTimeOfDay && end > start ? end.addingTimeInterval(-1) : end)
+    }
+
+    /// 이 항목이 주어진 날짜에 걸쳐 있는가. end가 없으면 그 날짜만, 있으면 시작일부터 `lastDay`까지를 날짜 단위로 본다.
     func covers(_ day: Date) -> Bool {
         let cal = Calendar.current
         let dayStart = cal.startOfDay(for: day)
-        let s = cal.startOfDay(for: start)
-        let e = cal.startOfDay(for: end ?? start)
-        return dayStart >= s && dayStart <= e
+        return dayStart >= cal.startOfDay(for: start) && dayStart <= lastDay
     }
 }

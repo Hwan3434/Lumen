@@ -18,8 +18,7 @@ enum CalendarPreviewMetrics {
 }
 
 /// 미리보기의 한 줄 정보(시간, 위치, 링크). 제네릭 레이아웃 밖에 두어 호출자가 Footer 타입과 무관하게 만든다.
-struct PreviewMetaRow: Identifiable {
-    let id = UUID()
+struct PreviewMetaRow {
     let icon: String
     let text: String
 }
@@ -33,17 +32,37 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
     /// 라벨 — "PROJ-123" 같은 키 또는 캘린더 이름.
     let accentLabel: String
     /// 라벨 옆의 작은 뱃지 — Jira 상태 / 캘린더 source 등. nil이면 안 보임.
-    var badgeText: String? = nil
+    let badgeText: String?
     /// 본문 제목 — 굵게 표시.
     let title: String
     /// 시간/위치/URL 같은 한 줄 정보들. 빈 배열이면 영역 자체 생략.
-    var metaRows: [PreviewMetaRow] = []
+    let metaRows: [PreviewMetaRow]
     /// 긴 본문(설명/메모) — 스크롤 영역으로 들어감. nil/빈 문자열이면 생략.
-    var bodyText: String? = nil
+    let bodyText: String?
     /// 본문 아래 추가 컨텐츠 (예: 댓글 수). 없으면 EmptyView.
-    @ViewBuilder var extraContent: () -> Body
+    let extraContent: () -> Body
     /// footer 영역 — 외부 열기 버튼 등. 없으면 EmptyView.
-    @ViewBuilder var footer: () -> Footer
+    let footer: () -> Footer
+
+    init(
+        accentColor: Color,
+        accentLabel: String,
+        badgeText: String? = nil,
+        title: String,
+        metaRows: [PreviewMetaRow] = [],
+        bodyText: String? = nil,
+        @ViewBuilder extraContent: @escaping () -> Body = { EmptyView() },
+        @ViewBuilder footer: @escaping () -> Footer = { EmptyView() }
+    ) {
+        self.accentColor = accentColor
+        self.accentLabel = accentLabel
+        self.badgeText = badgeText
+        self.title = title
+        self.metaRows = metaRows
+        self.bodyText = bodyText
+        self.extraContent = extraContent
+        self.footer = footer
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -57,7 +76,8 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
 
                 if !metaRows.isEmpty {
                     VStack(alignment: .leading, spacing: LumenTokens.Space.scaled(6)) {
-                        ForEach(metaRows) { row in
+                        // 줄은 body마다 새로 만들어지므로 순서를 id로 쓴다. 매번 새 id를 주면 줄이 통째로 다시 만들어져 글자 선택이 풀린다.
+                        ForEach(Array(metaRows.enumerated()), id: \.offset) { _, row in
                             HStack(alignment: .top, spacing: LumenTokens.Space.inline) {
                                 LumenIcon(row.icon, size: .small)
                                     .foregroundStyle(P.inkMuted)
@@ -117,43 +137,25 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
     }
 }
 
-extension CalendarPreviewLayout where Body == EmptyView {
-    init(
-        accentColor: Color,
-        accentLabel: String,
-        badgeText: String? = nil,
-        title: String,
-        metaRows: [PreviewMetaRow] = [],
-        bodyText: String? = nil,
-        @ViewBuilder footer: @escaping () -> Footer
-    ) {
-        self.accentColor = accentColor
-        self.accentLabel = accentLabel
-        self.badgeText = badgeText
-        self.title = title
-        self.metaRows = metaRows
-        self.bodyText = bodyText
-        self.extraContent = { EmptyView() }
-        self.footer = footer
-    }
-}
+/// 미리보기 아래의 "출처에서 열기" 버튼 줄. url이 없으면 아무것도 그리지 않는다.
+struct PreviewOpenFooter: View {
+    let label: String
+    let url: URL?
 
-extension CalendarPreviewLayout where Body == EmptyView, Footer == EmptyView {
-    init(
-        accentColor: Color,
-        accentLabel: String,
-        badgeText: String? = nil,
-        title: String,
-        metaRows: [PreviewMetaRow] = [],
-        bodyText: String? = nil
-    ) {
-        self.accentColor = accentColor
-        self.accentLabel = accentLabel
-        self.badgeText = badgeText
-        self.title = title
-        self.metaRows = metaRows
-        self.bodyText = bodyText
-        self.extraContent = { EmptyView() }
-        self.footer = { EmptyView() }
+    var body: some View {
+        if let url {
+            HStack(spacing: LumenTokens.Space.inline) {
+                Spacer()
+                Button {
+                    openScheduleURL(url)
+                } label: {
+                    Label { Text(label) } icon: { LumenIcon("external-link", size: .small) }
+                }
+                .buttonStyle(LumenButtonStyle(variant: .secondary, size: .small))
+            }
+            .padding(.horizontal, LumenTokens.Space.pad)
+            .padding(.bottom, LumenTokens.Space.s4)
+            .background(P.surfaceRaised)
+        }
     }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 private typealias P = LumenTokens.Palette
 
 /// 캘린더 한 칸을 차지하는 막대의 표시 속성 묶음.
-/// MonthGridView·TimelineView가 동일한 모양을 그리도록 둘 다 이걸로 그린다.
+/// 월간·주간이 동일한 모양을 그리도록 둘 다 이걸로 그린다.
 struct CalendarBarSpec {
     let title: String
     /// 계열 색. Still 차트 규칙대로 막대 앞 점에만 쓴다.
@@ -55,8 +55,33 @@ struct CalendarBarView: View {
     }
 }
 
+/// 월간·주간이 함께 쓰는 막대 버튼. 누르면 상세(⌘클릭이면 secondary — Jira 댓글)를 받은 뒤 팝오버로 띄운다.
+/// 팝오버 상태는 막대마다 따로 든다. 주 경계를 넘는 항목은 주마다 막대가 하나씩이라,
+/// 부모가 항목 id 하나로 들고 있으면 두 막대가 같이 상세를 요청한다.
+struct CalendarBarButton: View {
+    let item: ScheduleItem
+    let color: Color
+    let width: CGFloat
+    let height: CGFloat
+
+    @State private var showingDetail = false
+    @State private var variant: ScheduleDetailVariant = .primary
+
+    var body: some View {
+        Button {
+            variant = isCommandClick ? .secondary : .primary
+            showingDetail = true
+        } label: {
+            CalendarBarView(spec: item.barSpec(color: color), cornerRadius: LumenTokens.Radius.xs, height: height)
+                .frame(width: width)
+        }
+        .buttonStyle(.plain)
+        .scheduleDetailPopover(item: item, variant: variant, isPresented: $showingDetail)
+    }
+}
+
 extension ScheduleItem {
-    /// 막대 자체에 필요한 표시 속성만 추출. 클릭/팝오버 등 동작은 호출하는 뷰가 처리한다.
+    /// 막대 자체에 필요한 표시 속성만 추출. 클릭/팝오버 등 동작은 `CalendarBarButton`이 처리한다.
     func barSpec(color: Color) -> CalendarBarSpec {
         CalendarBarSpec(
             title: title,

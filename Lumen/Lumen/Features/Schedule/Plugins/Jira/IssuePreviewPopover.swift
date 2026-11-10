@@ -14,7 +14,6 @@ struct IssuePreviewPopover: View {
             badgeText: detail.status,
             title: detail.summary,
             bodyText: detail.descriptionText,
-            bodyMaxHeight: CalendarPreviewMetrics.bodyMaxHeight,
             extraContent: { commentHint },
             footer: { footer }
         )

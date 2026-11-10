@@ -73,9 +73,7 @@ struct PowerSettingsTab: View {
         .scrollIndicators(.hidden)
         .onAppear {
             // 버튼이 곧 실행이라 저장 버튼 줄은 숨긴다.
-            action.hidden = true
-            action.dirty = false
-            action.saved = false
+            action.hideActionBar()
             lidAwake.refreshStatus()
         }
     }
@@ -83,7 +81,7 @@ struct PowerSettingsTab: View {
     private var modeText: String {
         guard lidAwake.isActive else { return "꺼짐" }
         guard let expiresAt = lidAwake.expiresAt else { return "켜짐 · 전원 연결 중" }
-        return "켜짐 · \(expiresAt.formatted(date: .omitted, time: .shortened))에 꺼져요"
+        return "켜짐 · \(LumenDateFormat.time.string(from: expiresAt))에 꺼져요"
     }
 
     private var systemSleepText: String {

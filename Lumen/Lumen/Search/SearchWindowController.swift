@@ -22,7 +22,7 @@ final class SearchWindowController: PanelWindowController {
     }
 
     override func createPanel() -> KeyablePanel {
-        let panel = makePanel(size: NSSize(width: Constants.searchWindowWidth, height: Constants.searchWindowHeight))
+        let panel = makePanel(size: Constants.searchWindowSize)
         panel.isMovableByWindowBackground = false
 
         let vm = SearchViewModel()
@@ -49,9 +49,7 @@ final class SearchWindowController: PanelWindowController {
             }
         }
 
-        let searchView = SearchView(viewModel: vm) { [weak self] in
-            self?.hide()
-        }
+        let searchView = SearchView(viewModel: vm)
 
         panel.contentView = NSHostingView(rootView: searchView)
         return panel
@@ -60,13 +58,7 @@ final class SearchWindowController: PanelWindowController {
     override func configureBeforeShow(_ panel: KeyablePanel) {
         MemoryTrace.record("search:configureBeforeShow:enter")
         viewModel?.reset()
-        let frame = NSScreen.underMouse.visibleFrame
-        let x = frame.midX - Constants.searchWindowWidth / 2
-        let y = frame.midY - Constants.searchWindowHeight / 2
-        panel.setFrame(
-            NSRect(x: x, y: y, width: Constants.searchWindowWidth, height: Constants.searchWindowHeight),
-            display: true
-        )
+        centerUnderMouse(panel, size: Constants.searchWindowSize)
     }
 
     override func didShow(_ panel: KeyablePanel) {

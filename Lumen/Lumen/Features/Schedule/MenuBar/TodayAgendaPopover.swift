@@ -83,14 +83,7 @@ struct TodayAgendaPopover: View {
         return Groups(allDay: allDay, timed: timed)
     }
 
-    private static let headerDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M월 d일 (E)"
-        return f
-    }()
-
     private static var headerLabel: String {
-        headerDateFormatter.string(from: Date()) + " 일정"
+        LumenDateFormat.shortDayWithWeekday.string(from: Date()) + " 일정"
     }
 }

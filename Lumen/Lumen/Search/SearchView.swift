@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SearchView: View {
     @State var viewModel = SearchViewModel()
-    var onDismiss: () -> Void
 
     /// X 버튼 클릭 시 즉시 숨기지 않고 확인 alert를 띄우기 위한 pending state.
     /// (app id, 표시용 이름)을 동시에 들고 있어 alert 메시지에 이름을 넣을 수 있다.

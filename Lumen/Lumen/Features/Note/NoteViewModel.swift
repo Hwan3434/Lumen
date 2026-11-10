@@ -216,9 +216,7 @@ final class NotesViewModel {
 
         orderSaveWorkItem?.cancel()
         orderSaveWorkItem = nil
-        if let data = try? JSONEncoder().encode(notes.map { $0.id }) {
-            try? data.write(to: orderFileURL, options: .atomic)
-        }
+        LumenStorage.write(notes.map { $0.id }, to: orderFileURL)
 
         // 앞서 비동기로 큐에 넣어둔 본문 쓰기가 아직 남아 있을 수 있다.
         // 직렬 큐라 빈 블록을 sync로 밀어 넣으면 그 앞의 작업이 모두 끝난 뒤에 돌아온다.
@@ -290,8 +288,7 @@ final class NotesViewModel {
         let url = orderFileURL
         orderSaveWorkItem?.cancel()
         let work = DispatchWorkItem {
-            guard let data = try? JSONEncoder().encode(ids) else { return }
-            try? data.write(to: url, options: .atomic)
+            LumenStorage.write(ids, to: url)
         }
         orderSaveWorkItem = work
         diskQueue.asyncAfter(deadline: .now() + 0.3, execute: work)
@@ -307,8 +304,7 @@ final class NotesViewModel {
             let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
             byID[id] = NoteItem(id: id, text: text)
         }
-        let savedOrder: [String] = (try? Data(contentsOf: orderFileURL))
-            .flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
+        let savedOrder = LumenStorage.read([String].self, from: orderFileURL) ?? []
         var ordered: [NoteItem] = []
         var seen = Set<String>()
         for id in savedOrder {

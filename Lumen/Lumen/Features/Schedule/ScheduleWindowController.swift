@@ -68,11 +68,7 @@ final class ScheduleWindowController: PanelWindowController {
     }
 
     override func didCreatePanel(_ panel: KeyablePanel) {
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
     /// 열 때마다 ⌘T와 같이 오늘로 되돌린다. 지난번에 보던 달이나 주는 기억하지 않는다.

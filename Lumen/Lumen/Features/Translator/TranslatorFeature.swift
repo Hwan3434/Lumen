@@ -6,10 +6,6 @@ final class TranslatorFeature: BuiltInFeature {
     let iconName = "languages"
     let searchKeywords = ["번역", "translate", "translation", "ai"]
 
-    var isEnabled: Bool {
-        true
-    }
-
     let windowController = TranslatorWindowController()
 
     var hotkeys: [HotkeySpec] {

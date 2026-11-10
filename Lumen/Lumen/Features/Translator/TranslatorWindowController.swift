@@ -8,7 +8,7 @@ final class TranslatorWindowController: PanelWindowController {
     private var enterMonitor: Any?
 
     override func createPanel() -> KeyablePanel {
-        let panel = makePanel(size: NSSize(width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight))
+        let panel = makePanel(size: Constants.translatorWindowSize)
 
         let vm = TranslatorViewModel()
         self.translatorViewModel = vm
@@ -29,13 +29,7 @@ final class TranslatorWindowController: PanelWindowController {
     }
 
     override func configureBeforeShow(_ panel: KeyablePanel) {
-        let frame = NSScreen.underMouse.visibleFrame
-        let x = frame.midX - Constants.translatorWindowWidth / 2
-        let y = frame.midY - Constants.translatorWindowHeight / 2
-        panel.setFrame(
-            NSRect(x: x, y: y, width: Constants.translatorWindowWidth, height: Constants.translatorWindowHeight),
-            display: true
-        )
+        centerUnderMouse(panel, size: Constants.translatorWindowSize)
     }
 
     override func didShow(_ panel: KeyablePanel) {

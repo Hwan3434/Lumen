@@ -80,7 +80,7 @@ final class ResourceAnomalyStore {
 // MARK: - Detector
 
 /// 새 snapshot이 도착할 때마다 규칙 검사.
-/// - cpuSustained: 30초(6샘플) 연속 cores × 30% 초과
+/// - cpuSustained: 6샘플 연속 cores × 30% 초과 (패널이 열려 있으면 30초, 닫혀 있으면 6분)
 /// - memoryHigh: 500MB / 1024MB 돌파 (각 1회)
 /// - memoryGrowth: baseline 대비 +50% (1회)
 /// - threadGrowth: baseline 대비 2배 (1회)
@@ -90,7 +90,8 @@ final class ResourceAnomalyDetector {
     static let shared = ResourceAnomalyDetector()
     private init() {}
 
-    private let cores = ProcessInfo.processInfo.activeProcessorCount
+    /// CPU가 "높다"고 보는 기준(코어당 30%). 리소스 모니터의 위험 배지도 이 값을 쓴다.
+    static let cpuHighThreshold = Double(ProcessInfo.processInfo.activeProcessorCount) * 30
     private let startTime = Date()
 
     private var baselineMemory: Double = 0
@@ -128,13 +129,13 @@ final class ResourceAnomalyDetector {
     }
 
     private func detectCPUSustained(_ s: ResourceSnapshot) {
-        let threshold = Double(cores) * 30
+        let threshold = Self.cpuHighThreshold
         if s.cpuPercent > threshold {
             cpuHighStreak += 1
             if cpuHighStreak >= 6 && !cpuAlertActive {
                 cpuAlertActive = true
                 record(.cpuSustained, s,
-                       "CPU \(Int(s.cpuPercent))% 30초 이상 지속 (임계 \(Int(threshold))%)")
+                       "CPU \(Int(s.cpuPercent))% 6회 연속 초과 (임계 \(Int(threshold))%)")
             }
         } else {
             cpuHighStreak = 0
@@ -170,7 +171,7 @@ final class ResourceAnomalyDetector {
         // 절대 +50MB 이상 AND 상대 +25% 이상이면 기록 (둘 다 만족)
         guard delta >= 50, ratio >= 1.25 else { return }
         record(.memorySpike, s,
-               "\(Int(previousMemory))MB → \(Int(s.memoryMB))MB (+\(Int(delta))MB, 5초간)")
+               "\(Int(previousMemory))MB → \(Int(s.memoryMB))MB (+\(Int(delta))MB, 직전 측정 대비)")
     }
 
     private func detectThreadGrowth(_ s: ResourceSnapshot) {

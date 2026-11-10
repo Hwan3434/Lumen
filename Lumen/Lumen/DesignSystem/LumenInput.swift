@@ -7,8 +7,6 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = LumenTextStyle.bodyLarge.size
-    var monospaced: Bool = false
-    var onSubmit: (() -> Void)? = nil
 
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
@@ -19,9 +17,7 @@ struct LumenInputField<Leading: View, Trailing: View>: View {
             TintedTextField(
                 text: $text,
                 placeholder: placeholder,
-                fontSize: fontSize,
-                monospaced: monospaced,
-                onSubmit: onSubmit
+                fontSize: fontSize
             )
             // SUIT는 한글 글리프가 높아 NSTextField 기본 높이로는 입력 중 윗부분이 잘린다.
             // 글꼴 줄 높이만큼 칸을 확보하고, 셀이 그 안에서 세로 가운데에 그린다.
@@ -40,7 +36,6 @@ struct LumenTextArea: View {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = LumenTextStyle.body.size
-    var monospaced: Bool = false
     /// 변화가 감지될 때마다 NSTextView를 first responder로 만든다. 0은 "no-op".
     /// 호출자는 단조 증가 카운터를 넘기면 된다 — 같은 값으로 머무르면 포커스 변화 없음.
     /// 호출 사례: preview→edit 토글 시 캐럿이 다시 잡혀야 하는데, 패널이 이미 key라
@@ -58,7 +53,6 @@ struct LumenTextArea: View {
             text: $text,
             placeholder: placeholder,
             fontSize: fontSize,
-            monospaced: monospaced,
             focusToken: focusToken,
             caretRestoreToken: caretRestoreToken,
             caretRestoreLocation: caretRestoreLocation,
@@ -71,7 +65,6 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     let fontSize: CGFloat
-    let monospaced: Bool
     let focusToken: Int
     let caretRestoreToken: Int
     let caretRestoreLocation: Int
@@ -141,11 +134,11 @@ private struct TextAreaRepresentable: NSViewRepresentable {
     }
 
     private func applyAttributes(to textView: PlaceholderTextView, coordinator: Coordinator) {
-        let key = AttrKey(fontSize: fontSize, monospaced: monospaced, placeholder: placeholder)
+        let key = AttrKey(fontSize: fontSize, placeholder: placeholder)
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
+        let font = LumenFont.nsFont(family: "SUIT Variable", size: fontSize)
         textView.font = font
         textView.textColor = NSColor(LumenTokens.Palette.ink)
         textView.placeholderString = placeholder
@@ -176,7 +169,6 @@ private struct TextAreaRepresentable: NSViewRepresentable {
 
     struct AttrKey: Equatable {
         let fontSize: CGFloat
-        let monospaced: Bool
         let placeholder: String
     }
 }
@@ -215,8 +207,6 @@ private struct TintedTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     var fontSize: CGFloat = LumenTextStyle.body.size
-    var monospaced: Bool = false
-    var onSubmit: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -250,11 +240,11 @@ private struct TintedTextField: NSViewRepresentable {
     }
 
     private func applyAttributes(to tf: NSTextField, coordinator: Coordinator) {
-        let key = AttrKey(fontSize: fontSize, monospaced: monospaced, placeholder: placeholder)
+        let key = AttrKey(fontSize: fontSize, placeholder: placeholder)
         guard coordinator.lastAttrKey != key else { return }
         coordinator.lastAttrKey = key
 
-        let font = LumenFont.nsFont(family: monospaced ? "Geist Mono" : "SUIT Variable", size: fontSize)
+        let font = LumenFont.nsFont(family: "SUIT Variable", size: fontSize)
         tf.font = font
         tf.textColor = NSColor(LumenTokens.Palette.ink)
 
@@ -280,20 +270,10 @@ private struct TintedTextField: NSViewRepresentable {
             guard let tf = note.object as? NSTextField else { return }
             parent?.text = tf.stringValue
         }
-
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            if selector == #selector(NSResponder.insertNewline(_:)),
-               let onSubmit = parent?.onSubmit {
-                onSubmit()
-                return true
-            }
-            return false
-        }
     }
 
     struct AttrKey: Equatable {
         let fontSize: CGFloat
-        let monospaced: Bool
         let placeholder: String
     }
 }

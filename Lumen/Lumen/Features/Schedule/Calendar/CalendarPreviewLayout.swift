@@ -13,14 +13,8 @@ enum CalendarPreviewMetrics {
     ///
     /// 주의: macOS SwiftUI `.popover`는 **표시되는 순간 크기가 고정**되고 그 뒤 내용이 커져도
     /// 창이 따라 자라지 않는다. 그래서 이 상한이 의미를 가지려면 팝오버가 뜨는 시점에 이미 내용이 있어야 한다 —
-    /// 조회를 먼저 하고 띄우는 책임은 `ScheduleDetailPopover`에 있다.
+    /// 조회를 먼저 하고 띄우는 책임은 `ScheduleDetailPopoverModifier`에 있다.
     static let maxPopoverHeight: CGFloat = 550
-    /// 스크롤 영역의 상한. 전체 상한과 같은 값을 준다 —
-    /// 헤더·제목·푸터가 쓰는 높이를 여기서 미리 빼면 그 추정이 틀리는 만큼 세로를 버리게 된다.
-    /// 최종 절단은 레이아웃 바깥의 `maxPopoverHeight`가 하고, 스크롤 영역은 남는 만큼 가져간다.
-    static let bodyMaxHeight: CGFloat = maxPopoverHeight
-    /// ⌘클릭 댓글 팝오버의 목록 높이 — 위와 같은 이유로 전체 상한과 같다.
-    static let commentsPopoverMaxHeight: CGFloat = maxPopoverHeight
 }
 
 /// 미리보기의 한 줄 정보(시간, 위치, 링크). 제네릭 레이아웃 밖에 두어 호출자가 Footer 타입과 무관하게 만든다.
@@ -46,8 +40,6 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
     var metaRows: [PreviewMetaRow] = []
     /// 긴 본문(설명/메모) — 스크롤 영역으로 들어감. nil/빈 문자열이면 생략.
     var bodyText: String? = nil
-    /// 본문 스크롤 영역의 최대 높이.
-    var bodyMaxHeight: CGFloat = CalendarPreviewMetrics.bodyMaxHeight
     /// 본문 아래 추가 컨텐츠 (예: 댓글 수). 없으면 EmptyView.
     @ViewBuilder var extraContent: () -> Body
     /// footer 영역 — 외부 열기 버튼 등. 없으면 EmptyView.
@@ -91,8 +83,11 @@ struct CalendarPreviewLayout<Body: View, Footer: View>: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .textSelection(.enabled)
                     }
+                    // 스크롤 영역의 상한은 전체 상한과 같은 값을 준다 — 헤더·제목·푸터가 쓰는 높이를
+                    // 여기서 미리 빼면 그 추정이 틀리는 만큼 세로를 버리게 된다.
+                    // 최종 절단은 아래 바깥 frame이 하고, 스크롤 영역은 남는 만큼 가져간다.
                     .frame(minHeight: CalendarPreviewMetrics.bodyMinHeight,
-                           maxHeight: bodyMaxHeight)
+                           maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
                 }
 
                 extraContent()
@@ -138,31 +133,8 @@ extension CalendarPreviewLayout where Body == EmptyView {
         self.title = title
         self.metaRows = metaRows
         self.bodyText = bodyText
-        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = { EmptyView() }
         self.footer = footer
-    }
-}
-
-extension CalendarPreviewLayout where Footer == EmptyView {
-    init(
-        accentColor: Color,
-        accentLabel: String,
-        badgeText: String? = nil,
-        title: String,
-        metaRows: [PreviewMetaRow] = [],
-        bodyText: String? = nil,
-        @ViewBuilder extraContent: @escaping () -> Body
-    ) {
-        self.accentColor = accentColor
-        self.accentLabel = accentLabel
-        self.badgeText = badgeText
-        self.title = title
-        self.metaRows = metaRows
-        self.bodyText = bodyText
-        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
-        self.extraContent = extraContent
-        self.footer = { EmptyView() }
     }
 }
 
@@ -181,7 +153,6 @@ extension CalendarPreviewLayout where Body == EmptyView, Footer == EmptyView {
         self.title = title
         self.metaRows = metaRows
         self.bodyText = bodyText
-        self.bodyMaxHeight = CalendarPreviewMetrics.bodyMaxHeight
         self.extraContent = { EmptyView() }
         self.footer = { EmptyView() }
     }

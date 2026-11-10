@@ -17,13 +17,6 @@ final class HiddenAppsManager {
         hiddenIDs.contains(bundleID)
     }
 
-    /// UI에서 숨긴 앱 리스트를 그릴 때 사용. 정렬은 호출자가 결정.
-    func allHiddenIDs() -> [String] {
-        Array(hiddenIDs)
-    }
-
-    var hiddenCount: Int { hiddenIDs.count }
-
     func hide(_ bundleID: String) {
         guard !hiddenIDs.contains(bundleID) else { return }
         hiddenIDs.insert(bundleID)

@@ -135,13 +135,8 @@ final class SearchViewModel {
             }
             MemoryTrace.record("SearchVM:launchApp:afterOpen")
             onDismiss(false)
-        case .calculation(_, let result):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(result, forType: .string)
-            onDismiss(true)
-        case .currency(_, _, let copyValue):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(copyValue, forType: .string)
+        case .calculation(_, let copyValue), .currency(_, _, let copyValue):
+            NSPasteboard.general.copy(copyValue)
             onDismiss(true)
         case .feature(let feature):
             activate(feature, onDismiss: onDismiss)

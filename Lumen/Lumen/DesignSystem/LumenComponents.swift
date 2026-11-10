@@ -54,7 +54,7 @@ struct LumenIcon: View {
 struct LumenButtonStyle: ButtonStyle {
     enum Variant { case primary, secondary, ghost, danger }
     /// `icon`은 안쪽 여백 없이 라벨 크기 그대로 — IconButton 전용.
-    enum Size { case small, regular, large, icon }
+    enum Size { case small, regular, icon }
 
     var variant: Variant = .secondary
     var size: Size = .regular
@@ -74,7 +74,6 @@ struct LumenButtonStyle: ButtonStyle {
             let pad: (CGFloat, CGFloat) = switch size {
             case .small: (LumenTokens.Space.scaled(6), LumenTokens.Space.scaled(12))
             case .regular: (LumenTokens.Space.scaled(10), LumenTokens.Space.scaled(16))
-            case .large: (LumenTokens.Space.scaled(14), LumenTokens.Space.scaled(24))
             case .icon: (0, 0)
             }
             configuration.label
@@ -152,11 +151,10 @@ struct LumenInlineLabelStyle: LabelStyle {
 // MARK: - Status tone (Badge, Banner, Toast)
 
 enum LumenTone {
-    case accent, category, success, warning, danger, info
+    case category, success, warning, danger, info
 
     var color: Color {
         switch self {
-        case .accent: P.brand
         case .category: P.inkMuted
         case .success: P.success
         case .warning: P.warning
@@ -167,7 +165,6 @@ enum LumenTone {
 
     var soft: Color {
         switch self {
-        case .accent: P.brandSoft
         case .category: .clear
         case .success: P.successSoft
         case .warning: P.warningSoft
@@ -183,7 +180,7 @@ enum LumenTone {
         case .warning: "triangle-alert"
         case .danger: "circle-x"
         case .info: "info"
-        case .accent, .category: nil
+        case .category: nil
         }
     }
 }

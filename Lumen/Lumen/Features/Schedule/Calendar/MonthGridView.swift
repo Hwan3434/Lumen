@@ -7,7 +7,7 @@ private typealias P = LumenTokens.Palette
 // ±3개월(=약 26주)의 주들을 LazyVStack으로 이어 붙이고, 각 주 위에 막대(bar) layer를 깔아
 // 여러 날에 걸친 항목이 셀 경계에서 끊기지 않고 하나의 막대로 표현되게 한다.
 //
-// 데이터는 onAppear/onChange 시점에 weekLayouts 사전을 한 번만 만들어 매 body 호출의 filter
+// 데이터는 onAppear/onChange 시점에 layoutByWeek 사전을 한 번만 만들어 매 body 호출의 filter
 // 비용을 없앤다 — 121개 항목 × 42셀 × 6주를 매번 도는 게 탭 전환 시 버벅임의 주 원인이었다.
 
 struct MonthGridView: View {

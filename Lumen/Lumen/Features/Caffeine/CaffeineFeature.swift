@@ -54,7 +54,6 @@ final class CaffeineFeature: ToggleableFeature {
         )
         if result == kIOReturnSuccess {
             isActive = true
-            statusHandle?.updateIcon("coffee")
             statusHandle?.show()
         }
     }

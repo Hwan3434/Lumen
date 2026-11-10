@@ -39,7 +39,7 @@ extension View {
 
 enum LumenTime {
     enum Granularity {
-        /// "방금" / "N분 전" / "N시간 전" — 시간 단위에서 멈춤. Jira 헤더 톤.
+        /// "방금" / "N분 전" / "N시간 전" / "N일 전". 일정 갱신 시각, 리소스 이상 기록.
         case minutesAndHours
         /// "방금" / "N분" / "N시간" / "어제" / "N일" — 접미사 "전" 없음. 클립보드/번역 히스토리 톤.
         case shortNoSuffix
@@ -59,7 +59,8 @@ enum LumenTime {
         let mins = Int(Date().timeIntervalSince(date) / 60)
         if mins < 1 { return "방금" }
         if mins < 60 { return "\(mins)분 전" }
-        return "\(mins / 60)시간 전"
+        if mins < 60 * 24 { return "\(mins / 60)시간 전" }
+        return "\(mins / (60 * 24))일 전"
     }
 
     private static func shortNoSuffix(_ date: Date) -> String {
@@ -91,14 +92,6 @@ enum LumenTime {
 // MARK: - Shared date formatters (per-render allocation 회피)
 
 enum LumenDateFormat {
-    /// "MM/dd" — 짧은 날짜. due-date / sprint range / chart x-tick.
-    static let monthDay: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "MM/dd"; return f
-    }()
-    /// "dd" — 같은 달 내 끝일만 표기.
-    static let dayOnly: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "dd"; return f
-    }()
     /// "2026. 11. 7 (토)" — Still 날짜 표기.
     static let dayWithWeekday: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy. M. d (E)"; return f
@@ -106,6 +99,10 @@ enum LumenDateFormat {
     /// "11. 7" — 연도 없는 짧은 날짜.
     static let shortDay: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M. d"; return f
+    }()
+    /// "11. 7 (토)" — 연도 없는 짧은 날짜에 요일.
+    static let shortDayWithWeekday: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "M. d (E)"; return f
     }()
     /// "오후 2:30" — Still 시간 표기.
     static let time: DateFormatter = {

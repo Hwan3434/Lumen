@@ -2,7 +2,7 @@ import Foundation
 import IOKit
 
 /// 자가서명 빌드에서 Keychain ACL prompt가 매 업데이트마다 뜨는 문제를 피하기 위한
-/// 파일 기반 보관소. 기존 `Keychain` 과 동일한 read/write/delete 인터페이스를 가진다.
+/// 파일 기반 보관소.
 ///
 /// 저장 위치: `~/Library/Application Support/Lumen/secrets.dat`
 /// - 평문 JSON을 저장하지 않고, 이 머신의 IOPlatformUUID를 키로 한 XOR로 가볍게 가린다.
@@ -33,13 +33,7 @@ enum SecretStore {
 
     // MARK: - Storage
 
-    private static let fileURL: URL = {
-        let fm = FileManager.default
-        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Lumen", isDirectory: true)
-        try? fm.createDirectory(at: base, withIntermediateDirectories: true)
-        return base.appendingPathComponent("secrets.dat", isDirectory: false)
-    }()
+    private static let fileURL = LumenStorage.url(for: "secrets.dat")
 
     private static func load() -> [String: String] {
         guard let data = try? Data(contentsOf: fileURL), !data.isEmpty else { return [:] }

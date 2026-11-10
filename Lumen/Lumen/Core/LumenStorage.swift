@@ -38,7 +38,6 @@ enum LumenStorage {
         case clipboardHistory
         case clipboardImagesDir
         case hiddenApps
-        case usageHistory
         case resourceAnomalies
         case currencyRates
         case localEvents
@@ -52,7 +51,6 @@ enum LumenStorage {
             case .clipboardHistory:    return "clipboard_history.json"
             case .clipboardImagesDir:  return "images"
             case .hiddenApps:          return "hidden_apps.json"
-            case .usageHistory:        return "usage_history.json"
             case .resourceAnomalies:   return "resource_anomalies.json"
             case .currencyRates:       return "currency_rates.json"
             case .localEvents:         return "local_events.json"
@@ -79,7 +77,7 @@ enum LumenStorage {
         read(type, from: url(for: slot), decoder: decoder)
     }
 
-    /// 경로를 직접 받는 판 — 테스트가 임시 디렉터리를 주입할 때 쓴다.
+    /// 경로를 직접 받는 판 — 슬롯 디렉터리 안의 파일(노트 순서, 일정 캐시)과 테스트가 주입한 임시 경로에 쓴다.
     static func read<T: Decodable>(_ type: T.Type, from fileURL: URL,
                                    decoder: JSONDecoder = JSONDecoder()) -> T? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

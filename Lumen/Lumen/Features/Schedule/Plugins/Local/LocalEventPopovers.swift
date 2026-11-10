@@ -6,7 +6,6 @@ import SwiftUI
 
 struct NewEventPopover: View {
     let plugin: LocalPlugin
-    let initialDate: Date
     let onDismiss: () -> Void
 
     @State private var title: String = ""
@@ -18,7 +17,6 @@ struct NewEventPopover: View {
     init(plugin: LocalPlugin, initialDate: Date, onDismiss: @escaping () -> Void) {
         let day = Calendar.current.startOfDay(for: initialDate)
         self.plugin = plugin
-        self.initialDate = day
         self.onDismiss = onDismiss
         self._start = State(initialValue: day)
         self._end = State(initialValue: day)

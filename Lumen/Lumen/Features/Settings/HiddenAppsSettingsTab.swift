@@ -35,9 +35,7 @@ struct HiddenAppsSettingsTab: View {
         .scrollIndicators(.hidden)
         .onAppear {
             // 토글이 곧 저장이라 ActionBar 숨김.
-            action.hidden = true
-            action.dirty = false
-            action.saved = false
+            action.hideActionBar()
             // 인덱싱은 디스크 스캔이라 메인 스레드 블록을 피해 백그라운드로.
             if allApps.isEmpty {
                 Task.detached(priority: .userInitiated) {

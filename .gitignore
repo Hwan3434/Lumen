@@ -22,8 +22,6 @@ build/
 .swiftpm/
 
 dist/
-.agents/
-.antigravitycli/
 .claude/
 
 # Claude Code background session worktrees

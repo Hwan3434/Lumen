@@ -44,11 +44,7 @@ final class WindowMagnetWindowController: PanelWindowController {
         targetApp = NSWorkspace.shared.frontmostApplication
         panel.previousApp = targetApp
 
-        let frame = NSScreen.underMouse.visibleFrame
-        let size = Self.panelSize
-        let x = frame.midX - size.width / 2
-        let y = frame.midY - size.height / 2
-        panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        centerUnderMouse(panel, size: Self.panelSize)
     }
 
     private func selectCurrent() {

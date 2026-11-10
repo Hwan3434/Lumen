@@ -29,7 +29,7 @@ struct IssueCommentsPopover: View {
                     }
                     .padding([.horizontal, .bottom], LumenTokens.Space.pad)
                 }
-                .frame(maxHeight: CalendarPreviewMetrics.commentsPopoverMaxHeight)
+                .frame(maxHeight: CalendarPreviewMetrics.maxPopoverHeight)
             }
         }
         // 내용만큼만 차지하고, 상한을 넘으면 목록이 스크롤된다.

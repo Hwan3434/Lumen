@@ -63,9 +63,7 @@ struct CalendarSettingsTab: View {
         .scrollIndicators(.hidden)
         .onAppear {
             // 토글이 곧 저장이라 저장 버튼 줄은 숨긴다.
-            action.hidden = true
-            action.dirty = false
-            action.saved = false
+            action.hideActionBar()
         }
     }
 

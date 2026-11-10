@@ -28,7 +28,7 @@ enum ArithmeticEvaluator {
             .replacingOccurrences(of: "÷", with: "/")
             .replacingOccurrences(of: ",", with: "")
 
-        guard var tokens = tokenize(normalized) else { return nil }
+        guard let tokens = tokenize(normalized) else { return nil }
         // 연산자 없이 숫자만 있는 입력은 계산식으로 취급하지 않는다.
         guard tokens.contains(where: { if case .op = $0 { return true } else { return false } }) else {
             return nil
@@ -38,7 +38,6 @@ enum ArithmeticEvaluator {
         guard let value = parser.parseExpression(), parser.isAtEnd else { return nil }
         guard value.isFinite else { return nil }
 
-        tokens.removeAll()
         return format(value)
     }
 

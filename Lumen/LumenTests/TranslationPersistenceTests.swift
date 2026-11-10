@@ -38,6 +38,7 @@ final class TranslationPersistenceTests: XCTestCase {
     }
 
     /// 바꾸기 전 코드가 남긴 파일 모양 그대로 써 두고 읽는다 — 기존 기록이 사라지면 안 된다.
+    /// 발음 칸은 지금은 읽지 않지만, 그 키가 들어 있는 예전 파일도 읽혀야 한다.
     func testReadsFileWrittenInPreviousFormat() throws {
         struct Legacy: Codable {
             let id: String
@@ -49,7 +50,7 @@ final class TranslationPersistenceTests: XCTestCase {
         }
         let id = UUID()
         let legacy = [Legacy(id: id.uuidString, original: "apple", translated: "사과",
-                             pronunciation: nil, inputPronunciation: nil, date: Date())]
+                             pronunciation: "sagwa", inputPronunciation: "aepeul", date: Date())]
         try JSONEncoder().encode(legacy).write(to: file)
 
         let vm = TranslatorViewModel(savePath: file)

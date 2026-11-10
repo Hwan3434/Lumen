@@ -54,9 +54,7 @@ struct UISettingsTab: View {
         .scrollIndicators(.hidden)
         .onAppear {
             // 고르는 즉시 저장·반영되므로 저장 버튼 줄은 숨긴다.
-            action.hidden = true
-            action.dirty = false
-            action.saved = false
+            action.hideActionBar()
         }
         .onChange(of: density) { _, newValue in
             LumenDensity.saved = newValue

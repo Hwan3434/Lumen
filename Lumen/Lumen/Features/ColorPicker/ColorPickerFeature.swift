@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 
 final class ColorPickerFeature: BuiltInFeature {
     let name = "컬러 피커"
@@ -27,8 +26,7 @@ final class ColorPickerFeature: BuiltInFeature {
         let b = Int(rgb.blueComponent * 255)
         let hex = String(format: "#%02X%02X%02X", r, g, b)
 
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(hex, forType: .string)
+        NSPasteboard.general.copy(hex)
 
         LumenToast.show(text: "\(hex)를 복사했어요", swatch: rgb)
     }

@@ -1,14 +1,14 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// 키보드 키 식별자. Carbon kVK_*에 매핑되지 않은 일부 SwiftUI 호환 코드.
+/// 패널 키 처리에서 자주 쓰는 키의 짧은 이름. 값은 Carbon `kVK_*` 그대로다.
 enum KeyCode {
-    static let downArrow = 125
-    static let upArrow = 126
-    static let enter = 36
-    static let escape = 53
-    static let delete = 51        // backspace
-    static let forwardDelete = 117
+    static let downArrow = kVK_DownArrow
+    static let upArrow = kVK_UpArrow
+    static let enter = kVK_Return
+    static let escape = kVK_Escape
+    static let delete = kVK_Delete        // backspace
+    static let forwardDelete = kVK_ForwardDelete
 }
 
 extension Constants {

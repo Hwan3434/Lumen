@@ -122,9 +122,4 @@ final class AppIndexer {
         pendingChange = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
-
-    func reload() {
-        cachedApps = []
-        _ = loadApps()
-    }
 }

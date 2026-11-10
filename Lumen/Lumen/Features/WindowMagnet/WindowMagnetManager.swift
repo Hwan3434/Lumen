@@ -12,8 +12,6 @@ final class WindowMagnetManager {
 
     func snapWindow(direction: Direction) {
         guard let screen = NSScreen.main else { return }
-        let screenFrame = screen.visibleFrame
-
         guard let window = getFocusedWindow() else { return }
 
         let steps = Constants.magnetSteps
@@ -27,22 +25,9 @@ final class WindowMagnetManager {
             nextIndex = 0
         }
 
-        let ratio = steps[nextIndex]
-        let newWidth = screenFrame.width * ratio
-        let newHeight = screenFrame.height
-
-        // AX 좌표계: 좌상단 원점
-        let screenTop = screen.frame.height - screenFrame.maxY
-        let newX: CGFloat
-        switch direction {
-        case .left:
-            newX = screenFrame.origin.x
-        case .right:
-            newX = screenFrame.origin.x + screenFrame.width - newWidth
-        }
-
-        setWindowPosition(window, point: CGPoint(x: newX, y: screenTop))
-        setWindowSize(window, size: CGSize(width: newWidth, height: newHeight))
+        let frame = snapFrame(direction: direction, ratio: steps[nextIndex], on: screen)
+        setWindowPosition(window, point: frame.origin)
+        setWindowSize(window, size: frame.size)
 
         lastDirection = direction
         lastStepIndex = nextIndex
@@ -50,19 +35,15 @@ final class WindowMagnetManager {
 
     func snapWindowTo(direction: Direction, ratio: CGFloat, targetApp: NSRunningApplication? = nil) {
         guard let screen = NSScreen.main else { return }
-        let screenFrame = screen.visibleFrame
 
         // 지정된 앱 또는 현재 포커스 윈도우
         let window: AXUIElement?
         if let app = targetApp {
-            let appElement = AXUIElementCreateApplication(app.processIdentifier)
             // focusedWindow 먼저 시도, 실패하면 windows 배열의 첫 번째
-            var windowRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
-               let ref = windowRef,
-               CFGetTypeID(ref) == AXUIElementGetTypeID() {
-                window = (ref as! AXUIElement)
+            if let focused = focusedWindow(of: app) {
+                window = focused
             } else {
+                let appElement = AXUIElementCreateApplication(app.processIdentifier)
                 var windowsRef: CFTypeRef?
                 guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
                       let windows = windowsRef as? [AXUIElement],
@@ -74,28 +55,36 @@ final class WindowMagnetManager {
         }
         guard let window = window else { return }
 
-        let newWidth = screenFrame.width * ratio
-        let newHeight = screenFrame.height
-        let screenTop = screen.frame.height - screenFrame.maxY
-        let newX: CGFloat
-        switch direction {
-        case .left:
-            newX = screenFrame.origin.x
-        case .right:
-            newX = screenFrame.origin.x + screenFrame.width - newWidth
-        }
-
+        let frame = snapFrame(direction: direction, ratio: ratio, on: screen)
         let offscreen = CGPoint(x: -10000, y: -10000)
         setWindowPosition(window, point: offscreen)
-        setWindowSize(window, size: CGSize(width: newWidth, height: newHeight))
-        setWindowPosition(window, point: CGPoint(x: newX, y: screenTop))
+        setWindowSize(window, size: frame.size)
+        setWindowPosition(window, point: frame.origin)
+    }
+
+    /// 화면 왼쪽이나 오른쪽에 붙인, 너비가 화면의 `ratio`인 창 틀. AX 좌표계(좌상단 원점)다.
+    private func snapFrame(direction: Direction, ratio: CGFloat, on screen: NSScreen) -> CGRect {
+        let screenFrame = screen.visibleFrame
+        let width = screenFrame.width * ratio
+        let x: CGFloat
+        switch direction {
+        case .left:
+            x = screenFrame.origin.x
+        case .right:
+            x = screenFrame.origin.x + screenFrame.width - width
+        }
+        return CGRect(x: x, y: screen.frame.height - screenFrame.maxY, width: width, height: screenFrame.height)
     }
 
     // MARK: - AXUIElement
 
     private func getFocusedWindow() -> AXUIElement? {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else { return nil }
-        let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
+        return focusedWindow(of: frontApp)
+    }
+
+    private func focusedWindow(of app: NSRunningApplication) -> AXUIElement? {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
 
         var windowRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,

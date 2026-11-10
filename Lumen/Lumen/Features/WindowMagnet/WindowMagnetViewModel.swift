@@ -11,18 +11,9 @@ struct MagnetOption {
 final class WindowMagnetViewModel {
     var selectedIndex = 0
 
-    let options: [MagnetOption] = [
-        MagnetOption(label: "← 왼쪽 20%", direction: .left, ratio: 0.2),
-        MagnetOption(label: "← 왼쪽 40%", direction: .left, ratio: 0.4),
-        MagnetOption(label: "← 왼쪽 60%", direction: .left, ratio: 0.6),
-        MagnetOption(label: "← 왼쪽 80%", direction: .left, ratio: 0.8),
-        MagnetOption(label: "← 왼쪽 100%", direction: .left, ratio: 1.0),
-        MagnetOption(label: "→ 오른쪽 20%", direction: .right, ratio: 0.2),
-        MagnetOption(label: "→ 오른쪽 40%", direction: .right, ratio: 0.4),
-        MagnetOption(label: "→ 오른쪽 60%", direction: .right, ratio: 0.6),
-        MagnetOption(label: "→ 오른쪽 80%", direction: .right, ratio: 0.8),
-        MagnetOption(label: "→ 오른쪽 100%", direction: .right, ratio: 1.0),
-    ]
+    let options: [MagnetOption] =
+        Constants.magnetSteps.map { MagnetOption(label: "← 왼쪽 \(Int(($0 * 100).rounded()))%", direction: .left, ratio: $0) }
+        + Constants.magnetSteps.map { MagnetOption(label: "→ 오른쪽 \(Int(($0 * 100).rounded()))%", direction: .right, ratio: $0) }
 
     func moveUp() {
         if selectedIndex > 0 { selectedIndex -= 1 }

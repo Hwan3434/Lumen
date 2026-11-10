@@ -35,13 +35,6 @@ enum LumenTokens {
         static let info          = dyn(dark: 0x64a8ff, light: 0x0b67d0)
         static let infoSoft      = dyn(dark: (0x64a8ff, 0.12), light: (0x0b67d0, 0.08))
 
-        static let codeKeyword   = info
-        static let codeString    = success
-        static let codeNumber    = warning
-        static let codeComment   = inkFaint
-
-        static let focusRing     = brand
-
         static let chart1        = dyn(dark: 0x1aa58f, light: 0x1a9e88)
         static let chart2        = dyn(dark: 0xd95926, light: 0xeb6834)
         static let chart3        = dyn(dark: 0x3987e5, light: 0x2a78d6)
@@ -49,9 +42,6 @@ enum LumenTokens {
         static let chart5        = dyn(dark: 0x9085e9, light: 0x6250d6)
         static let chartOther    = dyn(dark: 0x6c6c72, light: 0xa1a1a6)
         static let chartGrid     = borderSubtle
-        static let chartAxis     = inkFaint
-
-        static let scrim         = dyn(dark: (0x000000, 0.6), light: (0x111113, 0.32))
 
         /// 떠 있는 패널 안에 넓게 까는 `surface`(하단 바, 사이드 영역).
         /// 글래스가 켜져 있으면 면을 한 겹 더 깔면 그 영역만 덜 비치므로 깔지 않고, 구분선으로만 나눈다.
@@ -71,8 +61,6 @@ enum LumenTokens {
         static var stack:   CGFloat { d.space(12) }
         static var group:   CGFloat { d.space(24) }
         static var pad:     CGFloat { d.space(24) }
-        static var section: CGFloat { d.space(64) }
-        static var page:    CGFloat { d.space(32) }
 
         static var s1:  CGFloat { d.space(4) }
         static var s2:  CGFloat { d.space(8) }
@@ -81,9 +69,6 @@ enum LumenTokens {
         static var s5:  CGFloat { d.space(24) }
         static var s6:  CGFloat { d.space(32) }
         static var s7:  CGFloat { d.space(48) }
-        static var s8:  CGFloat { d.space(64) }
-        static var s9:  CGFloat { d.space(96) }
-        static var s10: CGFloat { d.space(128) }
 
         /// ListItem 줄의 세로 여백(Still 14).
         static var rowY: CGFloat { d.space(14) }
@@ -108,8 +93,6 @@ enum LumenTokens {
         static let lg: CGFloat = 16
         /// 시트, 모달, 큰 미디어
         static let xl: CGFloat = 22
-        /// 페이지 단위 큰 패널
-        static let xxl: CGFloat = 28
         static let full: CGFloat = 9999
     }
 
@@ -121,19 +104,14 @@ enum LumenTokens {
         static let slow: Double = 0.36
 
         static func easeOut(_ d: Double = base) -> Animation { .timingCurve(0.16, 1, 0.3, 1, duration: d) }
-        static func easeIn(_ d: Double = base) -> Animation  { .timingCurve(0.5, 0, 0.75, 0, duration: d) }
         static func easeMove(_ d: Double = base) -> Animation { .timingCurve(0.32, 0.72, 0, 1, duration: d) }
 
-        static let moveSm: CGFloat = 8
-        static let scaleEnter: CGFloat = 0.96
         static let scalePress: CGFloat = 0.97
     }
 
     // MARK: - State
 
     enum State {
-        static let focusRingWidth: CGFloat = 2
-        static let focusRingOffset: CGFloat = 2
         static let disabledOpacity: Double = 0.4
     }
 
@@ -169,9 +147,9 @@ enum LumenShape {
 
 // MARK: - Typography
 
-/// Still 타입 스케일 8단계 + 코드. 본문·제목은 SUIT, 코드는 Geist Mono.
+/// Still 타입 스케일 가운데 Lumen이 쓰는 7단계 + 코드. 본문·제목은 SUIT, 코드는 Geist Mono.
 enum LumenTextStyle {
-    case display, title1, title2, title3, bodyLarge, body, label, caption, codeBlock
+    case title1, title2, title3, bodyLarge, body, label, caption, codeBlock
 
     /// 글자 크기와 행간. 넓게·보통은 Still 그대로, 촘촘은 Still 단계 안에서 한 칸씩 작게,
     /// 아주 촘촘은 예전 Lumen 크기(Still 밖)다.
@@ -179,7 +157,6 @@ enum LumenTextStyle {
         switch LumenDensity.current {
         case .spacious, .regular:
             switch self {
-            case .display: (56, 64)
             case .title1: (40, 48)
             case .title2: (28, 36)
             case .title3: (20, 28)
@@ -191,7 +168,6 @@ enum LumenTextStyle {
             }
         case .cozy:
             switch self {
-            case .display: (40, 48)
             case .title1: (28, 36)
             case .title2: (20, 28)
             case .title3: (18, 26)
@@ -203,7 +179,6 @@ enum LumenTextStyle {
             }
         case .compact:
             switch self {
-            case .display: (32, 40)
             case .title1: (24, 30)
             case .title2: (18, 24)
             case .title3: (15, 20)
@@ -222,7 +197,6 @@ enum LumenTextStyle {
     /// em 단위 자간. 큰 제목일수록 살짝 좁힌다.
     var tracking: CGFloat {
         switch self {
-        case .display: -0.03
         case .title1: -0.025
         case .title2: -0.02
         case .title3: -0.01
@@ -232,7 +206,7 @@ enum LumenTextStyle {
 
     var defaultWeight: LumenWeight {
         switch self {
-        case .display, .title1: .bold
+        case .title1: .bold
         case .title2, .title3: .semibold
         case .label: .medium
         default: .regular

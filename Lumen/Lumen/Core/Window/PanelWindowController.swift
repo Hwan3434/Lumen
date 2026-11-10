@@ -141,6 +141,17 @@ class PanelWindowController: NSObject {
         return panel
     }
 
+    /// 마우스가 있는 화면 한가운데에 패널을 놓는다. 매번 가운데로 되돌릴 패널은 `configureBeforeShow`에서,
+    /// 사용자가 옮긴 자리를 기억할 패널(노트, 일정)은 `didCreatePanel`에서 부른다.
+    func centerUnderMouse(_ panel: KeyablePanel, size: NSSize) {
+        let frame = NSScreen.underMouse.visibleFrame
+        panel.setFrame(
+            NSRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2,
+                   width: size.width, height: size.height),
+            display: true
+        )
+    }
+
     /// panel 생성 직후 1회 호출 — 초기 위치 지정 등 1회성 설정.
     func didCreatePanel(_ panel: KeyablePanel) {}
 

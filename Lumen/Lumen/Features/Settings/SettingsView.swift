@@ -117,6 +117,13 @@ final class SettingsActionViewModel {
     var saved: Bool = false
     /// 토글 같이 명시적 저장이 없는 탭은 ActionBar 자체를 숨긴다.
     var hidden: Bool = false
+
+    /// 토글이 곧 저장인 탭이 나타날 때 부른다.
+    func hideActionBar() {
+        hidden = true
+        dirty = false
+        saved = false
+    }
 }
 
 // MARK: - Sidebar row
@@ -165,21 +172,13 @@ struct SettingsSection<Content: View>: View {
 struct SettingsField<Content: View>: View {
     let label: String
     var hint: String? = nil
-    var dirty: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: LumenTokens.Space.inline) {
-                Text(label)
-                    .lumenText(.label)
-                    .foregroundStyle(P.inkMuted)
-                if dirty {
-                    Text("변경됨")
-                        .lumenText(.caption)
-                        .foregroundStyle(P.inkFaint)
-                }
-            }
+            Text(label)
+                .lumenText(.label)
+                .foregroundStyle(P.inkMuted)
             content()
             if let hint {
                 Text(hint)

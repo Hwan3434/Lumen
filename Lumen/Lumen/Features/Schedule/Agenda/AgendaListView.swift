@@ -156,19 +156,12 @@ private struct AgendaSectionView: View {
         let cal = Calendar.current
         switch section.bucket {
         case .today:
-            return "\(Self.dayFormatter.string(from: today)) · \(count)"
+            return "\(LumenDateFormat.shortDayWithWeekday.string(from: today)) · \(count)"
         case .tomorrow:
             let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
-            return "\(Self.dayFormatter.string(from: tomorrow)) · \(count)"
+            return "\(LumenDateFormat.shortDayWithWeekday.string(from: tomorrow)) · \(count)"
         default:
             return count
         }
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "M. d (E)"
-        return f
-    }()
 }

@@ -203,6 +203,22 @@ final class ParserAndModelTests: XCTestCase {
         XCTAssertEqual(result.comments.first?.bodyText, "평문 본문", "ADF가 아닌 문자열 body도 받는다")
     }
 
+    /// 하루가 넘으면 "50시간 전"이 아니라 일 단위로 말한다 — 저장된 리소스 이상 기록은 며칠 전 것도 보인다.
+    func testRelativeTimeStepsUpToDays() {
+        let now = Date()
+        XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-30)), "방금")
+        XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-50 * 60 - 5)), "50분 전")
+        XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-5 * 3600 - 5)), "5시간 전")
+        XCTAssertEqual(LumenTime.relative(now.addingTimeInterval(-50 * 3600 - 5)), "2일 전")
+    }
+
+    func testMagnetOptionsFollowSteps() {
+        let options = WindowMagnetViewModel().options
+        XCTAssertEqual(options.map(\.ratio), Constants.magnetSteps + Constants.magnetSteps)
+        XCTAssertEqual(options.first?.label, "← 왼쪽 20%")
+        XCTAssertEqual(options.last?.label, "→ 오른쪽 100%")
+    }
+
     // MARK: - Helpers
 
     private func date(_ ymd: String) -> Date {

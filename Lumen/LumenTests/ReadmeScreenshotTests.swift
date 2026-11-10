@@ -19,7 +19,7 @@ final class ReadmeScreenshotTests: XCTestCase {
     func testSearch() throws {
         let vm = SearchViewModel()
         vm.query = "100 usd"
-        try render(SearchView(viewModel: vm, onDismiss: {}), size: Constants.searchWindowSize, named: "Lumen.png")
+        try render(SearchView(viewModel: vm), size: Constants.searchWindowSize, named: "Lumen.png")
     }
 
     func testTranslator() throws {

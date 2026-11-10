@@ -451,15 +451,8 @@ private struct ClipboardPreview: View {
         return rows
     }
 
-    private static let hourMinuteFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.dateFormat = "HH:mm"
-        return f
-    }()
-
     private func timeOnly(_ date: Date) -> String {
-        Self.hourMinuteFormatter.string(from: date)
+        LumenDateFormat.time.string(from: date)
     }
 
     private func fullTime(_ date: Date) -> String {

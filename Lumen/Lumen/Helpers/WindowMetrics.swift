@@ -10,13 +10,9 @@ extension Constants {
 
     // MARK: - Search Window
     static var searchWindowSize:     NSSize { size((870, 600), (870, 600), (920, 640), (970, 680)) }
-    static var searchWindowWidth:    CGFloat { searchWindowSize.width }
-    static var searchWindowHeight:   CGFloat { searchWindowSize.height }
 
     // MARK: - Translator Window
     static var translatorWindowSize:   NSSize { size((760, 620), (760, 640), (820, 680), (880, 720)) }
-    static var translatorWindowWidth:  CGFloat { translatorWindowSize.width }
-    static var translatorWindowHeight: CGFloat { translatorWindowSize.height }
 
     // MARK: - Other panels
     static var noteWindowSize:       NSSize { size((720, 680), (760, 680), (820, 700), (880, 720)) }

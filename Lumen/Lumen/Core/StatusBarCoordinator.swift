@@ -1,27 +1,25 @@
 import AppKit
 
 /// Feature가 자기 NSStatusItem을 직접 만들지 않고 coordinator에게 등록을 요청한다.
-/// coordinator는 NSStatusItem 라이프사이클(생성·아이콘·메뉴·해제)을 책임지며,
+/// coordinator는 NSStatusItem 라이프사이클(생성·아이콘·해제)을 책임지며,
 /// 앱 종료 시 한 번에 정리한다.
 @MainActor
 final class StatusBarCoordinator {
     private var items: [StatusBarItemHandle] = []
 
     /// 새 status item을 등록. visible=false면 등록만 하고 메뉴바엔 안 띄운다 — feature가
-    /// 나중에 handle.show()로 띄움. onClick 또는 menu 중 하나를 줄 수 있다.
+    /// 나중에 handle.show()로 띄움.
     func addItem(
         initialIcon symbolName: String,
         accessibility: String? = nil,
         visible: Bool = true,
         variableLength: Bool = false,
-        menu: NSMenu? = nil,
         onClick: (() -> Void)? = nil
     ) -> StatusBarItemHandle {
         let handle = StatusBarItemHandle(
             symbolName: symbolName,
             accessibility: accessibility,
             variableLength: variableLength,
-            menu: menu,
             onClick: onClick
         )
         if visible { handle.show() }
@@ -45,19 +43,15 @@ final class StatusBarItemHandle: NSObject {
     private let accessibility: String?
     private let variableLength: Bool
     private var titleText: String = ""
-    private let menu: NSMenu?
     private var onClick: (() -> Void)?
 
-    fileprivate init(symbolName: String, accessibility: String?, variableLength: Bool, menu: NSMenu?, onClick: (() -> Void)?) {
+    fileprivate init(symbolName: String, accessibility: String?, variableLength: Bool, onClick: (() -> Void)?) {
         self.symbolName = symbolName
         self.accessibility = accessibility
         self.variableLength = variableLength
-        self.menu = menu
         self.onClick = onClick
         super.init()
     }
-
-    var isVisible: Bool { statusItem != nil }
 
     /// status item의 button view에 직접 접근할 때 — popover anchor 등으로 쓰임.
     var buttonView: NSView? { statusItem?.button }
@@ -68,9 +62,7 @@ final class StatusBarItemHandle: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: length)
         applyIcon(to: item)
         applyTitle(to: item)
-        if let menu {
-            item.menu = menu
-        } else if onClick != nil {
+        if onClick != nil {
             item.button?.action = #selector(handleClick(_:))
             item.button?.target = self
         }
@@ -91,7 +83,7 @@ final class StatusBarItemHandle: NSObject {
     /// init 후 setOnClick으로 교체할 수 있게 한다.
     func setOnClick(_ handler: @escaping () -> Void) {
         self.onClick = handler
-        guard let item = statusItem, item.menu == nil else { return }
+        guard let item = statusItem else { return }
         item.button?.action = #selector(handleClick(_:))
         item.button?.target = self
     }

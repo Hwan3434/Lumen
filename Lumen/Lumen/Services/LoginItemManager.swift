@@ -1,10 +1,9 @@
 import ServiceManagement
 
 enum LoginItemManager {
-    private static let key = "launchAtLogin"
-
+    /// 시스템 설정 > 로그인 항목에서 끈 경우도 따라가도록 시스템 상태를 그대로 읽는다.
     static var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: key)
+        SMAppService.mainApp.status == .enabled
     }
 
     static func toggle() {
@@ -18,18 +17,19 @@ enum LoginItemManager {
     static func enable() {
         do {
             try SMAppService.mainApp.register()
-            UserDefaults.standard.set(true, forKey: key)
+            if SMAppService.mainApp.status == .requiresApproval {
+                LumenToast.show(text: "시스템 설정 > 로그인 항목에서 Lumen을 허용해 주세요", duration: 4)
+            }
         } catch {
-            print("Login item register failed: \(error)")
+            LumenToast.show(text: "로그인 시 시작을 켜지 못했어요: \(error.localizedDescription)", duration: 4)
         }
     }
 
     static func disable() {
         do {
             try SMAppService.mainApp.unregister()
-            UserDefaults.standard.set(false, forKey: key)
         } catch {
-            print("Login item unregister failed: \(error)")
+            LumenToast.show(text: "로그인 시 시작을 끄지 못했어요: \(error.localizedDescription)", duration: 4)
         }
     }
 }

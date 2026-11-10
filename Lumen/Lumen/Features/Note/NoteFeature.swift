@@ -14,7 +14,6 @@ final class NoteFeature: BuiltInFeature {
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_X),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+X",
                 action: { [weak self] in
                     self?.activate()
                 }

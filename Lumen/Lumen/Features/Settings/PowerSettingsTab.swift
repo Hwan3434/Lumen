@@ -2,7 +2,7 @@ import SwiftUI
 
 private typealias P = LumenTokens.Palette
 
-/// Settings → "전원" 탭. 덮개 모드(`LidAwakeFeature`)가 설치한 sudoers 권한과
+/// Settings → "전원" 탭. 클램쉘 모드(`LidAwakeFeature`)가 설치한 sudoers 권한과
 /// 현재 시스템 잠자기 상태를 보여주고, 권한을 지울 수 있게 한다.
 struct PowerSettingsTab: View {
     let action: SettingsActionViewModel

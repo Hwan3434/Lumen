@@ -1,9 +1,9 @@
 import AppKit
+import SwiftUI
 
 struct HotkeySpec {
     let keyCode: UInt16
     let modifiers: UInt32
-    let description: String
     let action: () -> Void
 }
 
@@ -32,6 +32,12 @@ protocol ToggleableFeature: BuiltInFeature, Observable {
     var isOn: Bool { get }
     /// 켜져 있을 때 상세 칸에 보여 줄 상태 한 줄(예: 언제 꺼지는지). 꺼져 있으면 nil.
     var onStatus: String? { get }
+    /// 스위치 밑에 붙일 기능 전용 설정(예: 클램쉘 모드의 끄기 시간). 없으면 nil.
+    var detailAccessory: AnyView? { get }
+}
+
+extension ToggleableFeature {
+    var detailAccessory: AnyView? { nil }
 }
 
 extension BuiltInFeature {

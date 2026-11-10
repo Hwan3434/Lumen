@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 final class WindowMagnetFeature: BuiltInFeature {
     let name = "윈도우 마그넷"
@@ -11,25 +12,30 @@ final class WindowMagnetFeature: BuiltInFeature {
     let manager = WindowMagnetManager()
     lazy var windowController = WindowMagnetWindowController(manager: manager)
 
+    private static let hotkeyModifiers = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
+
     var hotkeys: [HotkeySpec] {
         [
             HotkeySpec(
-                keyCode: Constants.magnetLeftHotKeyCode,
-                modifiers: Constants.magnetLeftHotKeyModifiers,
-                description: "Ctrl+Option+Left",
+                keyCode: UInt16(kVK_LeftArrow),
+                modifiers: Self.hotkeyModifiers,
                 action: { [weak self] in
                     self?.manager.snapWindow(direction: .left)
                 }
             ),
             HotkeySpec(
-                keyCode: Constants.magnetRightHotKeyCode,
-                modifiers: Constants.magnetRightHotKeyModifiers,
-                description: "Ctrl+Option+Right",
+                keyCode: UInt16(kVK_RightArrow),
+                modifiers: Self.hotkeyModifiers,
                 action: { [weak self] in
                     self?.manager.snapWindow(direction: .right)
                 }
             )
         ]
+    }
+
+    /// 창을 옮기려면 손쉬운 사용 권한이 필요하다(단축키 자체와는 무관).
+    func setup() {
+        AccessibilityHelper.requestAccessIfNeeded()
     }
 
     func activate() {

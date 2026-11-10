@@ -9,7 +9,7 @@ final class HotkeyManager {
     private var nextID: UInt32 = 1
 
     /// 등록에 실패한 핫키들 — 다른 앱이 이미 선점한 경우(⌘Space는 Spotlight 기본값이다).
-    /// 설정 화면에서 사용자에게 알려줄 수 있도록 남겨둔다.
+    /// 앱 시작 때 토스트로 알린다(`AppDelegate`).
     private(set) var failedRegistrations: [String] = []
 
     func register(keyCode: UInt16, modifiers: UInt32, action: @escaping () -> Void) {
@@ -54,7 +54,7 @@ final class HotkeyManager {
         }
     }
 
-    /// "⌘⇧X" 형태의 사람이 읽는 라벨. 로그와 설정 화면 안내에 쓴다.
+    /// "⌘⇧X" 형태의 사람이 읽는 라벨. 로그와 실패 안내 토스트에 쓴다.
     private static func describe(keyCode: UInt16, modifiers: UInt32) -> String {
         var label = ""
         if modifiers & UInt32(NSEvent.ModifierFlags.control.rawValue) != 0 { label += "⌃" }

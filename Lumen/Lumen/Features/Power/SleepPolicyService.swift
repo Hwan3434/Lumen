@@ -31,8 +31,10 @@ nonisolated enum SleepPolicyService {
 
     // MARK: - 상태 읽기 (root 불필요)
 
-    /// 시스템에 `SleepDisabled = 1`이 걸려 있는지. `pmset` 실행에 실패하면 nil.
+    /// 시스템에 `SleepDisabled = 1`이 걸려 있는지. 켜져 있는 동안 5초마다 불리므로 프로세스를 띄우지 않고
+    /// `IOPMrootDomain`의 `SleepDisabled` 속성을 읽는다. 속성이 없을 때만 `pmset -g`로 확인하고, 그것도 실패하면 nil.
     static func isSleepDisabled() -> Bool? {
+        if let value = rootDomainBool("SleepDisabled") { return value }
         guard let out = run(pmsetPath, ["-g"]), out.status == 0 else { return nil }
         return parseSleepDisabled(out.stdout)
     }
@@ -59,12 +61,17 @@ nonisolated enum SleepPolicyService {
 
     /// 덮개가 닫혀 있는지 (`IOPMrootDomain`의 `AppleClamshellState`). 덮개가 없는 Mac이면 false.
     static func isLidClosed() -> Bool {
+        rootDomainBool("AppleClamshellState") ?? false
+    }
+
+    /// `IOPMrootDomain`의 참/거짓 속성. 서비스나 속성이 없으면 nil.
+    private static func rootDomainBool(_ key: String) -> Bool? {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
-        guard service != IO_OBJECT_NULL else { return false }
+        guard service != IO_OBJECT_NULL else { return nil }
         defer { IOObjectRelease(service) }
-        let value = IORegistryEntryCreateCFProperty(service, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?
+        let value = IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?
             .takeRetainedValue()
-        return (value as? Bool) ?? false
+        return value as? Bool
     }
 
     // MARK: - 토글 (규칙 필요, 비밀번호 없음)

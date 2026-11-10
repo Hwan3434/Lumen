@@ -14,7 +14,6 @@ final class ClipboardFeature: BuiltInFeature {
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_V),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+V",
                 action: { [weak self] in
                     self?.activate()
                 }

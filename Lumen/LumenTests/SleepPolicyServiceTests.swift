@@ -1,7 +1,7 @@
 import XCTest
 @testable import Lumen
 
-/// 덮개 모드의 순수 로직. 실제 `pmset`/`sudo` 실행은 root·실기기가 필요해 여기서 다루지 않는다.
+/// 클램쉘 모드의 순수 로직. 실제 `pmset`/`sudo` 실행은 root·실기기가 필요해 여기서 다루지 않는다.
 final class SleepPolicyServiceTests: XCTestCase {
 
     func testParsesSleepDisabledFromPmsetOutput() {

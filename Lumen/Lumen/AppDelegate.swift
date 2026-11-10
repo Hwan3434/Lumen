@@ -31,45 +31,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LumenStorage.purgeRetiredFilesIfNeeded()
         ScheduleMigration.runIfNeeded()
 
-        let translator = TranslatorFeature()
-        FeatureRegistry.shared.register(translator)
-        MemoryTrace.record("feature_registered: Translator")
-
-        let windowMagnet = WindowMagnetFeature()
-        FeatureRegistry.shared.register(windowMagnet)
-        MemoryTrace.record("feature_registered: WindowMagnet")
-
-        let clipboard = ClipboardFeature()
-        FeatureRegistry.shared.register(clipboard)
-        MemoryTrace.record("feature_registered: Clipboard")
-
-        let note = NoteFeature()
-        FeatureRegistry.shared.register(note)
-        MemoryTrace.record("feature_registered: Note")
-
-        let caffeine = CaffeineFeature()
-        FeatureRegistry.shared.register(caffeine)
-        MemoryTrace.record("feature_registered: Caffeine")
-
-        // 덮개 모드는 시스템 전역 설정을 바꾸므로 카페인과 달리 자동으로 켜지 않는다.
-        FeatureRegistry.shared.register(LidAwakeFeature.shared)
-        MemoryTrace.record("feature_registered: LidAwake")
-
-        let schedule = ScheduleFeature()
-        FeatureRegistry.shared.register(schedule)
-        MemoryTrace.record("feature_registered: Schedule")
-
-        let colorPicker = ColorPickerFeature()
-        FeatureRegistry.shared.register(colorPicker)
-        MemoryTrace.record("feature_registered: ColorPicker")
-
-        let resourceMonitor = ResourceMonitorFeature()
-        FeatureRegistry.shared.register(resourceMonitor)
-        MemoryTrace.record("feature_registered: ResourceMonitor")
-
-        // 윈도우 마그넷용 접근성 권한 (단축키와는 무관)
-        if windowMagnet.isEnabled {
-            AccessibilityHelper.requestAccessIfNeeded()
+        // 순서가 곧 검색 기본 목록과 메뉴바 메뉴의 순서다.
+        let features: [BuiltInFeature] = [
+            TranslatorFeature(), WindowMagnetFeature(), ClipboardFeature(), NoteFeature(), CaffeineFeature(),
+            LidAwakeFeature.shared, ScheduleFeature(), ColorPickerFeature(), ResourceMonitorFeature(),
+        ]
+        for feature in features {
+            FeatureRegistry.shared.register(feature)
+            MemoryTrace.record("feature_registered: \(feature.name)")
         }
 
         // 메인 검색창 단축키
@@ -100,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         hotkeyManager.start()
         MemoryTrace.record("hotkeys_registered")
+        // 다른 앱이 먼저 잡은 조합(⌘Space = Spotlight 기본값)은 등록이 실패해도 아무 반응이 없어 알려 준다.
+        if !hotkeyManager.failedRegistrations.isEmpty {
+            let labels = hotkeyManager.failedRegistrations.joined(separator: ", ")
+            LumenToast.show(text: "\(labels) 단축키를 등록하지 못했어요. 다른 앱과 겹치는지 확인해 주세요", duration: 5)
+        }
 
         // Search 입력에서 환율 변환에 쓰는 USD-기준 환율 캐시 — 24h마다 백그라운드 갱신.
         CurrencyService.shared.refreshIfStale()
@@ -181,6 +155,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager.stop()
         FeatureRegistry.shared.teardownAll()
         appStatusBar?.teardown()
-        ClipboardManager.shared.flushPendingSave()
     }
 }

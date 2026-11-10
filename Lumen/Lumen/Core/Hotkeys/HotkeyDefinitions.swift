@@ -11,19 +11,11 @@ enum KeyCode {
     static let forwardDelete = kVK_ForwardDelete
 }
 
+/// 특정 기능에 속하지 않는 앱 전역 단축키. 기능 단축키는 각 기능의 `hotkeys`가 갖는다.
 extension Constants {
     static let searchHotKeyCode: UInt16 = UInt16(kVK_Space)
     static let searchHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue)
 
-    static let translateHotKeyCode: UInt16 = UInt16(kVK_ANSI_C)
-    static let translateHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue)
-
     static let focusHotKeyCode: UInt16 = UInt16(kVK_ANSI_L)
     static let focusHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue)
-
-    static let magnetLeftHotKeyCode: UInt16 = UInt16(kVK_LeftArrow)
-    static let magnetLeftHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
-
-    static let magnetRightHotKeyCode: UInt16 = UInt16(kVK_RightArrow)
-    static let magnetRightHotKeyModifiers: UInt32 = UInt32(NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.option.rawValue)
 }

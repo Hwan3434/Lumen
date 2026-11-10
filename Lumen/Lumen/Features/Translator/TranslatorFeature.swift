@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 final class TranslatorFeature: BuiltInFeature {
     let name = "AI 번역"
@@ -11,9 +12,8 @@ final class TranslatorFeature: BuiltInFeature {
     var hotkeys: [HotkeySpec] {
         [
             HotkeySpec(
-                keyCode: Constants.translateHotKeyCode,
-                modifiers: Constants.translateHotKeyModifiers,
-                description: "Cmd+Shift+C",
+                keyCode: UInt16(kVK_ANSI_C),
+                modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
                 action: { [weak self] in
                     self?.activate()
                 }

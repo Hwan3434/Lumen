@@ -1,7 +1,7 @@
 import AppKit
-import IOKit.ps
+import SwiftUI
 
-/// 덮개를 닫아도 Mac이 잠들지 않게 하는 모드 (`pmset -a disablesleep 1`).
+/// 클램쉘 모드 — 덮개를 닫아도 Mac이 잠들지 않게 한다 (`pmset -a disablesleep 1`). 코드 이름은 LidAwake.
 ///
 /// 카페인(`CaffeineFeature`, IOPMAssertion)은 유휴 잠자기만 막고, 앱이 죽으면 OS가 알아서 풀어준다.
 /// 이 모드는 덮개 닫기·Apple 메뉴 잠자기까지 막는 **시스템 전역 설정**이라 재부팅 뒤에도 남는다.
@@ -55,6 +55,8 @@ final class LidAwakeFeature: ToggleableFeature {
         guard let expiresAt else { return isActive ? "전원이 연결된 동안 계속 켜져 있어요" : "켜져 있어요" }
         return "\(LumenTime.relative(expiresAt, granularity: .calendar))에 자동으로 꺼져요"
     }
+
+    var detailAccessory: AnyView? { AnyView(LidAwakeHoursRow(lidAwake: self)) }
 
     func activate() {
         if isOn {
@@ -232,6 +234,7 @@ final class LidAwakeFeature: ToggleableFeature {
                 await feature.followSystemValue()
             }
         }
+        timer.tolerance = 1
         RunLoop.main.add(timer, forMode: .common)
         systemCheckTimer = timer
     }
@@ -266,6 +269,11 @@ final class LidAwakeFeature: ToggleableFeature {
         let timer = Timer(timeInterval: deadline.timeIntervalSinceNow, repeats: false) { [weak self] _ in
             guard let feature = self else { return }
             Task { @MainActor [feature] in
+                // 다른 작업(권한 지우기 창 등)이 진행 중이면 turnOff가 그냥 돌아가 만료가 사라진다 — 1분 뒤 다시 건다.
+                if feature.isBusy {
+                    feature.scheduleExpiry(at: Date().addingTimeInterval(60))
+                    return
+                }
                 feature.turnOff(toast: "전원을 뽑은 뒤 정한 시간이 지나 클램쉘 모드를 껐어요", sleepIfLidClosed: true)
             }
         }
@@ -314,55 +322,5 @@ final class LidAwakeFeature: ToggleableFeature {
         alert.addButton(withTitle: "취소")
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn
-    }
-}
-
-/// 전원 상태 변화(어댑터 연결·해제, 잔량 변화)를 알림으로 받는다. 폴링하지 않는다.
-private final class BatteryWatcher {
-    private var source: CFRunLoopSource?
-    private let onChange: () -> Void
-
-    init(onChange: @escaping () -> Void) {
-        self.onChange = onChange
-    }
-
-    func start() {
-        guard source == nil else { return }
-        let context = Unmanaged.passUnretained(self).toOpaque()
-        guard let created = IOPSNotificationCreateRunLoopSource({ context in
-            guard let context else { return }
-            // 메인 런루프에 등록했으므로 콜백도 메인 스레드에서 온다.
-            MainActor.assumeIsolated {
-                Unmanaged<BatteryWatcher>.fromOpaque(context).takeUnretainedValue().onChange()
-            }
-        }, context)?.takeRetainedValue() else { return }
-        CFRunLoopAddSource(CFRunLoopGetMain(), created, .defaultMode)
-        source = created
-    }
-
-    func stop() {
-        guard let source else { return }
-        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
-        self.source = nil
-    }
-
-    /// 어댑터 없이 배터리로 동작 중인지. 배터리가 없는 Mac이면 false.
-    static func isOnBattery() -> Bool {
-        let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        return IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String? == kIOPSBatteryPowerValue
-    }
-
-    /// 배터리로 동작 중일 때의 잔량(%). 어댑터 연결 중이거나 배터리가 없으면 nil.
-    static func percentIfOnBattery() -> Int? {
-        guard isOnBattery() else { return nil }
-        let info = IOPSCopyPowerSourcesInfo().takeRetainedValue()
-        let sources = IOPSCopyPowerSourcesList(info).takeRetainedValue() as [CFTypeRef]
-        for source in sources {
-            guard let desc = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
-                  let current = desc[kIOPSCurrentCapacityKey] as? Int,
-                  let max = desc[kIOPSMaxCapacityKey] as? Int, max > 0 else { continue }
-            return current * 100 / max
-        }
-        return nil
     }
 }

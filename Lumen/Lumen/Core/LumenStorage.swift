@@ -3,7 +3,8 @@ import Foundation
 /// Application Support/Lumen 디렉터리에 대한 단일 진입점.
 /// Feature가 직접 경로를 만들지 않고 이 namespace를 통과하게 해서
 /// 마이그레이션·purge·로깅이 한 곳에 모이도록 한다.
-enum LumenStorage {
+/// 클립보드·리소스 기록 저장이 백그라운드 큐에서 부르므로 `nonisolated`다 — 상태를 두지 말 것.
+nonisolated enum LumenStorage {
     /// `~/Library/Application Support/Lumen` — 첫 접근 시 디렉터리가 없으면 생성.
     static let baseURL: URL = {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

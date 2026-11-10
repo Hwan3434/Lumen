@@ -17,13 +17,11 @@ final class ScheduleFeature: BuiltInFeature {
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_G),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+G",
                 action: { [weak self] in self?.activate() }
             ),
             HotkeySpec(
                 keyCode: UInt16(kVK_ANSI_A),
                 modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
-                description: "Cmd+Shift+A",
                 action: { [weak self] in self?.statusItem?.togglePopover() }
             )
         ]

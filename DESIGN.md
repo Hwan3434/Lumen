@@ -80,7 +80,7 @@ Lumen의 UI는 개인 디자인 시스템 **Still**을 따릅니다. 원본은 �
 | `Space.rowY` | 목록 줄, 설정 줄의 세로 여백 |
 | `.lumenRowTitle(selected:style:)` | 고를 수 있는 줄의 제목 글자 |
 | `LumenIconButton(...).inRow()` | 한 줄짜리 목록 줄 안의 아이콘 버튼 |
-| 노트 사이드바의 삭제 버튼 | Still 밖 예외. 아이콘 버튼(40)이 노트 줄에 너무 커서 10 아이콘에 18 칸으로 작게 그리고, 마우스를 올리지 않아도 늘 보여요(주인 결정, 2026-11-11) |
+| 노트 사이드바의 삭제 버튼 | Still 밖 예외. 아이콘 버튼(40)이 노트 줄에 너무 커서 8 아이콘에 16 칸으로 작게 그리고, 줄에 마우스를 올렸을 때만 보여요(주인 결정, 2026-11-11) |
 | `LumenEmptyCard(icon:text:detail:tone:)` | 카드 목록이 비었을 때 그 자리. 화면 전체가 비었으면 `LumenEmptyState` |
 | `LumenHint(_:)` | 설정 묶음이나 입력 칸 아래 도움말 |
 | `LumenSettingRow(title:description:) { 컨트롤 }` | 왼쪽 제목, 오른쪽 컨트롤. 여백과 카드는 없어요. 한 카드에 한 줄이면 `.padding(Space.pad).lumenCard()`, 여러 줄이면 `Space.rowY` 여백과 `LumenHairline` |

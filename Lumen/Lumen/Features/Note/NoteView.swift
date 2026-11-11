@@ -273,6 +273,8 @@ private struct SidebarRow: View {
     let onSelect: () -> Void
     let onDelete: () -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
         Button(action: onSelect) {
             VStack(alignment: .leading, spacing: LumenTokens.Space.s1) {
@@ -281,7 +283,8 @@ private struct SidebarRow: View {
                         .lumenRowTitle(selected: isSelected)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if canDelete {
+                    // 늘 보이면 목록이 복잡해 보여서 줄에 마우스를 올렸을 때만 보인다.
+                    if canDelete, isHovering {
                         NoteDeleteButton(action: onDelete)
                     }
                 }
@@ -296,6 +299,7 @@ private struct SidebarRow: View {
             .padding(.horizontal, LumenTokens.Space.s3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
         }
         .buttonStyle(LumenListRowStyle(isSelected: isSelected))
     }
@@ -305,15 +309,15 @@ private struct SidebarRow: View {
 private struct NoteDeleteButton: View {
     let action: () -> Void
     @State private var isHovering = false
-    /// 작은 아이콘(16)의 5/8. 밀도에 따라 함께 줄어든다.
-    private static var iconSide: CGFloat { LumenIcon.Size.small.points * 0.625 }
+    /// 작은 아이콘(16)의 절반. 밀도에 따라 함께 줄어든다.
+    private static var iconSide: CGFloat { LumenIcon.Size.small.points * 0.5 }
 
     var body: some View {
         Button(action: action) {
             LumenIcon("trash-2", size: .small)
                 .frame(width: Self.iconSide, height: Self.iconSide)
                 .foregroundStyle(isHovering ? P.danger : P.inkFaint)
-                .frame(width: LumenTokens.Space.size(18), height: LumenTokens.Space.size(18))
+                .frame(width: LumenTokens.Space.size(16), height: LumenTokens.Space.size(16))
                 .background(isHovering ? P.hover : .clear, in: LumenShape.rect(LumenTokens.Radius.xs))
                 .contentShape(Rectangle())
         }

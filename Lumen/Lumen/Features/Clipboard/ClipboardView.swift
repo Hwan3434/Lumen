@@ -52,7 +52,7 @@ struct ClipboardView: View {
                 showDeleteAllConfirm = true
             }
             .disabled(viewModel.isHistoryEmpty)
-            LumenKbd(label: "⌘⇧V")
+            LumenKbd(label: ClipboardFeature.toggleLabel)
         }
     }
 

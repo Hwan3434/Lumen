@@ -3,7 +3,6 @@ import Carbon.HIToolbox
 
 @MainActor
 final class HotkeyRegistry {
-    private var bindings: [UInt32: () -> Void] = [:]
     private var hotkeyRefs: [EventHotKeyRef?] = []
     private var eventHandlerRef: EventHandlerRef?
     private var nextID: UInt32 = 1
@@ -15,9 +14,7 @@ final class HotkeyRegistry {
     func register(keyCode: UInt16, modifiers: UInt32, action: @escaping () -> Void) {
         let id = nextID
         nextID += 1
-        bindings[id] = action
-        // start() 이후에 등록되는 핫키도 동작하도록 box에 바로 반영한다.
-        // (start()가 bindings를 스냅샷으로 복사하므로 여기서 채우지 않으면 조용히 무시된다.)
+        // Carbon 콜백은 box에서 동작을 찾는다. start() 이후에 등록되는 핫키도 바로 동작하게 여기서 넣는다.
         HotkeyRegistryBox.shared.bindings[id] = action
 
         var hotKeyID = EventHotKeyID()
@@ -47,15 +44,14 @@ final class HotkeyRegistry {
             // 가장 흔한 원인은 다른 앱과의 충돌(⌘Space = Spotlight).
             let label = Self.describe(keyCode: keyCode, modifiers: modifiers)
             failedRegistrations.append(label)
-            bindings.removeValue(forKey: id)
             HotkeyRegistryBox.shared.bindings.removeValue(forKey: id)
             NSLog("[Lumen] 핫키 등록 실패: %@ (OSStatus=%d) — 다른 앱이 이미 쓰고 있는지 확인하세요.",
                   label, status)
         }
     }
 
-    /// "⌘⇧X" 형태의 사람이 읽는 라벨. 로그와 실패 안내 토스트에 쓴다.
-    private static func describe(keyCode: UInt16, modifiers: UInt32) -> String {
+    /// "⇧⌘X" 형태의 사람이 읽는 라벨. 로그, 실패 안내 토스트, 패널 머리의 단축키 표시에 쓴다.
+    static func describe(keyCode: UInt16, modifiers: UInt32) -> String {
         var label = ""
         if modifiers & UInt32(NSEvent.ModifierFlags.control.rawValue) != 0 { label += "⌃" }
         if modifiers & UInt32(NSEvent.ModifierFlags.option.rawValue)  != 0 { label += "⌥" }
@@ -133,7 +129,6 @@ final class HotkeyRegistry {
             }
         }
         hotkeyRefs.removeAll()
-        bindings.removeAll()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil

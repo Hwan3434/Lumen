@@ -5,6 +5,19 @@ import SwiftUI
 /// 플러그인 상태를 합치는 규칙. 꺼진 플러그인은 빠지고, 숨긴 묶음은 걸러지고, 색은 보이는 묶음 순서로 붙는다.
 @MainActor
 final class ScheduleStoreTests: XCTestCase {
+    private var realCacheDirectory: URL!
+
+    override func setUpWithError() throws {
+        realCacheDirectory = ScheduleCache.directory
+        ScheduleCache.directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ScheduleCache-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: ScheduleCache.directory, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: ScheduleCache.directory)
+        ScheduleCache.directory = realCacheDirectory
+    }
 
     func testVisibleItemsFollowPluginAndGroupVisibility() async {
         let a = FakeSchedulePlugin(name: "a", groups: [("g1", true), ("g2", false)])

@@ -33,7 +33,8 @@ struct PluginSecrets {
     }
 
     /// 붙여넣기 때 끼어드는 공백·줄바꿈을 지우고 저장한다. 빈 값은 지운다.
-    func write(_ value: String, for name: String) {
+    @discardableResult
+    func write(_ value: String, for name: String) -> Bool {
         SecretStore.write(value.components(separatedBy: .whitespacesAndNewlines).joined(), for: key(name))
     }
 

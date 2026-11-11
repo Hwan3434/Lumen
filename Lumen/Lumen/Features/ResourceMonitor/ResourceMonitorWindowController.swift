@@ -14,7 +14,7 @@ final class ResourceMonitorWindowController: PanelWindowController {
             return false
         }
 
-        panel.contentView = NSHostingView(rootView: ResourceMonitorView())
+        panel.contentView = NSHostingView(rootView: ResourceMonitorView(monitor: .shared, store: .shared))
         return panel
     }
 

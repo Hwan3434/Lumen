@@ -9,11 +9,16 @@ final class ClipboardFeature: BuiltInFeature {
 
     let windowController = ClipboardWindowController()
 
+    /// 패널 머리에도 같은 단축키를 보여 주므로 한 곳에 둔다.
+    static let toggleKeyCode = UInt16(kVK_ANSI_V)
+    static let toggleModifiers = UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue)
+    static var toggleLabel: String { HotkeyRegistry.describe(keyCode: toggleKeyCode, modifiers: toggleModifiers) }
+
     var hotkeys: [HotkeySpec] {
         [
             HotkeySpec(
-                keyCode: UInt16(kVK_ANSI_V),
-                modifiers: UInt32(NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue),
+                keyCode: Self.toggleKeyCode,
+                modifiers: Self.toggleModifiers,
                 action: { [weak self] in
                     self?.activate()
                 }

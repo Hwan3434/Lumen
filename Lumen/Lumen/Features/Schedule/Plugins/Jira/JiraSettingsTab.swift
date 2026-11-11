@@ -192,14 +192,15 @@ struct JiraSettingsTab: View {
 
     private func updateDirty() {
         action.dirty = snapshot() != initialSnapshot
-        if action.dirty { action.saved = false }
+        if action.dirty { action.saved = false; action.failed = false }
     }
 
     private func save() {
-        plugin.saveCredentials(workspaceSlug: workspaceSlug, email: email, apiToken: token)
+        let ok = plugin.saveCredentials(workspaceSlug: workspaceSlug, email: email, apiToken: token)
         plugin.setProjects(projects.map { JiraProjectSetting(key: $0.key, alias: $0.alias) })
         loadFromPlugin()
-        action.saved = true
+        action.saved = ok
+        action.failed = !ok
     }
 
     private func wireActionVM() {
@@ -211,6 +212,7 @@ struct JiraSettingsTab: View {
             connectionCheck = .idle
             loadFromPlugin()
             action.saved = false
+            action.failed = false
         }
     }
 }

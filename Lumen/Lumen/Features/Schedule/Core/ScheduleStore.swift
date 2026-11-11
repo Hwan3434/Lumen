@@ -31,6 +31,8 @@ final class ScheduleStore {
     @ObservationIgnored private var clockTimer: Timer?
 
     var today: Date { Calendar.current.startOfDay(for: now) }
+    /// 주 시작 요일(Calendar 값). 뷰가 설정 저장소를 직접 부르지 않게 여기서 넘긴다.
+    var firstWeekday: Int { DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue }
 
     init(plugins: [any SchedulePlugin]) {
         self.plugins = plugins

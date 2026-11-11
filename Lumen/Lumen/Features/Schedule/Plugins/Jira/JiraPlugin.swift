@@ -55,15 +55,19 @@ final class JiraPlugin: SchedulePlugin {
     }
 
     /// 도메인이 바뀌면 다른 워크스페이스일 수 있으니 cloudId 캐시를 비운다. 다음 조회에서 다시 받는다.
-    func saveCredentials(workspaceSlug: String, email: String, apiToken: String) {
+    /// 하나라도 쓰지 못하면 false — 설정 화면이 "저장했어요" 대신 실패를 보여 준다.
+    func saveCredentials(workspaceSlug: String, email: String, apiToken: String) -> Bool {
         let cleanSlug = workspaceSlug.components(separatedBy: .whitespacesAndNewlines).joined()
         if cleanSlug != self.workspaceSlug { secrets.delete("cloudId") }
-        secrets.write(cleanSlug, for: "workspaceSlug")
-        secrets.write(email, for: "email")
-        secrets.write(apiToken, for: "apiToken")
+        let results = [
+            secrets.write(cleanSlug, for: "workspaceSlug"),
+            secrets.write(email, for: "email"),
+            secrets.write(apiToken, for: "apiToken"),
+        ]
         repository = nil
         invalidateIssueCaches()
         onChange?()
+        return !results.contains(false)
     }
 
     func resetCredentials() {

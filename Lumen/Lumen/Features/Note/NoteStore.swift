@@ -84,8 +84,9 @@ final class NoteStore {
 
     func delete(id: String) {
         let url = fileURL(for: id)
+        // 영구 삭제 대신 휴지통으로 — 잘못 지워도 Finder에서 꺼낼 수 있다.
         diskQueue.async {
-            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
         }
     }
 

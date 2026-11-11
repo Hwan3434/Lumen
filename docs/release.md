@@ -32,7 +32,7 @@
 
 - 앱의 `SUFeedURL`은 `releases/latest/download/appcast.xml`이다. 가장 최근 릴리즈의 appcast를 읽는다는 뜻이다.
 - Sparkle이 1시간마다 확인하고 자동으로 설치한다(`Info.plist`의 `SUScheduledCheckInterval`, `SUAutomaticallyUpdate`).
-- 설치 도우미 서비스를 끄고(`SUEnableInstallerLauncherService = false`) 앱 안에서 교체한다. 관리자 암호 없이 교체할 수 있는 위치에 설치돼 있어야 한다. 설치 위치(`/Applications`와 `~/Applications`)는 아직 정하지 않았다([decisions.md](decisions.md)).
+- 설치 도우미 서비스를 끄고(`SUEnableInstallerLauncherService = false`) 앱 안에서 교체한다. 관리자 암호 없이 교체할 수 있는 위치에 설치돼 있어야 해서 `~/Applications`에 둔다([decisions.md](decisions.md)).
 
 ## 잘못 나간 릴리즈
 

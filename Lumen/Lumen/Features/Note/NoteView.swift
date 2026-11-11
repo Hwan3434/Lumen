@@ -305,12 +305,15 @@ private struct SidebarRow: View {
 private struct NoteDeleteButton: View {
     let action: () -> Void
     @State private var isHovering = false
+    /// 작은 아이콘(16)의 3/4. 밀도에 따라 함께 줄어든다.
+    private static var iconSide: CGFloat { LumenIcon.Size.small.points * 0.75 }
 
     var body: some View {
         Button(action: action) {
             LumenIcon("trash-2", size: .small)
+                .frame(width: Self.iconSide, height: Self.iconSide)
                 .foregroundStyle(isHovering ? P.danger : P.inkFaint)
-                .frame(width: LumenTokens.Space.size(24), height: LumenTokens.Space.size(24))
+                .frame(width: LumenTokens.Space.size(20), height: LumenTokens.Space.size(20))
                 .background(isHovering ? P.hover : .clear, in: LumenShape.rect(LumenTokens.Radius.xs))
                 .contentShape(Rectangle())
         }

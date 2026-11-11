@@ -43,7 +43,9 @@ final class CurrencyService {
     private func fetch() async {
         guard let url = URL(string: "https://open.er-api.com/v6/latest/USD") else { return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, response) = try await URLSession.shared.data(from: url)
+            // 오류 응답은 버리고 캐시한 환율을 그대로 쓴다.
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
             let resp = try JSONDecoder().decode(APIResponse.self, from: data)
             self.rates = resp.rates
             self.lastUpdated = Date()

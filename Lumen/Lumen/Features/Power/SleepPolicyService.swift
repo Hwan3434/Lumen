@@ -133,9 +133,11 @@ nonisolated enum SleepPolicyService {
         }
     }
 
-    /// 관리자 비밀번호를 받아 잠자기를 원래대로 돌리고 규칙을 지운다.
-    static func removeRule() throws {
-        let script = "\(pmsetPath) -a disablesleep 0; /bin/rm -f \(sudoersPath)"
+    /// 관리자 비밀번호를 받아 규칙을 지운다. `restoreSleep`이면 잠자기도 원래대로 돌린다 —
+    /// Lumen이 켜지 않은 잠자기 차단(사용자가 직접 켠 것)은 건드리지 않는다.
+    static func removeRule(restoreSleep: Bool) throws {
+        let rm = "/bin/rm -f \(sudoersPath)"
+        let script = restoreSleep ? "\(pmsetPath) -a disablesleep 0; \(rm)" : rm
         try runAsAdministrator(script, prompt: "Lumen이 추가한 잠자기 설정 권한을 지우려고 해요.")
     }
 

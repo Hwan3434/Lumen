@@ -79,10 +79,17 @@ nonisolated enum LumenStorage {
     }
 
     /// 경로를 직접 받는 판 — 슬롯 디렉터리 안의 파일(노트 순서, 일정 캐시)과 테스트가 주입한 임시 경로에 쓴다.
+    /// 파일이 없으면 nil. 있는데 풀지 못하면 `<이름>.bak-<초>`로 옮겨 두고 nil —
+    /// 호출부는 nil을 빈 목록으로 받아 다음 저장 때 덮어쓰므로, 옮기지 않으면 원래 데이터가 사라진다.
     static func read<T: Decodable>(_ type: T.Type, from fileURL: URL,
                                    decoder: JSONDecoder = JSONDecoder()) -> T? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? decoder.decode(T.self, from: data)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        if let data = try? Data(contentsOf: fileURL), let value = try? decoder.decode(T.self, from: data) {
+            return value
+        }
+        let backup = fileURL.appendingPathExtension("bak-\(Int(Date().timeIntervalSince1970))")
+        try? FileManager.default.moveItem(at: fileURL, to: backup)
+        return nil
     }
 
     /// JSON 인코딩 후 atomic 쓰기. 실패 시 silently drop — 호출부가 critical하면 직접 try.

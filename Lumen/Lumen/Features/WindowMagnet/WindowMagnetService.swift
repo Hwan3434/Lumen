@@ -9,17 +9,18 @@ final class WindowMagnetService {
 
     private var lastDirection: Direction?
     private var lastStepIndex: Int?
+    /// 너비 단계는 같은 창에서만 이어 간다. 다른 창으로 옮기면 첫 단계부터.
+    private var lastWindow: AXUIElement?
 
     func snapWindow(direction: Direction) {
-        guard let screen = NSScreen.main else { return }
-        guard let window = getFocusedWindow() else { return }
+        guard let window = getFocusedWindow(), let screen = screen(of: window) else { return }
 
         let steps = Constants.magnetSteps
 
         var nextIndex: Int
 
-        if let lastDir = lastDirection, let lastIdx = lastStepIndex,
-           lastDir == direction {
+        if let lastDir = lastDirection, let lastIdx = lastStepIndex, let lastWindow,
+           lastDir == direction, CFEqual(lastWindow, window) {
             nextIndex = (lastIdx + 1) % steps.count
         } else {
             nextIndex = 0
@@ -31,11 +32,10 @@ final class WindowMagnetService {
 
         lastDirection = direction
         lastStepIndex = nextIndex
+        lastWindow = window
     }
 
     func snapWindowTo(direction: Direction, ratio: CGFloat, targetApp: NSRunningApplication? = nil) {
-        guard let screen = NSScreen.main else { return }
-
         // 지정된 앱 또는 현재 포커스 윈도우
         let window: AXUIElement?
         if let app = targetApp {
@@ -53,7 +53,7 @@ final class WindowMagnetService {
         } else {
             window = getFocusedWindow()
         }
-        guard let window = window else { return }
+        guard let window, let screen = screen(of: window) else { return }
 
         let frame = Self.snapFrame(direction: direction, ratio: ratio, on: screen)
         let offscreen = CGPoint(x: -10000, y: -10000)
@@ -98,6 +98,24 @@ final class WindowMagnetService {
             return nil
         }
         return (ref as! AXUIElement)
+    }
+
+    /// 창과 가장 많이 겹치는 화면. `NSScreen.main`은 키 창 기준이라, 모니터가 여럿이면 대상 창과 다른 화면일 수 있다.
+    private func screen(of window: AXUIElement) -> NSScreen? {
+        var posRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        var origin = CGPoint.zero
+        var size = CGSize.zero
+        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posRef) == .success,
+              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let posRef, let sizeRef,
+              AXValueGetValue(posRef as! AXValue, .cgPoint, &origin),
+              AXValueGetValue(sizeRef as! AXValue, .cgSize, &size) else { return NSScreen.main }
+        // AX 좌표(주 모니터 좌상단 원점)를 AppKit 좌표(좌하단 원점)로 뒤집는다.
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let rect = CGRect(x: origin.x, y: primaryHeight - origin.y - size.height, width: size.width, height: size.height)
+        let area: (NSScreen) -> CGFloat = { let r = $0.frame.intersection(rect); return r.isNull ? 0 : r.width * r.height }
+        return NSScreen.screens.max { area($0) < area($1) } ?? NSScreen.main
     }
 
     private func setWindowPosition(_ window: AXUIElement, point: CGPoint) {

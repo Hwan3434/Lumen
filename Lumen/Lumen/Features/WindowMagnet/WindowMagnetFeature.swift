@@ -7,8 +7,6 @@ final class WindowMagnetFeature: BuiltInFeature {
     let iconName = "columns-2"
     let searchKeywords = ["magnet", "마그넷", "윈도우", "window", "스냅", "크기"]
 
-    var isEnabled: Bool { Constants.magnetEnabled }
-
     let service = WindowMagnetService()
     lazy var windowController = WindowMagnetWindowController(service: service)
 

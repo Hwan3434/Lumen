@@ -13,7 +13,7 @@ final class NoteWindowController: PanelWindowController {
 
     override func createPanel() -> KeyablePanel {
         let panel = makePanel(size: Self.panelSize, extraStyle: .resizable)
-        // 사이드바 .draggable과 충돌해서 끔. 윈도우 이동은 ⌘+드래그로 별도 핸들링.
+        // 사이드바 .draggable과 충돌해서 끔. 창 이동은 머리 줄의 `WindowDragArea`가 맡는다.
         panel.isMovableByWindowBackground = false
         panel.minSize = NSSize(width: 480, height: 320)
 
@@ -56,7 +56,7 @@ final class NoteWindowController: PanelWindowController {
             vm.createNewNote(activate: true); return nil
         }
         if flags == .command && kc == UInt16(kVK_Delete) {
-            vm.deleteCurrent(); return nil
+            vm.requestDeleteCurrent(); return nil
         }
         if flags == [.command, .shift] && kc == UInt16(kVK_ANSI_RightBracket) {
             vm.selectNext(); return nil

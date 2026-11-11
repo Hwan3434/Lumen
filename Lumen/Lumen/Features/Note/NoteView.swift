@@ -15,6 +15,22 @@ struct NoteView: View {
             mainPane
         }
         .lumenPanel()
+        .confirmationDialog(
+            "노트를 지울까요?",
+            isPresented: Binding(
+                get: { viewModel.pendingDeleteID != nil },
+                set: { if !$0 { viewModel.pendingDeleteID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("삭제", role: .destructive) {
+                if let id = viewModel.pendingDeleteID { viewModel.delete(id: id) }
+                viewModel.pendingDeleteID = nil
+            }
+            Button("취소", role: .cancel) { viewModel.pendingDeleteID = nil }
+        } message: {
+            Text("지운 노트는 휴지통으로 옮겨져요.")
+        }
     }
 
     // MARK: - Main pane
@@ -111,10 +127,9 @@ private struct NotesSidebar: View {
             LumenHairline()
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(Array(viewModel.notes.enumerated()), id: \.element.id) { index, note in
+                    ForEach(viewModel.notes) { note in
                         DraggableSidebarRow(
                             note: note,
-                            index: index,
                             viewModel: viewModel,
                             draggingID: $draggingID
                         )
@@ -154,18 +169,16 @@ private struct NotesSidebar: View {
 /// `.dropDestination(for: String.self)`는 macOS에서 row hit-area가 작을 때 flaky라 DropDelegate로 처리.
 private struct DraggableSidebarRow: View {
     let note: NoteItem
-    let index: Int
     @Bindable var viewModel: NotesViewModel
     @Binding var draggingID: String?
 
     var body: some View {
         SidebarRow(
             note: note,
-            index: index,
             isSelected: viewModel.selectedID == note.id,
             canDelete: viewModel.notes.count > 1,
             onSelect: { viewModel.selectNote(id: note.id) },
-            onDelete: { viewModel.delete(id: note.id) }
+            onDelete: { viewModel.requestDelete(id: note.id) }
         )
         .opacity(draggingID == note.id ? LumenTokens.State.disabledOpacity : 1)
         .onDrag {
@@ -174,7 +187,6 @@ private struct DraggableSidebarRow: View {
         } preview: {
             SidebarRow(
                 note: note,
-                index: index,
                 isSelected: true,
                 canDelete: false,
                 onSelect: {},
@@ -256,13 +268,10 @@ private struct TrailingDropDelegate: DropDelegate {
 
 private struct SidebarRow: View {
     let note: NoteItem
-    let index: Int
     let isSelected: Bool
     let canDelete: Bool
     let onSelect: () -> Void
     let onDelete: () -> Void
-
-    @State private var isHovering = false
 
     var body: some View {
         Button(action: onSelect) {
@@ -272,13 +281,8 @@ private struct SidebarRow: View {
                         .lumenRowTitle(selected: isSelected)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    // hover 시 같은 자리에 삭제 버튼이 덮어 그려진다.
-                    if !isHovering, index < 9 {
-                        LumenKbd(label: "⌘\(index + 1)")
-                    }
-                    if isHovering, canDelete {
-                        LumenIconButton(icon: "trash-2", label: "노트 삭제", action: onDelete)
-                            .inRow()
+                    if canDelete {
+                        NoteDeleteButton(action: onDelete)
                     }
                 }
                 if !note.preview.isEmpty {
@@ -292,9 +296,28 @@ private struct SidebarRow: View {
             .padding(.horizontal, LumenTokens.Space.s3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
-            .onHover { isHovering = $0 }
         }
         .buttonStyle(LumenListRowStyle(isSelected: isSelected))
+    }
+}
+
+/// 사이드바 줄의 삭제 버튼. Still 아이콘 버튼(40)은 한 줄짜리 목록에 너무 커서, 여기만 예외로 작게 그린다(DESIGN.md).
+private struct NoteDeleteButton: View {
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            LumenIcon("trash-2", size: .small)
+                .foregroundStyle(isHovering ? P.danger : P.inkFaint)
+                .frame(width: LumenTokens.Space.size(24), height: LumenTokens.Space.size(24))
+                .background(isHovering ? P.hover : .clear, in: LumenShape.rect(LumenTokens.Radius.xs))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel("노트 삭제")
+        .help("노트 삭제")
     }
 }
 

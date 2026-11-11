@@ -31,7 +31,7 @@ struct WeekTimelineView: View {
     /// 주간은 제한 없이 다 보여주기 위해 999로 설정 (세로 스크롤 처리).
     private let maxLanesVisible: Int = 999
 
-    private var firstWeekday: Int { DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue }
+    private var firstWeekday: Int { store.firstWeekday }
 
     var body: some View {
         let colors = store.groupColors

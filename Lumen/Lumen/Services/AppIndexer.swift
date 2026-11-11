@@ -21,6 +21,12 @@ final class AppIndexer {
         watchers.forEach { $0.cancel() }
     }
 
+    private static func contents(of dir: URL) -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]
+        )) ?? []
+    }
+
     func loadApps() -> [AppItem] {
         if !cachedApps.isEmpty { return cachedApps }
 
@@ -39,14 +45,15 @@ final class AppIndexer {
         }
 
         for dir in directories {
-            guard let contents = try? FileManager.default.contentsOfDirectory(
-                at: dir,
-                includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]
-            ) else { continue }
-
-            for url in contents where url.pathExtension == "app" {
-                appendApp(at: url, into: &apps, seen: &seen)
+            for url in Self.contents(of: dir) {
+                if url.pathExtension == "app" {
+                    appendApp(at: url, into: &apps, seen: &seen)
+                } else if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                    // 한 단계만 더 본다 — `/Applications/Utilities`, 회사별 폴더(`Adobe …/X.app`)에 든 앱.
+                    for inner in Self.contents(of: url) where inner.pathExtension == "app" {
+                        appendApp(at: inner, into: &apps, seen: &seen)
+                    }
+                }
             }
         }
 

@@ -193,14 +193,15 @@ final class LidAwakeFeature: ToggleableFeature {
         }
     }
 
-    /// 잠자기를 원래대로 돌리고 sudoers 규칙을 지운다. 관리자 비밀번호를 한 번 묻는다.
+    /// sudoers 규칙을 지우고, Lumen이 켠 잠자기 차단이면 함께 끈다. 관리자 비밀번호를 한 번 묻는다.
     func removeRule() {
         guard !isBusy else { return }
         isBusy = true
+        let restoreSleep = isOwned
         Task {
             defer { isBusy = false }
             do {
-                try await SleepPolicyService.offMain { try SleepPolicyService.removeRule() }
+                try await SleepPolicyService.offMain { try SleepPolicyService.removeRule(restoreSleep: restoreSleep) }
                 stopGuards()
                 statusHandle?.hide()
                 isActive = false

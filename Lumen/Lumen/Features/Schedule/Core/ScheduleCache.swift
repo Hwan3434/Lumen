@@ -20,8 +20,11 @@ enum ScheduleCache {
         try? FileManager.default.removeItem(at: url(for: id))
     }
 
+    /// 테스트가 임시 폴더로 바꾼다 — 실제 캐시 폴더를 건드리지 않게.
+    static var directory = LumenStorage.url(for: .scheduleCacheDir)
+
     private static func url(for id: SchedulePluginID) -> URL {
-        LumenStorage.url(for: .scheduleCacheDir).appendingPathComponent("\(id.rawValue).json")
+        directory.appendingPathComponent("\(id.rawValue).json")
     }
 
     private static let encoder: JSONEncoder = {

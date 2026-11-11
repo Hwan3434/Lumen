@@ -21,6 +21,13 @@ final class AppIndexerTests: XCTestCase {
         )
     }
 
+    /// 하위 폴더 한 단계 안의 앱도 찾는다.
+    @MainActor
+    func testFindsAppsOneFolderDeep() throws {
+        try makeApp("Vendor/Nested")
+        XCTAssertTrue(AppIndexer(directories: [dir]).loadApps().contains { $0.name == "Nested" })
+    }
+
     @MainActor
     func testAddedAndRemovedAppsAreReflectedAfterChange() throws {
         let indexer = AppIndexer(directories: [dir])

@@ -3,7 +3,7 @@ import AppKit
 
 private typealias P = LumenTokens.Palette
 
-// 월간 캘린더 — iCalendar 스타일 무한 스크롤.
+// 월간 캘린더 — iCalendar 스타일 세로 스크롤.
 // ±3개월(=약 26주)의 주들을 LazyVStack으로 이어 붙이고, 각 주 위에 막대(bar) layer를 깔아
 // 여러 날에 걸친 항목이 셀 경계에서 끊기지 않고 하나의 막대로 표현되게 한다.
 //
@@ -33,7 +33,7 @@ struct MonthGridView: View {
     @State private var scrollTarget: Date? = nil
     @State private var newItemDate: Date? = nil
 
-    private var firstWeekday: Int { DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue }
+    private var firstWeekday: Int { store.firstWeekday }
 
     private func startOfWeek(_ date: Date) -> Date {
         CalendarDateUtils.startOfWeek(of: date, firstWeekday: firstWeekday)

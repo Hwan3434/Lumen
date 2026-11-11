@@ -50,6 +50,14 @@ struct SettingsView: View {
         .frame(width: Constants.settingsWindowSize.width, height: Constants.settingsWindowSize.height)
         // 창 배경 자체를 글래스로 — 떠 있는 패널과 같은 투명도를 쓴다.
         .containerBackground(for: .window) { LumenGlassFill() }
+        // 기본 설정창은 Esc로 닫히지 않는다. 다른 Lumen 패널처럼 Esc로 닫히게 보이지 않는 버튼에 단축키를 건다.
+        .background {
+            Button("") { NSApp.keyWindow?.close() }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
     }
 
     // MARK: - Sidebar
@@ -115,6 +123,8 @@ final class SettingsActionViewModel {
     var reset: () -> Void = {}
     var dirty: Bool = false
     var saved: Bool = false
+    /// 저장을 눌렀는데 쓰지 못했다 — "저장했어요" 자리에 대신 띄운다.
+    var failed: Bool = false
     /// 토글 같이 명시적 저장이 없는 탭은 ActionBar 자체를 숨긴다.
     var hidden: Bool = false
 
@@ -123,6 +133,7 @@ final class SettingsActionViewModel {
         hidden = true
         dirty = false
         saved = false
+        failed = false
     }
 }
 
@@ -175,6 +186,16 @@ private struct ActionBar: View {
                             Text("저장했어요")
                                 .lumenText(.label, weight: .regular)
                                 .foregroundStyle(P.inkMuted)
+                        }
+                        .transition(.opacity)
+                    }
+                    if viewModel.failed {
+                        HStack(spacing: LumenTokens.Space.s1) {
+                            LumenIcon("triangle-alert", size: .small)
+                                .foregroundStyle(P.danger)
+                            Text("저장하지 못했어요")
+                                .lumenText(.label, weight: .regular)
+                                .foregroundStyle(P.danger)
                         }
                         .transition(.opacity)
                     }

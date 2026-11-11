@@ -10,6 +10,9 @@ final class ScheduleStatusItem {
     private let store: ScheduleStore
     private var panel: NSPanel?
     private var localMonitor: Any?
+    /// 패널은 다른 앱이 앞에 있는 채로 뜨므로(orderFrontRegardless) 바깥 클릭과 Esc가 Lumen에 오지 않는다.
+    /// 다른 앱으로 가는 이벤트는 전역 감시로 받는다.
+    private var globalMonitor: Any?
     private var lastClosedAt: Date = .distantPast
 
     init(coordinator: StatusBarCoordinator, store: ScheduleStore) {
@@ -109,10 +112,15 @@ final class ScheduleStatusItem {
             }
             return event
         }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
+            if event.type == .keyDown, Int(event.keyCode) != KeyCode.escape { return }
+            self?.closePanel()
+        }
     }
 
     private func closePanel() {
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+        if let m = globalMonitor { NSEvent.removeMonitor(m); globalMonitor = nil }
         panel?.orderOut(nil)
         panel = nil
     }

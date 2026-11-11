@@ -3,8 +3,8 @@ import SwiftUI
 private typealias P = LumenTokens.Palette
 
 struct ResourceMonitorView: View {
-    private var monitor: AppResourceMonitor { AppResourceMonitor.shared }
-    private var store: ResourceAnomalyStore { ResourceAnomalyStore.shared }
+    let monitor: AppResourceMonitor
+    let store: ResourceAnomalyStore
     @State private var traceOn = MemoryTrace.isEnabled
 
     var body: some View {

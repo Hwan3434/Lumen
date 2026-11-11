@@ -34,7 +34,7 @@ struct TranslatorView: View {
                 .foregroundStyle(P.inkFaint)
             LumenBadge(text: viewModel.providerName)
         } trailing: {
-            LumenKbd(label: "⌘⇧C")
+            LumenKbd(label: TranslatorFeature.toggleLabel)
         }
     }
 

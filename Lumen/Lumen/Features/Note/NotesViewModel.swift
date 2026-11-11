@@ -42,6 +42,8 @@ final class NotesViewModel {
 
     private(set) var notes: [NoteItem] = []
     var selectedID: String?
+    /// 삭제 확인 창이 떠 있는 노트.
+    var pendingDeleteID: String?
     var isPreview = false
     /// 편집 모드 진입 시마다 증가 — LumenTextArea가 이 값 변화를 감지해 NSTextView를
     /// first responder로 다시 잡는다 (preview→edit 토글 후 마우스 클릭 없이 바로 입력 가능하게).
@@ -172,10 +174,16 @@ final class NotesViewModel {
         }
     }
 
+    /// 지우기 전에 확인을 받는다. ⌘⌫는 텍스트 편집에서 손에 익은 키라 바로 지우면 노트를 통째로 잃는다.
     /// 마지막 한 개는 지울 수 없음 — 항상 빈 노트라도 하나는 남겨둔다.
-    func deleteCurrent() {
+    func requestDelete(id: String) {
+        guard notes.count > 1 else { return }
+        pendingDeleteID = id
+    }
+
+    func requestDeleteCurrent() {
         guard let idx = selectedIndex else { return }
-        delete(id: notes[idx].id)
+        requestDelete(id: notes[idx].id)
     }
 
     func delete(id: String) {

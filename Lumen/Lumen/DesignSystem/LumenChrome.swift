@@ -93,7 +93,8 @@ struct LumenKbd: View {
 // 좌측: "Lumen" 캡션. 우측: 액션 + 단축키 힌트.
 
 struct LumenFooterAction: Identifiable {
-    let id = UUID()
+    /// 단축키가 줄마다 다르므로 id로 쓴다. UUID면 다시 그릴 때마다 다른 항목이 된다.
+    var id: String { kbd }
     let label: String
     let kbd: String
     var primary: Bool = false

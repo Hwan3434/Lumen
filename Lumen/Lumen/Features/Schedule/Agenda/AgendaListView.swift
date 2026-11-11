@@ -13,7 +13,7 @@ struct AgendaListView: View {
         let sections = AgendaBuckets.sections(
             items: store.visibleItems,
             now: store.now,
-            firstWeekday: DashboardSettingsStore.shared.settings.weekStartsOn.calendarValue
+            firstWeekday: store.firstWeekday
         )
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: LumenTokens.Space.group) {

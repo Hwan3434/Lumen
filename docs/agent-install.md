@@ -83,7 +83,7 @@ pgrep -lf "$HOME/Applications/Lumen.app/Contents/MacOS/Lumen" >/dev/null \
 
 | 증상 | 조치 |
 |---|---|
-| Gatekeeper "확인되지 않은 개발자" | self-signed 빌드라 정상. Finder 우클릭 → "열기" 1회. |
+| Gatekeeper "확인되지 않은 개발자" | 공증을 받지 않은 빌드라 정상. Finder 우클릭 → "열기" 1회. |
 | 핫키 무반응 | 단축키는 권한과 상관없어요. 시작할 때 "단축키를 등록하지 못했어요" 토스트가 떴다면 다른 앱과 겹친 거예요(⌘Space는 Spotlight 기본값). |
 | 윈도우 마그넷 무반응 | 손쉬운 사용 권한이 꺼져 있거나 TCC 잔재. `tccutil reset All com.jh.Lumen` 후 권한 재부여. |
 | 핫키가 다른 앱에 가로채짐 | 시스템 설정 → 키보드 → 단축키에서 충돌 항목 비활성화. |

@@ -31,7 +31,7 @@ xcodebuild -scheme Lumen -configuration Debug -destination 'platform=macOS' -der
 ## 꼭 지킬 규칙
 
 - **파일을 더하거나 옮길 때 `project.pbxproj`를 고치지 않는다.** 폴더 동기화 프로젝트라 파일을 만들고 옮기고 지우기만 하면 타겟에 반영된다. 서명 같은 빌드 설정은 이 파일에서 고친다.
-- **디버그 빌드는 무료 개발자 팀(Personal Team)의 `Apple Development` 인증서로 서명한다.** 즉석 서명(`-`)으로 돌아가면 빌드마다 손쉬운 사용 권한을 다시 묻는다. 배포판 서명은 [docs/release.md](docs/release.md)대로 `Lumen Self-Signed`다.
+- **디버그 빌드와 배포판 모두 무료 개발자 팀(Personal Team)의 `Apple Development` 인증서로 서명한다.** 즉석 서명(`-`)이나 다른 인증서로 바꾸면 손쉬운 사용 권한을 다시 묻는다([docs/decisions.md](docs/decisions.md)).
 - **기본 격리가 MainActor다**(`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, Swift 5 모드). 백그라운드 큐에서 부르는 도우미는 `nonisolated`로 선언한다([docs/pitfalls.md](docs/pitfalls.md)).
 - **디자인 값은 토큰으로만** 쓴다. 밀도에 따라 바뀌는 값은 `static let`이나 저장 프로퍼티에 담지 않는다([DESIGN.md](DESIGN.md)).
 - **테스트 호스트는 실제 앱이다.** `AppDelegate`는 XCTest 아래에서 시작 작업을 건너뛴다. 테스트에서 `UserDefaults.standard`, `LumenStorage.baseURL`, `.saved` 설정 값에 쓰지 않는다. 임시 경로를 주입한다.

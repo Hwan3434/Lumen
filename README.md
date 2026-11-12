@@ -88,7 +88,7 @@ Apple 온디바이스 번역(`Translation` 프레임워크) 기반 한↔영 번
 
 1. [최신 릴리즈](https://github.com/Hwan3434/Lumen/releases/latest)에서 `Lumen-x.y.z.zip` 다운로드
 2. 압축 풀고 `Lumen.app`을 홈 폴더의 `~/Applications`로 이동 (폴더가 없으면 만들기. 자동 업데이트가 관리자 암호 없이 앱을 바꿀 수 있는 위치예요)
-3. **첫 실행만** Finder에서 우클릭 → **열기** (self-signed 빌드라 Gatekeeper 통과 1회 필요)
+3. **첫 실행만** Finder에서 우클릭 → **열기** (Apple 공증을 받지 않은 빌드라 Gatekeeper 통과 1회 필요)
 4. 시스템 설정 → **손쉬운 사용**에서 Lumen 토글 ON (윈도우 마그넷이 다른 앱의 창을 옮길 때 필요)
 5. `⌘,` 로 설정을 열어 **일정** 섹션에서 캘린더 · Jira 연동 켜기 (일정 대시보드에 연동 일정을 보고 싶을 때만)
 

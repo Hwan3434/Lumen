@@ -12,7 +12,7 @@
 # 사전 준비:
 #  - Sparkle generate_keys 가 1회 실행돼 macOS Keychain에 비공개키가 저장돼 있어야 함
 #  - gh auth 로그인 완료
-#  - 로그인 Keychain에 코드 서명 인증서 'Lumen Self-Signed'
+#  - 로그인 Keychain에 무료 개발자 팀(Personal Team)의 'Apple Development' 인증서 (Xcode › 설정 › Accounts)
 #  - main 이 origin 에 push 돼 있고 작업 트리가 깨끗해야 함 (태그가 빌드한 커밋을 가리키도록)
 
 set -euo pipefail
@@ -36,13 +36,14 @@ FEED_URL="https://github.com/Hwan3434/Lumen/releases/latest/download/appcast.xml
 # 릴리즈 전용 DerivedData. Sparkle 도구(sign_update)도 이 빌드가 받은 패키지에서 꺼내 쓴다 —
 # ~/Library/Developer/Xcode/DerivedData 를 뒤지면 다른 프로젝트·다른 버전의 Sparkle 이 걸릴 수 있다.
 DERIVED="$DIST/DerivedData"
-SIGN_IDENTITY="Lumen Self-Signed"
+TEAM_ID="928X8H4B4T"
 
-# 서명 인증서가 바뀌면 macOS 가 손쉬운 사용 권한을 잊는다 — 없으면 빌드 전에 멈춘다.
+# 서명 팀이 바뀌면 macOS 가 손쉬운 사용 권한을 잊는다 — 인증서가 없으면 빌드 전에 멈춘다.
+# 디버그 빌드도 같은 팀으로 서명하므로 권한 한 번으로 둘 다 통과한다.
 # (grep -q 는 파이프 앞쪽을 SIGPIPE 로 끊어 pipefail 에 걸릴 수 있어 출력을 먼저 받아 둔다)
-IDENTITIES="$(security find-identity -p codesigning)"
-if [[ "$IDENTITIES" != *"\"$SIGN_IDENTITY\""* ]]; then
-  echo "코드 서명 인증서 '$SIGN_IDENTITY' 가 Keychain 에 없음." >&2
+IDENTITIES="$(security find-identity -v -p codesigning)"
+if [[ "$IDENTITIES" != *"\"Apple Development:"* ]]; then
+  echo "유효한 Apple Development 인증서가 Keychain 에 없음 (만료됐으면 Xcode › 설정 › Accounts 에서 다시 만든다)." >&2
   exit 1
 fi
 
@@ -71,22 +72,20 @@ xcodebuild \
   -destination 'generic/platform=macOS' \
   -archivePath "$ARCHIVE" \
   -derivedDataPath "$DERIVED" \
+  -allowProvisioningUpdates \
   MARKETING_VERSION="$VERSION" \
   CURRENT_PROJECT_VERSION="$VERSION" \
-  CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
-  CODE_SIGN_STYLE=Manual \
-  DEVELOPMENT_TEAM="" \
   archive >/dev/null
 
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR"
 cp -R "$ARCHIVE/Products/Applications/Lumen.app" "$APP_DIR/"
 
-# 검증: Lumen Self-Signed 가 실제로 서명에 사용됐는지
-SIGNER=$(codesign -dvvv "$APP_DIR/Lumen.app" 2>&1 | awk -F= '/Authority=/{print $2; exit}' || true)
-echo "  signer: ${SIGNER:-<unknown>}"
-if [[ "$SIGNER" != "$SIGN_IDENTITY" ]]; then
-  echo "서명이 '$SIGN_IDENTITY'가 아님 — 이대로 배포하면 사용자의 손쉬운 사용 권한이 풀린다." >&2
+# 검증: 정한 팀으로 서명됐는지
+SIGNED_TEAM=$(codesign -dvv "$APP_DIR/Lumen.app" 2>&1 | awk -F= '/^TeamIdentifier=/{print $2; exit}' || true)
+echo "  team: ${SIGNED_TEAM:-<unknown>}"
+if [[ "$SIGNED_TEAM" != "$TEAM_ID" ]]; then
+  echo "서명 팀이 '$TEAM_ID'가 아님 — 이대로 배포하면 사용자의 손쉬운 사용 권한이 풀린다." >&2
   exit 1
 fi
 

@@ -8,7 +8,7 @@
 
 - **작업 트리가 깨끗하다**(`git status --porcelain`이 비어 있음). 폴더 동기화 프로젝트라 커밋하지 않은 `.swift` 파일도 빌드에 들어간다. 그러면 태그에 없는 코드가 배포된다.
 - **`HEAD`가 GitHub의 `main`과 같다**(`gh api repos/Hwan3434/Lumen/commits/main`으로 확인). `main`을 push하고 그 커밋에서 실행한다.
-- **로그인 Keychain에 코드 서명 인증서 `Lumen Self-Signed`가 있다.** 이 인증서가 바뀌면 macOS가 앱을 다른 앱으로 보고 손쉬운 사용 권한을 잊는다. 그래서 다른 인증서로 서명된 결과는 배포하지 않는다.
+- **로그인 Keychain에 유효한 `Apple Development` 인증서가 있다.** 무료 개발자 팀(Personal Team)의 것이다. 서명 팀이 바뀌면 macOS가 앱을 다른 앱으로 보고 손쉬운 사용 권한을 잊는다. 이유는 [decisions.md](decisions.md)의 「서명은 무료 개발자 팀 하나로」.
 
 스크립트가 확인하지 않는 것:
 
@@ -20,7 +20,7 @@
 ## 하는 일
 
 1. **archive**: Release 구성으로 빌드한다. 버전은 인자로 받은 값을 `MARKETING_VERSION`과 `CURRENT_PROJECT_VERSION`에 넣는다(`project.pbxproj`의 값은 쓰지 않는다). DerivedData는 `dist/DerivedData`를 따로 쓴다. 다른 프로젝트의 Sparkle 도구를 집어 오지 않기 위해서다. 그래서 이 방식의 첫 배포는 패키지를 새로 받고 처음부터 빌드한다.
-2. 서명자가 `Lumen Self-Signed`인지 `codesign`으로 다시 확인한다. 아니면 멈춘다.
+2. 서명 팀이 `928X8H4B4T`인지 `codesign`으로 다시 확인한다. 아니면 멈춘다.
 3. **zip**: `dist/Lumen-<버전>.zip`.
 4. **sign**: `dist/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update`로 EdDSA 서명을 만든다. 출력에서 읽은 서명과 길이의 모양이 맞지 않으면 멈춘다(형식이 다르면 깨진 appcast가 나갈 뻔했다).
 5. **appcast**: `dist/appcast.xml`. 항목은 이번 버전 하나뿐이다.

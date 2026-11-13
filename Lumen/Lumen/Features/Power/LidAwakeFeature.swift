@@ -17,8 +17,13 @@ import SwiftUI
 final class LidAwakeFeature: ToggleableFeature {
     static let shared = LidAwakeFeature()
 
-    static let batteryHourOptions = [1, 2, 4, 8]
+    /// 0은 무제한 — 배터리에서도 시간으로는 끄지 않고 배터리 하한만 지킨다.
+    static let batteryHourOptions = [1, 2, 4, 8, 0]
     static let minimumBatteryPercent = 20
+
+    static func batteryHourLabel(_ hours: Int) -> String {
+        hours == 0 ? "무제한" : "\(hours)시간"
+    }
 
     /// Lumen이 켰다는 표시. 시스템 값이 1이어도 이 표시가 없으면 사용자가 터미널에서 직접 켠 것이므로 건드리지 않는다.
     private static let ownedKey = "lidAwake.ownedByLumen"
@@ -121,7 +126,9 @@ final class LidAwakeFeature: ToggleableFeature {
                 isSystemSleepDisabled = true
                 startGuards()
                 statusHandle?.show()
-                LumenToast.show(text: "덮개를 닫아도 깨어 있어요. 전원을 뽑으면 \(batteryHours)시간 뒤 꺼져요")
+                LumenToast.show(text: batteryHours == 0
+                    ? "덮개를 닫아도 깨어 있어요. 전원을 뽑아도 배터리가 \(Self.minimumBatteryPercent)%가 될 때까지 켜져 있어요"
+                    : "덮개를 닫아도 깨어 있어요. 전원을 뽑으면 \(batteryHours)시간 뒤 꺼져요")
             } catch SleepPolicyService.Failure.cancelled {
                 // 비밀번호 창에서 취소 — 조용히 끝낸다.
             } catch {
@@ -260,7 +267,11 @@ final class LidAwakeFeature: ToggleableFeature {
             return
         }
         if expiryTimer == nil {
-            scheduleExpiry(at: resumeDeadline ?? Date().addingTimeInterval(TimeInterval(batteryHours) * 3600))
+            if let resumeDeadline {
+                scheduleExpiry(at: resumeDeadline)
+            } else if batteryHours > 0 {
+                scheduleExpiry(at: Date().addingTimeInterval(TimeInterval(batteryHours) * 3600))
+            }
         }
         checkBattery()
     }

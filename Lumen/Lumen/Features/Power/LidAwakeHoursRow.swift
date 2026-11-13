@@ -7,7 +7,7 @@ struct LidAwakeHoursRow: View {
     var body: some View {
         LumenSettingRow(title: "전원을 뽑은 뒤 끄기") {
             LumenSegmentedControl(
-                items: LidAwakeFeature.batteryHourOptions.map { .init(value: $0, label: "\($0)시간") },
+                items: LidAwakeFeature.batteryHourOptions.map { .init(value: $0, label: LidAwakeFeature.batteryHourLabel($0)) },
                 selection: $lidAwake.batteryHours
             )
         }

@@ -46,9 +46,9 @@ final class RepoRulesTests: XCTestCase {
     // 테스트 호스트가 실제 앱이라 공유 저장소에 쓰면 설치된 Lumen의 데이터가 바뀐다.
     func testTestsDoNotWriteSharedAppStorage() throws {
         let forbidden = [
-            ("UserDefaults" + ".standard", "UserDefaults(suiteName:)에 테스트 전용 이름을 주세요"),
-            ("LumenStorage" + ".baseURL =", "저장 경로를 임시 폴더로 주입하세요"),
-            (".saved" + " =", "LumenUIStore.shared의 메모리 값만 바꾸세요(SnapshotEnvironment)"),
+            ("UserDefaults.standard", "UserDefaults(suiteName:)에 테스트 전용 이름을 주세요"),
+            ("LumenStorage.baseURL = ", "저장 경로를 임시 폴더로 주입하세요"),
+            (".saved = ", "LumenUIStore.shared의 메모리 값만 바꾸세요(SnapshotEnvironment)"),
         ]
         for file in try swiftFiles(in: "LumenTests") where file.name != "RepoRulesTests.swift" {
             for (pattern, fix) in forbidden {

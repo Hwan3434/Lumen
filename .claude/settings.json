@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(open -a Lumen*)",
+      "Bash(open *Lumen.app*)",
+      "Bash(killall *Lumen*)",
+      "Bash(pkill *Lumen*)",
+      "Bash(osascript *Lumen*)",
+      "Bash(rm *Application Support/Lumen*)",
+      "Bash(defaults write com.jh.Lumen*)",
+      "Bash(defaults delete com.jh.Lumen*)",
+      "Edit(~/Library/Application Support/Lumen/**)"
+    ]
+  }
+}

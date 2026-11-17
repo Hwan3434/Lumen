@@ -10,7 +10,7 @@ xcodebuild -scheme Lumen -configuration Debug -destination 'platform=macOS' -der
 xcodebuild -scheme Lumen -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/lumen-dd test
 ```
 
-- 레포 규칙(서명, `project.pbxproj`, 테스트 격리, 디자인 토큰)은 `LumenTests/RepoRulesTests.swift`가 검사한다.
+- 레포 규칙(서명, `project.pbxproj`, 테스트 격리, 디자인 토큰)은 `LumenTests/RepoRulesTests.swift`가, 저장 데이터의 키·파일 이름·JSON 모양은 `LumenTests/StorageShapeTests.swift`가 검사한다.
 - 화면 확인은 스냅샷 테스트로 한다. README 스크린샷 테스트 5개는 `TEST_RUNNER_LUMEN_SNAPSHOT_DIR`를 줄 때만 돌고, 평소 skipped 5는 정상이다.
 
 ## 이 레포의 사실

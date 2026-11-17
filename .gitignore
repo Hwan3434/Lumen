@@ -22,7 +22,8 @@ build/
 .swiftpm/
 
 dist/
-.claude/
+.claude/*
+!.claude/settings.json
 
 # Claude Code background session worktrees
 .claude/worktrees/

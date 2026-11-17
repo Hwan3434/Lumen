@@ -65,4 +65,22 @@ final class RepoRulesTests: XCTestCase {
             }
         }
     }
+
+    // 0은 간격이 없다는 뜻이라 허용한다. 고정 숫자가 필요하면 이름 붙은 상수로 둔다(DESIGN.md 3절).
+    func testAppCodeUsesSpacingTokens() throws {
+        let literal = #"(padding\((\.[a-zA-Z]+, *)?|spacing: *|cornerRadius: *|frame\((width|height): *)[1-9][0-9.]*"#
+        for file in try swiftFiles(in: "Lumen") where !file.name.hasPrefix("DesignSystem/") {
+            let hit = file.text.range(of: literal, options: .regularExpression).map { String(file.text[$0]) }
+            XCTAssertNil(hit, "\(file.name)에서 숫자 값 \(hit ?? "")을 바로 써요. LumenTokens.Space 같은 간격 토큰을 쓰고, 밀도와 상관없는 고정 숫자면 이름 붙은 상수로 두세요.")
+        }
+    }
+
+    // 밀도 토큰은 계산 프로퍼티라 매번 현재 밀도를 읽는다. 저장하면 밀도를 바꿔도 처음 값에 묶인다.
+    func testDensityTokensAreNotStored() throws {
+        let stored = #"(?m)^    (@[A-Za-z]+ )*((private|fileprivate) )?(static )?(let|var) [A-Za-z_]+( *: *[A-Za-z]+)? *= *(LumenTokens\.Space|LumenDensity\.current|LumenTextStyle\.|LumenIcon\.Size)"#
+        for file in try swiftFiles(in: "Lumen") where !file.name.hasPrefix("DesignSystem/") {
+            let hit = file.text.range(of: stored, options: .regularExpression).map { String(file.text[$0]) }
+            XCTAssertNil(hit, "\(file.name)에서 밀도에 따라 바뀌는 값을 저장해요: \(hit ?? ""). `static var x: CGFloat { LumenTokens.Space.s2 }`처럼 계산 프로퍼티로 바꾸세요.")
+        }
+    }
 }

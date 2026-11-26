@@ -1,6 +1,6 @@
 import Foundation
 
-/// 검색창의 사칙연산 평가기.
+/// 검색창의 계산식 평가기. 사칙연산, 거듭제곱(`^`), 퍼센트(`%`)를 받는다.
 ///
 /// `NSExpression(format:)`을 쓰지 않는 이유: 파싱에 실패하면 Swift에서 잡을 수 없는
 /// ObjC 예외(`NSInvalidArgumentException`)를 raise한다. `try?`는 throwing 함수가 아니라
@@ -15,9 +15,15 @@ import Foundation
 /// ```
 /// expression := term (('+' | '-') term)*
 /// term       := unary (('*' | '/') unary)*
-/// unary      := ('+' | '-')* primary
+/// unary      := ('+' | '-') unary | power
+/// power      := postfix ('^' unary)?
+/// postfix    := primary '%'*
 /// primary    := number | '(' expression ')'
 /// ```
+/// - `^`는 오른쪽부터 묶고 단항 부호보다 먼저 계산한다(`2^3^2` = 512, `-2^2` = -4, `2^-1` = 0.5).
+///   Python `**`와 같은 해석이다.
+/// - `%`는 바로 앞의 숫자나 괄호를 100으로 나눈다(`200*15%` = 30, `5%%` = 0.0005).
+///   나머지 연산이 아니고, 휴대폰 계산기처럼 `100+10%`를 110으로 읽지도 않는다(100.1).
 enum ArithmeticEvaluator {
 
     /// 계산식을 평가한다. 계산식이 아니거나 형태가 온전치 않으면 nil.
@@ -82,7 +88,7 @@ enum ArithmeticEvaluator {
             }
 
             switch ch {
-            case "+", "-", "*", "/": tokens.append(.op(ch))
+            case "+", "-", "*", "/", "^", "%": tokens.append(.op(ch))
             case "(":                tokens.append(.leftParen)
             case ")":                tokens.append(.rightParen)
             default:                 return nil
@@ -137,7 +143,28 @@ enum ArithmeticEvaluator {
                 guard let operand = parseUnary() else { return nil }
                 return symbol == "-" ? -operand : operand
             }
-            return parsePrimary()
+            return parsePower()
+        }
+
+        /// 지수 자리에서 `parseUnary`를 다시 불러 오른쪽부터 묶고 `2^-1`의 부호도 받는다.
+        private mutating func parsePower() -> Double? {
+            guard let base = parsePostfix() else { return nil }
+            guard case .op(let symbol)? = peek(), symbol == "^" else { return base }
+            position += 1
+            guard let exponent = parseUnary() else { return nil }
+            let value = pow(base, exponent)
+            // 넘치거나(`10^400`) 실수가 아니면(`(-8)^(1/3)`) 계산식이 아니었던 것으로 취급한다.
+            // 여기서 끊지 않으면 `1/10^400`처럼 무한대를 거쳐 0이 결과로 나온다.
+            return value.isFinite ? value : nil
+        }
+
+        private mutating func parsePostfix() -> Double? {
+            guard var value = parsePrimary() else { return nil }
+            while case .op(let symbol)? = peek(), symbol == "%" {
+                position += 1
+                value /= 100
+            }
+            return value
         }
 
         private mutating func parsePrimary() -> Double? {
@@ -160,10 +187,10 @@ enum ArithmeticEvaluator {
 
     // MARK: - Formatting
 
+    /// 유효숫자 15자리로 쓴다. Double은 십진 15자리까지 그대로 담으므로 이진 부동소수 오차
+    /// (`0.1+0.2` = 0.30000000000000004, `100*7%` = 7.000000000000001)가 꼬리로 붙지 않는다.
+    /// 15자리를 넘는 수(`10^15`, `2^64`)는 지수 표기가 된다.
     private static func format(_ value: Double) -> String {
-        if value == value.rounded() && abs(value) < 1e15 {
-            return String(format: "%.0f", value)
-        }
-        return String(value)
+        String(format: "%.15g", value)
     }
 }

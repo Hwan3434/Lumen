@@ -82,7 +82,8 @@ enum ArithmeticEvaluator {
                     literal.append(s[index])
                     index = s.index(after: index)
                 }
-                guard let value = Double(literal) else { return nil }
+                // 309자리가 넘는 숫자는 무한대로 읽힌다. 받으면 `1/무한대` = 0 같은 결과가 나온다.
+                guard let value = Double(literal), value.isFinite else { return nil }
                 tokens.append(.number(value))
                 continue
             }
@@ -187,10 +188,14 @@ enum ArithmeticEvaluator {
 
     // MARK: - Formatting
 
-    /// 유효숫자 15자리로 쓴다. Double은 십진 15자리까지 그대로 담으므로 이진 부동소수 오차
+    /// 2^53 미만의 정수는 Double이 정확히 담으므로 자릿수를 다 쓴다(`10^15` = 1000000000000000).
+    /// 그 밖의 수는 유효숫자 15자리로 쓴다. Double은 십진 15자리까지 그대로 담으므로 이진 부동소수 오차
     /// (`0.1+0.2` = 0.30000000000000004, `100*7%` = 7.000000000000001)가 꼬리로 붙지 않는다.
-    /// 15자리를 넘는 수(`10^15`, `2^64`)는 지수 표기가 된다.
     private static func format(_ value: Double) -> String {
-        String(format: "%.15g", value)
+        if value == 0 { return "0" }  // 음의 0(`0*-1`)이 `-0`으로 나오지 않게
+        if value == value.rounded() && abs(value) < 9_007_199_254_740_992 {
+            return String(format: "%.0f", value)
+        }
+        return String(format: "%.15g", value)
     }
 }

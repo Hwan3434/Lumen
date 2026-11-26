@@ -30,8 +30,32 @@ final class ArithmeticEvaluatorTests: XCTestCase {
             ("-2^2", "-4"),      // -(2^2)
             ("(-2)^2", "4"),
             ("2*3^2", "18"),     // 곱셈보다 먼저
-            ("10^15", "1e+15"),  // 1e15 이상은 지금처럼 지수 표기
+        ])
+    }
+
+    /// Double이 정확히 담는 2^53 미만 정수는 자릿수를 다 쓰고, 그보다 크면 유효숫자 15자리 지수 표기다.
+    func testLargeIntegersKeepAllDigits() {
+        assertCases([
+            ("1234567890123456+1", "1234567890123457"),
+            ("10^15", "1000000000000000"),
             ("2^64", "1.84467440737096e+19"),
+        ])
+    }
+
+    /// Double의 음의 0이 결과에 `-0`으로 나오지 않는다.
+    func testNegativeZeroIsShownAsZero() {
+        assertCases([
+            ("-0%", "0"),
+            ("0*-1", "0"),
+        ])
+    }
+
+    /// 너무 긴 숫자는 무한대로 읽혀 `1/무한대` = 0 같은 결과를 만든다. 계산식으로 받지 않는다.
+    func testOverflowingLiteralReturnsNil() {
+        let huge = "1" + String(repeating: "0", count: 400)
+        assertCases([
+            ("1/" + huge, nil),
+            (huge + "^0", nil),
         ])
     }
 

@@ -155,3 +155,4 @@ TEST_RUNNER_LUMEN_SNAPSHOT_DIR=/tmp/lumen-shots TEST_RUNNER_LUMEN_SNAPSHOT_DENSI
 ## 스택
 
 Swift · SwiftUI · AppKit · Carbon HotKey · Sparkle 2.x · NetworkImage · swift-markdown-ui. 배포 타깃 macOS 26.2.
+orca 시험
